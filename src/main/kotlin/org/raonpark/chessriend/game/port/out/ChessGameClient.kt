@@ -3,6 +3,7 @@ package org.raonpark.chessriend.game.port.out
 import kotlinx.coroutines.flow.Flow
 import org.raonpark.chessriend.game.domain.Color
 import org.raonpark.chessriend.game.domain.Game
+import org.raonpark.chessriend.game.domain.GameSource
 import org.raonpark.chessriend.game.domain.TimeCategory
 import java.time.Instant
 
@@ -18,5 +19,6 @@ data class GameFetchCriteria(
 )
 
 interface ChessGameClient {
+    val source: GameSource
     fun fetchGames(criteria: GameFetchCriteria): Flow<Game>
 }

@@ -33,6 +33,9 @@ dependencies {
     runtimeOnly("org.springframework.boot:spring-boot-starter-jdbc")
     runtimeOnly("org.postgresql:postgresql")
 
+    // ── Environment ──
+    implementation("me.paulschwarz:spring-dotenv:4.0.0")
+
     // ── Kotlin + Coroutines ──
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("io.projectreactor.kotlin:reactor-kotlin-extensions")

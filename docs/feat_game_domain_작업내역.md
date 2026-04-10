@@ -64,7 +64,7 @@
 ### 변경 파일
 | 파일 | 설명 |
 |------|------|
-| `game/port/in/ImportGameUseCase.kt` | `fun import(source, criteria): Flow<Game>` |
+| `game/port/in/ImportGameUseCase.kt` | `fun importGames(source, criteria): Flow<Game>` |
 
 ### 의사결정 기록
 | 결정 | 선택 | 이유 |
@@ -72,3 +72,102 @@
 | 반환 타입 | `Flow<Game>` (스트리밍) | 수백 게임을 메모리에 한번에 올리지 않고 하나씩 처리. 프론트 실시간 진행 표시 가능 |
 | source 지정 | 파라미터 (`GameSource`) | 가져오기 흐름은 플랫폼 무관하게 동일. 차이는 ChessGameClient Adapter가 흡수 |
 | 중복 처리 | skip | 과거 기보 데이터는 불변. skip이 단순하고 안전 |
+| 메서드명 | `importGames` (`import` → 변경) | `import`는 Kotlin 예약어 |
+
+## 2026-04-10: Application 레이어 구현
+
+### 무엇을
+- `ImportGameService` — 게임 가져오기 유스케이스 구현 (fetch → 중복체크 → save 스트리밍 파이프라인)
+
+### 왜
+- Port in(`ImportGameUseCase`)의 구현체로서, Port out(`ChessGameClient`, `GameRepository`)을 조합하여 비즈니스 흐름 완성
+- `List<ChessGameClient>` 주입 + `source` 속성으로 플랫폼별 client 자동 선택
+
+### 변경 파일
+| 파일 | 설명 |
+|------|------|
+| `game/application/ImportGameService.kt` | UseCase 구현 — `@Service`, Flow 파이프라인 (fetch → filter 중복 → map save) |
+| `game/port/out/ChessGameClient.kt` | `val source: GameSource` 속성 추가 (client 식별용) |
+
+### 의사결정 기록
+| 결정 | 선택 | 이유 |
+|------|------|------|
+| Client 선택 방식 | `List<ChessGameClient>` + `source` 속성 매칭 | Spring이 모든 구현체를 자동 주입, 새 플랫폼 추가 시 Adapter만 만들면 자동 등록 |
+| 비즈니스 흐름 | Flow 파이프라인 (fetch → filter → map) | lichess NDJSON 스트리밍을 끊지 않고 게임 단위로 중복체크 + 저장 처리 |
+
+## 2026-04-10: Adapter out 구현 (Persistence + Client)
+
+### 무엇을
+- DB 저장 Adapter (`GamePersistenceAdapter`) + Flyway 마이그레이션
+- lichess API 클라이언트 (`LichessClient`) — NDJSON 스트리밍 수신 + 도메인 변환
+- Snowflake ID Generator (forder 프로젝트에서 가져와 단일 서버용으로 간소화)
+- spring-dotenv 도입 + `.env` 기반 시크릿 관리
+
+### 왜
+- **Persistence**: JSONB로 moves 저장하여 테이블 하나로 단순화. Game 로드 시 항상 전체 Move를 함께 가져오므로 별도 테이블 불필요
+- **LichessClient**: NDJSON 스트리밍을 WebClient + Reactor → Flow로 변환하여 메모리 효율적 처리
+- **Snowflake ID**: UUID 대비 시간 순서 내장, BIGINT로 인덱스 성능 우수
+- **spring-dotenv**: IDE에서도 `.env` 자동 읽기, 별도 Run Configuration 불필요
+
+### 변경 파일
+| 파일 | 설명 |
+|------|------|
+| `shared/id/SnowflakeIdGenerator.kt` | Snowflake ID 생성기 (단일 서버용, machineId=0 기본) |
+| `shared/config/IdGeneratorConfig.kt` | SnowflakeIdGenerator Spring Bean 등록 |
+| `game/adapter/out/persistence/GameEntity.kt` | R2DBC 엔티티 (`@Table("games")`) |
+| `game/adapter/out/persistence/R2dbcGameRepository.kt` | `CoroutineCrudRepository` + `CoroutineSortingRepository` |
+| `game/adapter/out/persistence/GamePersistenceAdapter.kt` | Port `GameRepository` 구현, 도메인 ↔ Entity 변환, moves JSONB 직렬화 |
+| `game/adapter/out/client/LichessConfig.kt` | `@ConfigurationProperties` — baseUrl, token |
+| `game/adapter/out/client/LichessClient.kt` | lichess NDJSON API 호출, Game 도메인 변환 |
+| `V1__create_games_table.sql` | games 테이블 (BIGINT PK, JSONB moves, unique constraint on source+sourceGameId) |
+| `application.yml` | lichess API 설정 추가 |
+| `build.gradle.kts` | spring-dotenv 의존성 추가 |
+| `.env` / `.env.example` | 환경변수 템플릿 (LICHESS_API_TOKEN) |
+| `.gitignore` | `.env` 추가 |
+| `game/domain/Game.kt` | `id: String?` → `id: Long?` (Snowflake ID) |
+
+### TODO
+- [ ] 백엔드 체스 라이브러리 도입 후 Move.fen 실제 FEN 계산으로 교체
+- [ ] lichess API 에러 응답 처리 (rate limit 429, 404 user not found 등)
+
+### 의사결정 기록
+| 결정 | 선택 | 이유 |
+|------|------|------|
+| Move 저장 방식 | JSONB 컬럼 | 항상 전체 Move를 함께 로드, 개별 Move SQL 쿼리 불필요 |
+| ID 생성 | Snowflake (BIGINT) | 시간순 정렬 내장, B-tree 인덱스 효율, forder 검증 코드 재활용 |
+| lichess 인증 | Optional token (`.env`) | 무료 API, 토큰 있으면 rate limit 완화. spring-dotenv로 관리 |
+| 중복 방지 | DB unique constraint (source + sourceGameId) | Application 레벨 체크 + DB 레벨 보장 이중 안전장치 |
+
+## 2026-04-10: Adapter in 구현 (Controller)
+
+### 무엇을
+- `GameController` — 게임 import REST API 엔드포인트 (SSE 스트리밍)
+- `GameResponse` + DTO — 도메인 → API 응답 변환
+
+### 왜
+- SSE(`text/event-stream`)로 lichess NDJSON → Flow → 클라이언트까지 end-to-end 스트리밍
+- 수백 게임 import 시 전체 완료 대기 없이 게임마다 실시간 응답
+
+### API
+```
+GET /api/games/import?source=LICHESS&username={username}
+  [optional] since, until, max, timeCategory, rated, color, vs
+  produces: text/event-stream
+  response: Stream<GameResponse>
+```
+
+### 변경 파일
+| 파일 | 설명 |
+|------|------|
+| `game/adapter/in/web/GameController.kt` | `@RestController`, SSE 스트리밍 엔드포인트 |
+| `game/adapter/in/web/GameResponse.kt` | GameResponse, PlayerResponse, TimeControlResponse, OpeningResponse DTO |
+
+### TODO
+- [ ] SSE → 프론트엔드 EventSource 연동 시 전환
+
+### 의사결정 기록
+| 결정 | 선택 | 이유 |
+|------|------|------|
+| 응답 방식 | SSE (text/event-stream) | end-to-end 스트리밍, 대량 import 시 실시간 진행 표시 가능 |
+| GraphQL 사용 | 불필요 | 서버→클라이언트 단방향 스트리밍은 SSE가 적합, WebFlux 네이티브 지원 |
+| HTTP method | GET | import는 외부 데이터 조회+저장이지만, 쿼리 파라미터로 조건 전달이 자연스러움 |

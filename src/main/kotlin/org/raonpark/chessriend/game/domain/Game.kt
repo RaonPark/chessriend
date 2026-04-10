@@ -3,7 +3,7 @@ package org.raonpark.chessriend.game.domain
 import java.time.Instant
 
 data class Game(
-    val id: String?,
+    val id: Long?,
     val source: GameSource,
     val sourceGameId: String,
     val players: Players,

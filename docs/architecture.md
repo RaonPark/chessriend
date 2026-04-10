@@ -59,14 +59,59 @@ game/
 ### 흐름 예시: "lichess에서 게임 가져오기"
 
 ```
-1. [Frontend] POST /api/games/import?source=lichess&username=magnus
-2. [GameController] → ImportGamePort.import(source, username)
-3. [ImportGameUseCase] → ChessGameClient.fetchGames(username)
-4. [LichessClient] → lichess API 호출, PGN 스트리밍 수신
-5. [ImportGameUseCase] → PGN 파싱 → Game 엔티티 생성
-6. [ImportGameUseCase] → GameRepository.saveAll(games)
-7. [R2dbcGameRepository] → PostgreSQL에 저장
-8. [GameController] → 응답 반환
+GET /api/games/import?source=LICHESS&username=magnus
+
+1. [GameController]       ← SSE (text/event-stream) 연결
+2. [ImportGameService]    → ChessGameClient.fetchGames(criteria)
+3. [LichessClient]        → lichess NDJSON API 호출 (application/x-ndjson)
+4.                        ← 게임 1개씩 스트리밍 수신
+5. [ImportGameService]    → existsBySourceGameId() 중복 체크
+6.                        → save() DB 저장
+7. [GameController]       → GameResponse 변환, SSE로 클라이언트에 전달
+8.                        (4~7 반복, 게임마다 실시간 전달)
+```
+
+### SSE (Server-Sent Events) 스트리밍
+
+게임 import는 **end-to-end 스트리밍** 구조:
+
+```
+lichess API          Backend                    Frontend
+    │                    │                          │
+    │──NDJSON 게임1──→  │                          │
+    │                    │──중복체크──→ DB           │
+    │                    │──save────→ DB            │
+    │                    │──SSE event──────────→    │  ← 게임1 표시
+    │──NDJSON 게임2──→  │                          │
+    │                    │──중복체크──→ DB           │
+    │                    │──(중복 skip)             │
+    │──NDJSON 게임3──→  │                          │
+    │                    │──save────→ DB            │
+    │                    │──SSE event──────────→    │  ← 게임3 표시
+    │                    │                          │
+```
+
+**왜 SSE인가:**
+- WebFlux의 `Flow<T>` + `text/event-stream`으로 별도 라이브러리 없이 지원
+- lichess NDJSON 스트리밍을 끊지 않고 클라이언트까지 전달
+- 수백 게임 import 시 전체 완료 대기 없이 실시간 진행 표시 가능
+- 서버→클라이언트 단방향 스트리밍에 적합 (GraphQL Subscription은 과도함)
+
+**프론트엔드 연동 (추후):**
+```typescript
+const eventSource = new EventSource(
+  '/api/games/import?source=LICHESS&username=magnus'
+);
+eventSource.onmessage = (event) => {
+  const game = JSON.parse(event.data);
+  // 게임 목록에 추가, 진행률 업데이트
+};
+eventSource.onerror = () => eventSource.close();
+```
+
+**curl 테스트:**
+```bash
+curl -N "http://localhost:8080/api/games/import?source=LICHESS&username=magnus&max=5"
 ```
 
 ## Frontend: Feature-based Structure
