@@ -56,9 +56,83 @@ game/
 ## Code Conventions
 
 - Kotlin: 공식 코딩 컨벤션 준수, coroutines 우선
+- Port/UseCase: suspend fun + Flow (순수 코루틴, Spring 의존 없음)
+- Adapter(DB): CoroutineCrudRepository + CoroutineSortingRepository 사용 (R2DBC 코루틴 지원, Spring Data 3.x+에서 분리됨)
 - React: Functional components only, hooks 패턴
 - 모든 비즈니스 로직은 테스트 필수
 - 한국어 주석 허용, 코드는 영어
+
+## Code Style Patterns
+
+- **Suspend functions**: Controller, Service 모두 `suspend fun` 사용
+- **Flow for streaming**: 스트리밍 응답(lichess NDJSON 등)은 `Flow<T>` 사용
+- **Immutable data classes**: 엔티티, 값 객체 모두 `data class` + `val`
+- **Companion objects**: 상수, 팩토리 메서드에 활용
+- **Extension functions**: 변환 로직에 Kotlin idiomatic 패턴 사용
+- **Explicit null handling**: nullable 타입(`?`)과 null-safe 연산자 사용
+
+## Exception Handling
+
+모든 예외 처리는 `@RestControllerAdvice`와 `@ExceptionHandler`로 중앙 집중 처리한다.
+
+### 규칙
+- **커스텀 예외 클래스**: `shared/exception/`에 도메인별 예외 정의
+- **Service 계층**: `throw CustomException(...)` — ResponseEntity 직접 반환 금지
+- **Controller 계층**: try/catch 금지. Service 호출 결과만 반환
+- **GlobalExceptionHandler**: 예외 → HTTP 응답 변환을 중앙에서 처리
+
+### 표준 HTTP 상태 코드 매핑
+
+| 예외 유형 | HTTP 상태 | 설명 |
+|-----------|-----------|------|
+| `XxxNotFoundException` | `404 Not Found` | 존재하지 않는 리소스 조회 |
+| `XxxConflictException` | `409 Conflict` | 도메인 불변식 위반 |
+| `IllegalArgumentException` | `400 Bad Request` | 잘못된 요청 파라미터 |
+| `Exception` (catch-all) | `500 Internal Server Error` | 예상치 못한 오류 |
+
+### 금지 패턴
+
+```kotlin
+// ❌ Service에서 ResponseEntity 반환
+fun getGame(gameId: String): ResponseEntity<GameResponse> { ... }
+
+// ❌ Controller에서 try/catch
+@GetMapping("/{gameId}")
+suspend fun getGame(@PathVariable gameId: String): ResponseEntity<GameResponse> {
+    return try {
+        ResponseEntity.ok(gameService.getGame(gameId))
+    } catch (e: Exception) {
+        ResponseEntity.notFound().build()
+    }
+}
+
+// ❌ 표준 예외를 그대로 던짐
+throw NoSuchElementException("Game not found")
+```
+
+## Development Checklist
+
+각 도메인 기능 개발 시 체크리스트:
+- [ ] Domain (엔티티, 값 객체)
+- [ ] Port out (Repository, Client 인터페이스)
+- [ ] Port in (UseCase 인터페이스)
+- [ ] Application (UseCase 구현, `@Transactional`)
+- [ ] Adapter out/persistence (R2DBC Repository + Flyway 마이그레이션)
+- [ ] Adapter out/client (외부 API 클라이언트)
+- [ ] Adapter in/web (Controller, `suspend` 함수, REST API)
+- [ ] DTO (Request/Response)
+- [ ] Exception (커스텀 예외 클래스)
+- [ ] Test (Kotest + MockK, Testcontainers)
+- [ ] `application.yml` 설정 추가
+- [ ] `docs/` 작업 내역 문서
+
+## Architecture Principles
+
+1. **Reactive-first**: WebFlux + Coroutines으로 non-blocking I/O
+2. **Hexagonal 의존성 규칙**: Domain은 외부 의존성 zero, 의존 방향은 항상 안쪽으로
+3. **Optimistic locking**: `@Version`으로 동시 수정 충돌 방지
+4. **Immutable entities**: `data class` + `val`, 상태 변경은 `copy()` 사용
+5. **OpenAPI spec**: SpringDoc으로 API 문서 자동 생성
 
 ## Key Commands
 
