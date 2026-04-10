@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: chessriend-db
+    environment:
+      POSTGRES_DB: chessriend
+      POSTGRES_USER: chessriend
+      POSTGRES_PASSWORD: chessriend
+    ports:
+      - "5432:5432"
+    volumes:
+      - chessriend-data:/var/lib/postgresql/data
+
+volumes:
+  chessriend-data:
