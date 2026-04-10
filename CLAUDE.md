@@ -100,6 +100,17 @@ chessriend/
 └── CLAUDE.md
 ```
 
+## Documentation Rules
+
+- 작업을 할 때마다 `docs/` 밑에 작업 내역 문서를 작성/업데이트할 것
+- 파일명 형식: `{브랜치명}_작업내역.md` (예: `feat/game-import_작업내역.md`)
+- 문서에는 각 작업 단위로 줄을 추가하며 다음을 포함:
+  - **무엇을** 변경했는지
+  - **왜** 그렇게 했는지 (의사결정 근거)
+  - 주요 변경 파일 목록
+- 프론트엔드 작업은 특히 상세하게 문서화 (컴포넌트 설명, 사용법 포함)
+- 아키텍처 변경 시 `docs/architecture.md`도 반영
+
 ## Domain Glossary
 
 - PGN: Portable Game Notation - 체스 기보 표준 포맷
