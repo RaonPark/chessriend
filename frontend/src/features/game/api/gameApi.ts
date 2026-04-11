@@ -25,6 +25,26 @@ export async function deleteGame(id: string): Promise<void> {
   }
 }
 
+export async function deleteGames(ids: string[]): Promise<void> {
+  const res = await fetch('/api/games/batch', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(ids),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new ApiError(res.status, body?.message ?? res.statusText)
+  }
+}
+
+export async function deleteAllGames(): Promise<void> {
+  const res = await fetch('/api/games', { method: 'DELETE' })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new ApiError(res.status, body?.message ?? res.statusText)
+  }
+}
+
 export function createImportEventSource(params: ImportParams): EventSource {
   const query = new URLSearchParams()
   query.set('source', params.source)

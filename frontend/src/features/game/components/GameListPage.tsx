@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { LoadingSpinner } from '@/shared/components/LoadingSpinner'
 import { ErrorMessage } from '@/shared/components/ErrorMessage'
 import { useGames } from '../api/queries'
+import { useDeleteGames, useDeleteAllGames } from '../api/mutations'
 import { GameListItem } from './GameListItem'
 import type { GameSource, TimeCategory } from '../types/game'
 
@@ -16,8 +17,49 @@ export function GameListPage() {
   const [page, setPage] = useState(0)
   const [source, setSource] = useState<GameSource | undefined>()
   const [timeCategory, setTimeCategory] = useState<TimeCategory | undefined>()
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   const { data, isLoading, error, refetch } = useGames({ page, size: 20, source, timeCategory })
+  const deleteGamesMutation = useDeleteGames()
+  const deleteAllMutation = useDeleteAllGames()
+
+  const allSelected = data != null && data.content.length > 0 && data.content.every((g) => selectedIds.has(g.id))
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function toggleSelectAll() {
+    if (!data) return
+    if (allSelected) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(data.content.map((g) => g.id)))
+    }
+  }
+
+  function handleDeleteSelected() {
+    if (selectedIds.size === 0) return
+    if (!confirm(`선택한 ${selectedIds.size}개 게임을 삭제하시겠습니까?`)) return
+    deleteGamesMutation.mutate([...selectedIds], {
+      onSuccess: () => setSelectedIds(new Set()),
+    })
+  }
+
+  function handleDeleteAll() {
+    if (!data || data.totalElements === 0) return
+    if (!confirm(`전체 ${data.totalElements}개 게임을 모두 삭제하시겠습니까?`)) return
+    deleteAllMutation.mutate(undefined, {
+      onSuccess: () => setSelectedIds(new Set()),
+    })
+  }
+
+  const isDeleting = deleteGamesMutation.isPending || deleteAllMutation.isPending
 
   return (
     <div className="space-y-6">
@@ -71,9 +113,48 @@ export function GameListPage() {
 
       {data && data.content.length > 0 && (
         <>
+          {/* 선택 삭제 / 전체 삭제 툴바 */}
+          <div className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-2 dark:border-gray-700">
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={allSelected}
+                onChange={toggleSelectAll}
+                className="h-4 w-4 rounded border-gray-300"
+              />
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                {selectedIds.size > 0 ? `${selectedIds.size}개 선택` : '전체 선택'}
+              </span>
+            </div>
+            <div className="flex gap-2">
+              {selectedIds.size > 0 && (
+                <button
+                  onClick={handleDeleteSelected}
+                  disabled={isDeleting}
+                  className="rounded border border-red-300 px-3 py-1 text-sm text-red-600 hover:bg-red-50 disabled:opacity-40 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950"
+                >
+                  {isDeleting ? '삭제 중...' : `선택 삭제 (${selectedIds.size})`}
+                </button>
+              )}
+              <button
+                onClick={handleDeleteAll}
+                disabled={isDeleting}
+                className="rounded border border-red-300 px-3 py-1 text-sm text-red-600 hover:bg-red-50 disabled:opacity-40 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950"
+              >
+                전체 삭제
+              </button>
+            </div>
+          </div>
+
+          {/* 게임 목록 */}
           <div className="space-y-2">
             {data.content.map((game) => (
-              <GameListItem key={game.id} game={game} />
+              <GameListItem
+                key={game.id}
+                game={game}
+                selected={selectedIds.has(game.id)}
+                onToggleSelect={() => toggleSelect(game.id)}
+              />
             ))}
           </div>
 

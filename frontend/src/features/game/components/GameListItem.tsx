@@ -4,6 +4,8 @@ import type { GameResponse } from '../types/game'
 
 interface GameListItemProps {
   game: GameResponse
+  selected?: boolean
+  onToggleSelect?: () => void
 }
 
 type Outcome = 'win' | 'loss' | 'draw'
@@ -33,15 +35,20 @@ function formatDate(iso: string) {
   })
 }
 
-export function GameListItem({ game }: GameListItemProps) {
+export function GameListItem({ game, selected, onToggleSelect }: GameListItemProps) {
   const outcome = getOutcome(game)
   const style = OUTCOME_STYLES[outcome]
   const deleteMutation = useDeleteGame()
 
   function handleDelete(e: React.MouseEvent) {
-    e.preventDefault() // Link 클릭 방지
+    e.preventDefault()
     if (!confirm('이 게임을 삭제하시겠습니까?')) return
     deleteMutation.mutate(game.id)
+  }
+
+  function handleCheckbox(e: React.MouseEvent) {
+    e.preventDefault()
+    onToggleSelect?.()
   }
 
   return (
@@ -51,6 +58,15 @@ export function GameListItem({ game }: GameListItemProps) {
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
+          {onToggleSelect && (
+            <input
+              type="checkbox"
+              checked={selected ?? false}
+              onClick={handleCheckbox}
+              readOnly
+              className="h-4 w-4 shrink-0 rounded border-gray-300"
+            />
+          )}
           <div className="text-left">
             <p className="font-medium text-gray-900 dark:text-gray-100">
               <span className="text-xs text-gray-400">[백]</span>{' '}

@@ -38,6 +38,15 @@ class GamePersistenceAdapter(
         repository.deleteById(id)
     }
 
+    override suspend fun deleteByIds(ids: List<Long>) {
+        if (ids.isEmpty()) return
+        repository.deleteAllByIdIn(ids)
+    }
+
+    override suspend fun deleteAll() {
+        repository.deleteAll()
+    }
+
     override fun findAll(offset: Int, limit: Int, source: GameSource?, timeCategory: TimeCategory?): Flow<Game> {
         val conditions = mutableListOf<String>()
         val bindings = mutableMapOf<String, Any>()

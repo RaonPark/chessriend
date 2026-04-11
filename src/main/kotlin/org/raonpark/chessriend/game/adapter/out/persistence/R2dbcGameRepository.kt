@@ -8,4 +8,5 @@ interface R2dbcGameRepository :
     CoroutineSortingRepository<GameEntity, Long> {
 
     suspend fun existsBySourceGameId(sourceGameId: String): Boolean
+    suspend fun deleteAllByIdIn(ids: List<Long>)
 }

@@ -23,6 +23,14 @@ class GetGameService(
         gameRepository.deleteById(id)
     }
 
+    override suspend fun deleteGames(ids: List<Long>) {
+        gameRepository.deleteByIds(ids)
+    }
+
+    override suspend fun deleteAllGames() {
+        gameRepository.deleteAll()
+    }
+
     override suspend fun getGames(
         page: Int,
         size: Int,
