@@ -1,6 +1,6 @@
 import { apiFetch, ApiError } from '@/shared/api/apiClient'
 import type { PagedResponse } from '@/shared/types/api'
-import type { GameFilter, GameResponse, ImportParams } from '../types/game'
+import type { GameDetailResponse, GameFilter, GameResponse, ImportParams } from '../types/game'
 
 export async function fetchGames(filters: GameFilter = {}): Promise<PagedResponse<GameResponse>> {
   const params = new URLSearchParams()
@@ -13,7 +13,7 @@ export async function fetchGames(filters: GameFilter = {}): Promise<PagedRespons
   return apiFetch(`/api/games${query ? `?${query}` : ''}`)
 }
 
-export async function fetchGame(id: string): Promise<GameResponse> {
+export async function fetchGame(id: string): Promise<GameDetailResponse> {
   return apiFetch(`/api/games/${id}`)
 }
 

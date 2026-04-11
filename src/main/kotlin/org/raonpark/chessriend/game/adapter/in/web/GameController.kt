@@ -39,9 +39,9 @@ class GameController(
     }
 
     @GetMapping("/{id}")
-    suspend fun getGame(@PathVariable id: Long): GameResponse {
+    suspend fun getGame(@PathVariable id: Long): GameDetailResponse {
         val game = getGameUseCase.getGame(id)
-        return GameResponse.from(game)
+        return GameDetailResponse.from(game)
     }
 
     @DeleteMapping("/{id}")
