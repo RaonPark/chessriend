@@ -238,3 +238,60 @@ GET /api/games/import?source=LICHESS&username={username}
 | LichessClient 테스트 방식 | MockWebServer3 (public API 통해 테스트) | internal 노출 없이 실제 HTTP 호출 검증 |
 | Persistence 테스트 | @SpringBootTest + Testcontainers | 실제 PostgreSQL에서 JSONB, Flyway 마이그레이션 검증 |
 | Controller 테스트 | @SpringBootTest + @AutoConfigureWebTestClient + mock UseCase | SSE 스트리밍 응답 e2e 검증, DB 의존성 제거 |
+
+## 2026-04-11: GlobalExceptionHandler + lichess API 에러 처리
+
+### 무엇을
+- `shared/exception/` 패키지에 일반화된 커스텀 예외 클래스 계층 구조 정의
+- `GlobalExceptionHandler` (`@RestControllerAdvice`) 구현 — 예외 → HTTP 응답 중앙 집중 처리
+- `LichessClient`에 HTTP 에러 응답 처리 추가 (429, 404, 5xx)
+- `ImportGameService`의 `IllegalArgumentException` → `UnsupportedGameSourceException`으로 교체
+
+### 왜
+- CLAUDE.md 예외 처리 규칙 준수: Service에서 예외만 던지고, Controller에서 try/catch 금지
+- 외부 API 에러를 커스텀 예외로 변환하여 일관된 에러 응답 체계 확보
+- 예외 클래스를 플랫폼 무관하게 일반화하여 chess.com 등 추가 시 재사용 가능
+
+### 변경 파일
+| 파일 | 설명 |
+|------|------|
+| `shared/exception/Exceptions.kt` | 커스텀 예외 계층: NotFoundException, ConflictException, ExternalApiException, ExternalApiRateLimitException, ExternalApiUserNotFoundException, UnsupportedGameSourceException |
+| `shared/exception/ErrorResponse.kt` | 표준 에러 응답 DTO (status, error, message, timestamp) |
+| `shared/exception/GlobalExceptionHandler.kt` | `@RestControllerAdvice` — 예외 타입별 HTTP 상태 매핑 |
+| `game/adapter/out/client/LichessClient.kt` | `onStatus` 추가 — 429→RateLimit, 404→UserNotFound, 4xx/5xx→ExternalApi 예외 변환 |
+| `game/application/ImportGameService.kt` | `IllegalArgumentException` → `UnsupportedGameSourceException` |
+| `test/.../shared/exception/GlobalExceptionHandlerTest.kt` | GlobalExceptionHandler 단위 테스트 (Kotest) |
+| `test/.../adapter/out/client/LichessClientTest.kt` | 에러 처리 테스트 추가 (429, 404, 500) |
+| `test/.../application/ImportGameServiceTest.kt` | 예외 타입 변경 반영 |
+
+### 예외 → HTTP 상태 매핑
+| 예외 | HTTP 상태 |
+|------|-----------|
+| `NotFoundException` | 404 Not Found |
+| `ConflictException` | 409 Conflict |
+| `ExternalApiRateLimitException` | 429 Too Many Requests |
+| `ExternalApiUserNotFoundException` | 404 Not Found |
+| `ExternalApiException` | 502 Bad Gateway |
+| `UnsupportedGameSourceException` | 400 Bad Request |
+| `IllegalArgumentException` | 400 Bad Request |
+| `Exception` (catch-all) | 500 Internal Server Error |
+
+### 의사결정 기록
+| 결정 | 선택 | 이유 |
+|------|------|------|
+| 예외 네이밍 | 일반화 (ExternalApi*) | Hexagonal 원칙: 도메인이 특정 플랫폼을 모름, chess.com 추가 시 재사용 |
+| 500 에러 메시지 | 고정 문자열 ("Internal server error") | 내부 구현 정보 노출 방지 |
+| SSE 에러 테스트 | GlobalExceptionHandler 단위 테스트로 분리 | SSE 스트리밍 중 Flow 내부 예외는 @ExceptionHandler 도달이 보장되지 않음 |
+| ErrorResponse 구조 | status + error + message + timestamp | RFC 7807 간소화 버전, 프론트엔드에서 사용하기 쉬운 구조 |
+
+### TODO (해결됨)
+- [x] lichess API 에러 응답 처리 (rate limit 429, 404 user not found 등)
+- [x] GlobalExceptionHandler 구현
+
+### 의사결정 기록 (테스트)
+| 결정 | 선택 | 이유 |
+|------|------|------|
+| Spring 통합 테스트 프레임워크 | JUnit 5 | kotest-extensions-spring 1.3.0이 Kotest 6 미지원 |
+| LichessClient 테스트 방식 | MockWebServer3 (public API 통해 테스트) | internal 노출 없이 실제 HTTP 호출 검증 |
+| Persistence 테스트 | @SpringBootTest + Testcontainers | 실제 PostgreSQL에서 JSONB, Flyway 마이그레이션 검증 |
+| Controller 테스트 | @SpringBootTest + @AutoConfigureWebTestClient + mock UseCase | SSE 스트리밍 응답 e2e 검증, DB 의존성 제거 |

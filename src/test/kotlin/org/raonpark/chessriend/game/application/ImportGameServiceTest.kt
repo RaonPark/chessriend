@@ -73,8 +73,8 @@ class ImportGameServiceTest : DescribeSpec({
             coVerify(exactly = 0) { gameRepository.save(match { it.sourceGameId == "existing" }) }
         }
 
-        it("지원하지 않는 source는 예외를 던진다") {
-            shouldThrow<IllegalArgumentException> {
+        it("지원하지 않는 source는 UnsupportedGameSourceException을 던진다") {
+            shouldThrow<org.raonpark.chessriend.shared.exception.UnsupportedGameSourceException> {
                 service.importGames(GameSource.CHESS_COM, criteria).toList()
             }
         }

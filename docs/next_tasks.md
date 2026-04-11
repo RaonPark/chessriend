@@ -13,10 +13,9 @@
 - **후보 라이브러리**: [chariot](https://github.com/tors42/chariot) (Java), 또는 직접 구현
 - **관련 파일**: `LichessClient.kt:129` (`// TODO: 백엔드 체스 라이브러리 도입 후 실제 FEN 계산으로 교체`)
 
-### 1-2. lichess API 에러 처리
-- **현재**: 에러 응답(429 rate limit, 404 user not found) 미처리
-- **해야할 것**: 커스텀 예외 클래스 정의 + `GlobalExceptionHandler` 매핑
-- **관련 파일**: `LichessClient.kt:163` (`// TODO: lichess API 에러 응답 처리`)
+### ~~1-2. lichess API 에러 처리~~ ✅ 완료 (2026-04-11)
+- ~~**현재**: 에러 응답(429 rate limit, 404 user not found) 미처리~~
+- `LichessClient`에 `onStatus` 에러 핸들링 추가 + `GlobalExceptionHandler` 구현 완료
 
 ### 1-3. SSE → 프론트엔드 EventSource 연동
 - **현재**: 백엔드 SSE 엔드포인트만 구현, 프론트 미구현
@@ -65,10 +64,10 @@
 
 ## 4. 인프라/공통
 
-### 4-1. GlobalExceptionHandler
-- `shared/exception/` 커스텀 예외 클래스 정의
-- `@RestControllerAdvice` + `@ExceptionHandler` 중앙 처리
-- CLAUDE.md의 예외 처리 규칙 준수
+### ~~4-1. GlobalExceptionHandler~~ ✅ 완료 (2026-04-11)
+- ~~`shared/exception/` 커스텀 예외 클래스 정의~~
+- ~~`@RestControllerAdvice` + `@ExceptionHandler` 중앙 처리~~
+- 일반화된 예외 클래스 + GlobalExceptionHandler + 테스트 완료
 
 ### 4-2. OpenAPI 문서
 - SpringDoc 설정 확인 + API 문서 자동 생성 검증
@@ -82,8 +81,8 @@
 
 ## 권장 작업 순서
 
-1. **GlobalExceptionHandler** — 모든 도메인에서 공통으로 사용
-2. **lichess API 에러 처리** — 에러 핸들링 체계 위에 구현
+1. ~~**GlobalExceptionHandler**~~ ✅ 완료
+2. ~~**lichess API 에러 처리**~~ ✅ 완료
 3. **게임 목록 조회 API** — import한 게임을 볼 수 있어야 다음 단계 진행 가능
 4. **프론트엔드 게임 Import + 목록** — 백엔드 API와 연동
 5. **chess.com 지원** 또는 **Analysis 도메인** (우선순위에 따라)

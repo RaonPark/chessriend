@@ -7,11 +7,16 @@ import kotlinx.coroutines.reactive.asFlow
 import org.raonpark.chessriend.game.domain.*
 import org.raonpark.chessriend.game.port.out.ChessGameClient
 import org.raonpark.chessriend.game.port.out.GameFetchCriteria
+import org.raonpark.chessriend.shared.exception.ExternalApiException
+import org.raonpark.chessriend.shared.exception.ExternalApiRateLimitException
+import org.raonpark.chessriend.shared.exception.ExternalApiUserNotFoundException
 import org.springframework.boot.context.properties.EnableConfigurationProperties
+import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Component
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.bodyToFlux
+import reactor.core.publisher.Mono
 import java.time.Instant
 import kotlin.time.Duration.Companion.seconds
 
@@ -55,6 +60,20 @@ class LichessClient(
             }
             .accept(MediaType.parseMediaType("application/x-ndjson"))
             .retrieve()
+            .onStatus({ it == HttpStatus.TOO_MANY_REQUESTS }) { response ->
+                response.createException().map { cause ->
+                    val retryAfter = response.headers().header("Retry-After").firstOrNull()?.toLongOrNull()
+                    ExternalApiRateLimitException("lichess", retryAfter) as Throwable
+                }
+            }
+            .onStatus({ it == HttpStatus.NOT_FOUND }) {
+                Mono.just(ExternalApiUserNotFoundException("lichess", criteria.username) as Throwable)
+            }
+            .onStatus({ it.is4xxClientError || it.is5xxServerError }) { response ->
+                response.createException().map { cause ->
+                    ExternalApiException("lichess API error: ${response.statusCode()}", cause) as Throwable
+                }
+            }
             .bodyToFlux<String>()
             .filter { it.isNotBlank() }
             .map { line -> parseGame(line) }
@@ -161,8 +180,6 @@ class LichessClient(
         TimeCategory.CLASSICAL -> "classical"
         TimeCategory.CORRESPONDENCE -> "correspondence"
     }
-
-    // TODO: lichess API 에러 응답 처리 (rate limit 429, 404 user not found 등)
 
     private fun org.springframework.web.util.UriBuilder.queryParamIfPresent(
         name: String,

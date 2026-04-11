@@ -2,14 +2,19 @@ package org.raonpark.chessriend.game.adapter.out.client
 
 import tools.jackson.databind.ObjectMapper
 import tools.jackson.module.kotlin.jacksonObjectMapper
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import io.kotest.matchers.string.shouldContain
 import kotlinx.coroutines.flow.toList
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
 import org.raonpark.chessriend.game.domain.*
 import org.raonpark.chessriend.game.port.out.GameFetchCriteria
+import org.raonpark.chessriend.shared.exception.ExternalApiRateLimitException
+import org.raonpark.chessriend.shared.exception.ExternalApiUserNotFoundException
+import org.raonpark.chessriend.shared.exception.ExternalApiException
 import kotlin.time.Duration.Companion.seconds
 
 class LichessClientTest : DescribeSpec({
@@ -132,6 +137,53 @@ class LichessClientTest : DescribeSpec({
 
             val request = mockServer.takeRequest()
             request.headers["Authorization"] shouldBe "Bearer lip_test_token_123"
+        }
+    }
+
+    describe("에러 처리") {
+        it("429 응답 시 ExternalApiRateLimitException을 던진다") {
+            mockServer.enqueue(
+                MockResponse.Builder()
+                    .code(429)
+                    .addHeader("Content-Type", "text/plain")
+                    .body("Rate limit exceeded")
+                    .build()
+            )
+
+            val exception = shouldThrow<ExternalApiRateLimitException> {
+                client.fetchGames(GameFetchCriteria(username = "magnus")).toList()
+            }
+            exception.message shouldContain "rate limit"
+        }
+
+        it("404 응답 시 ExternalApiUserNotFoundException을 던진다") {
+            mockServer.enqueue(
+                MockResponse.Builder()
+                    .code(404)
+                    .addHeader("Content-Type", "text/plain")
+                    .body("User not found")
+                    .build()
+            )
+
+            val exception = shouldThrow<ExternalApiUserNotFoundException> {
+                client.fetchGames(GameFetchCriteria(username = "nonexistent")).toList()
+            }
+            exception.message shouldContain "nonexistent"
+            exception.message shouldContain "lichess"
+        }
+
+        it("500 응답 시 ExternalApiException을 던진다") {
+            mockServer.enqueue(
+                MockResponse.Builder()
+                    .code(500)
+                    .addHeader("Content-Type", "text/plain")
+                    .body("Internal Server Error")
+                    .build()
+            )
+
+            shouldThrow<ExternalApiException> {
+                client.fetchGames(GameFetchCriteria(username = "magnus")).toList()
+            }
         }
     }
 

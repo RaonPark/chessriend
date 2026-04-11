@@ -9,6 +9,7 @@ import org.raonpark.chessriend.game.port.`in`.ImportGameUseCase
 import org.raonpark.chessriend.game.port.out.ChessGameClient
 import org.raonpark.chessriend.game.port.out.GameFetchCriteria
 import org.raonpark.chessriend.game.port.out.GameRepository
+import org.raonpark.chessriend.shared.exception.UnsupportedGameSourceException
 import org.springframework.stereotype.Service
 
 @Service
@@ -19,7 +20,7 @@ class ImportGameService(
 
     override fun importGames(source: GameSource, criteria: GameFetchCriteria): Flow<Game> {
         val client = clients.find { it.source == source }
-            ?: throw IllegalArgumentException("Unsupported game source: $source")
+            ?: throw UnsupportedGameSourceException(source.name)
 
         return client.fetchGames(criteria)
             .filter { game -> !gameRepository.existsBySourceGameId(game.sourceGameId) }
