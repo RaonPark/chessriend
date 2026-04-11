@@ -1,0 +1,99 @@
+import { useParams, Link } from 'react-router-dom'
+import { LoadingSpinner } from '@/shared/components/LoadingSpinner'
+import { ErrorMessage } from '@/shared/components/ErrorMessage'
+import { useGame } from '../api/queries'
+
+function resultLabel(result: string) {
+  switch (result) {
+    case '1-0': return '백 승 (1-0)'
+    case '0-1': return '흑 승 (0-1)'
+    case '1/2-1/2': return '무승부 (1/2-1/2)'
+    default: return result
+  }
+}
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString('ko-KR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+export function GameDetailPage() {
+  const { id } = useParams<{ id: string }>()
+  const { data: game, isLoading, error, refetch } = useGame(id!)
+
+  if (isLoading) return <LoadingSpinner />
+  if (error) return <ErrorMessage message="게임 정보를 불러오지 못했습니다." onRetry={() => refetch()} />
+  if (!game) return null
+
+  return (
+    <div className="space-y-6">
+      <Link to="/games" className="text-sm text-indigo-600 hover:underline dark:text-indigo-400">
+        &larr; 게임 목록
+      </Link>
+
+      <div className="rounded-lg border border-gray-200 p-6 dark:border-gray-700">
+        {/* 대국자 정보 */}
+        <div className="flex items-center justify-center gap-6 text-lg">
+          <div className="text-right">
+            <p className="text-xs text-gray-400">백</p>
+            <p className="font-semibold text-gray-900 dark:text-gray-100">{game.white.name}</p>
+            {game.white.rating != null && (
+              <p className="text-sm text-gray-500">{game.white.rating}</p>
+            )}
+          </div>
+          <span className="text-2xl text-gray-400">vs</span>
+          <div className="text-left">
+            <p className="text-xs text-gray-400">흑</p>
+            <p className="font-semibold text-gray-900 dark:text-gray-100">{game.black.name}</p>
+            {game.black.rating != null && (
+              <p className="text-sm text-gray-500">{game.black.rating}</p>
+            )}
+          </div>
+        </div>
+
+        {/* 결과 */}
+        <p className="mt-4 text-center text-lg font-medium text-gray-700 dark:text-gray-300">
+          {resultLabel(game.result)}
+        </p>
+
+        {/* 메타 정보 */}
+        <div className="mt-6 grid grid-cols-2 gap-4 border-t border-gray-200 pt-4 text-sm dark:border-gray-700 md:grid-cols-4">
+          <div>
+            <p className="text-gray-500 dark:text-gray-400">플랫폼</p>
+            <p className="font-medium text-gray-900 dark:text-gray-100">{game.source}</p>
+          </div>
+          <div>
+            <p className="text-gray-500 dark:text-gray-400">시간 제한</p>
+            <p className="font-medium text-gray-900 dark:text-gray-100">
+              {game.timeControl.time} ({game.timeControl.category})
+            </p>
+          </div>
+          <div>
+            <p className="text-gray-500 dark:text-gray-400">오프닝</p>
+            <p className="font-medium text-gray-900 dark:text-gray-100">
+              {game.opening ? `${game.opening.name}${game.opening.eco ? ` (${game.opening.eco})` : ''}` : '-'}
+            </p>
+          </div>
+          <div>
+            <p className="text-gray-500 dark:text-gray-400">총 수</p>
+            <p className="font-medium text-gray-900 dark:text-gray-100">{game.totalMoves}수</p>
+          </div>
+        </div>
+
+        <p className="mt-4 text-center text-xs text-gray-400 dark:text-gray-500">
+          {formatDate(game.playedAt)}
+        </p>
+      </div>
+
+      {/* 추후 체스보드 영역 */}
+      <div className="rounded-lg border-2 border-dashed border-gray-300 p-12 text-center text-gray-400 dark:border-gray-600 dark:text-gray-500">
+        체스보드 뷰어 (추후 구현)
+      </div>
+    </div>
+  )
+}

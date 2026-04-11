@@ -377,7 +377,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Chess } from 'chess.js'
 
-// 2. shared 모듈
+// 2. shared 모듈 (@/ alias)
 import { apiFetch } from '@/shared/api/apiClient'
 import { Button } from '@/shared/components/Button'
 
@@ -391,6 +391,9 @@ import type { GameResponse } from '../types/game'
 // 5. 스타일 (있는 경우)
 import './GameList.css'
 ```
+
+> **참고**: TypeScript 6에서 `baseUrl`/`paths`가 deprecated이지만 `ignoreDeprecations: "6.0"`으로 계속 사용 가능합니다.
+> TS 7 이전에 `#` prefix alias (package.json `imports` 필드)로 마이그레이션 필요합니다.
 
 ---
 

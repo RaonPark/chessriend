@@ -25,10 +25,10 @@
 
 ## 2. 신규 도메인 개발 (Hexagonal 구조 동일)
 
-### 2-1. chess.com 게임 가져오기
-- `ChessComClient` Adapter 구현 (chess.com Public API)
-- `GameSource.CHESS_COM` 지원
-- chess.com API 구조 분석 필요 (PGN 기반, lichess와 다름)
+### ~~2-1. chess.com 게임 가져오기~~ ✅ 완료 (2026-04-11)
+- ~~`ChessComClient` Adapter 구현 (chess.com Public API)~~
+- ~~`GameSource.CHESS_COM` 지원~~
+- 아카이브 방식 조회 + PGN 파싱 + 클라이언트 측 필터링 구현
 
 ### 2-2. Analysis 도메인
 - Stockfish UCI 프로토콜 연동
@@ -86,4 +86,4 @@
 2. ~~**lichess API 에러 처리**~~ ✅ 완료
 3. ~~**게임 목록 조회 API**~~ ✅ 완료 (2026-04-11) — GET /api/games (페이지네이션+필터), GET /api/games/{id}
 4. **프론트엔드 게임 Import + 목록** — 백엔드 API와 연동
-5. **chess.com 지원** 또는 **Analysis 도메인** (우선순위에 따라)
+5. ~~**chess.com 지원**~~ ✅ 완료 또는 **Analysis 도메인** (우선순위에 따라)

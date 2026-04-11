@@ -59,7 +59,7 @@ class GameControllerTest {
             .expectStatus().isOk
             .expectBody()
             .jsonPath("$.content").isArray
-            .jsonPath("$.content[0].id").isEqualTo(1)
+            .jsonPath("$.content[0].id").isEqualTo("1")
             .jsonPath("$.content[0].source").isEqualTo("LICHESS")
             .jsonPath("$.content[0].white.name").isEqualTo("Magnus")
             .jsonPath("$.page").isEqualTo(0)
@@ -77,7 +77,7 @@ class GameControllerTest {
             .exchange()
             .expectStatus().isOk
             .expectBody()
-            .jsonPath("$.id").isEqualTo(1)
+            .jsonPath("$.id").isEqualTo("1")
             .jsonPath("$.source").isEqualTo("LICHESS")
             .jsonPath("$.white.name").isEqualTo("Magnus")
             .jsonPath("$.result").isEqualTo("1-0")
@@ -105,7 +105,7 @@ class GameControllerTest {
             .blockFirst()
 
         assert(response != null)
-        assert(response!!.id == 1L)
+        assert(response!!.id == "1")
         assert(response.source == "LICHESS")
         assert(response.white.name == "Magnus")
         assert(response.black.name == "Hikaru")
