@@ -34,6 +34,10 @@ class GamePersistenceAdapter(
     override suspend fun findById(id: Long): Game? =
         repository.findById(id)?.let { toDomain(it) }
 
+    override suspend fun deleteById(id: Long) {
+        repository.deleteById(id)
+    }
+
     override fun findAll(offset: Int, limit: Int, source: GameSource?, timeCategory: TimeCategory?): Flow<Game> {
         val conditions = mutableListOf<String>()
         val bindings = mutableMapOf<String, Any>()

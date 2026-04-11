@@ -1,7 +1,8 @@
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { LoadingSpinner } from '@/shared/components/LoadingSpinner'
 import { ErrorMessage } from '@/shared/components/ErrorMessage'
 import { useGame } from '../api/queries'
+import { useDeleteGame } from '../api/mutations'
 
 type Outcome = 'win' | 'loss' | 'draw'
 
@@ -34,7 +35,16 @@ function formatDate(iso: string) {
 
 export function GameDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const { data: game, isLoading, error, refetch } = useGame(id!)
+  const deleteMutation = useDeleteGame()
+
+  function handleDelete() {
+    if (!confirm('이 게임을 삭제하시겠습니까?')) return
+    deleteMutation.mutate(id!, {
+      onSuccess: () => navigate('/games'),
+    })
+  }
 
   if (isLoading) return <LoadingSpinner />
   if (error) return <ErrorMessage message="게임 정보를 불러오지 못했습니다." onRetry={() => refetch()} />
@@ -42,9 +52,18 @@ export function GameDetailPage() {
 
   return (
     <div className="space-y-6">
-      <Link to="/games" className="text-sm text-indigo-600 hover:underline dark:text-indigo-400">
-        &larr; 게임 목록
-      </Link>
+      <div className="flex items-center justify-between">
+        <Link to="/games" className="text-sm text-indigo-600 hover:underline dark:text-indigo-400">
+          &larr; 게임 목록
+        </Link>
+        <button
+          onClick={handleDelete}
+          disabled={deleteMutation.isPending}
+          className="rounded-lg border border-red-300 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 disabled:opacity-40 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950"
+        >
+          {deleteMutation.isPending ? '삭제 중...' : '게임 삭제'}
+        </button>
+      </div>
 
       <div className="rounded-lg border border-gray-200 p-6 dark:border-gray-700">
         {/* 대국자 정보 */}

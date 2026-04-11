@@ -1,4 +1,4 @@
-import { apiFetch } from '@/shared/api/apiClient'
+import { apiFetch, ApiError } from '@/shared/api/apiClient'
 import type { PagedResponse } from '@/shared/types/api'
 import type { GameFilter, GameResponse, ImportParams } from '../types/game'
 
@@ -15,6 +15,14 @@ export async function fetchGames(filters: GameFilter = {}): Promise<PagedRespons
 
 export async function fetchGame(id: string): Promise<GameResponse> {
   return apiFetch(`/api/games/${id}`)
+}
+
+export async function deleteGame(id: string): Promise<void> {
+  const res = await fetch(`/api/games/${id}`, { method: 'DELETE' })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new ApiError(res.status, body?.message ?? res.statusText)
+  }
 }
 
 export function createImportEventSource(params: ImportParams): EventSource {

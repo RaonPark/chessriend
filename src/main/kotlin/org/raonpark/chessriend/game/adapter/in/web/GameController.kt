@@ -44,6 +44,11 @@ class GameController(
         return GameResponse.from(game)
     }
 
+    @DeleteMapping("/{id}")
+    suspend fun deleteGame(@PathVariable id: Long) {
+        getGameUseCase.deleteGame(id)
+    }
+
     @GetMapping("/import", produces = [MediaType.TEXT_EVENT_STREAM_VALUE])
     fun importGames(
         @RequestParam source: GameSource,

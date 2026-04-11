@@ -8,4 +8,5 @@ import org.raonpark.chessriend.shared.domain.PagedResult
 interface GetGameUseCase {
     suspend fun getGame(id: Long): Game
     suspend fun getGames(page: Int, size: Int, source: GameSource?, timeCategory: TimeCategory?): PagedResult<Game>
+    suspend fun deleteGame(id: Long)
 }

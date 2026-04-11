@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useDeleteGame } from '../api/mutations'
 import type { GameResponse } from '../types/game'
 
 interface GameListItemProps {
@@ -35,6 +36,13 @@ function formatDate(iso: string) {
 export function GameListItem({ game }: GameListItemProps) {
   const outcome = getOutcome(game)
   const style = OUTCOME_STYLES[outcome]
+  const deleteMutation = useDeleteGame()
+
+  function handleDelete(e: React.MouseEvent) {
+    e.preventDefault() // Link 클릭 방지
+    if (!confirm('이 게임을 삭제하시겠습니까?')) return
+    deleteMutation.mutate(game.id)
+  }
 
   return (
     <Link
@@ -69,6 +77,14 @@ export function GameListItem({ game }: GameListItemProps) {
           <span className="text-sm text-gray-400 dark:text-gray-500">
             {formatDate(game.playedAt)}
           </span>
+          <button
+            onClick={handleDelete}
+            disabled={deleteMutation.isPending}
+            className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950 dark:hover:text-red-400"
+            title="삭제"
+          >
+            &times;
+          </button>
         </div>
       </div>
     </Link>

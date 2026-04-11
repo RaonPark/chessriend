@@ -11,4 +11,5 @@ interface GameRepository {
     suspend fun findById(id: Long): Game?
     fun findAll(offset: Int, limit: Int, source: GameSource?, timeCategory: TimeCategory?): Flow<Game>
     suspend fun count(source: GameSource?, timeCategory: TimeCategory?): Long
+    suspend fun deleteById(id: Long)
 }
