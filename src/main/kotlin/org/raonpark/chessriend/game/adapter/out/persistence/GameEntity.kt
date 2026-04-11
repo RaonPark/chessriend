@@ -12,6 +12,7 @@ data class GameEntity(
     @Id val id: Long,
     val source: String,
     val sourceGameId: String,
+    val ownerUsername: String,
     val whiteName: String,
     val whiteRating: Int?,
     val blackName: String,

@@ -341,3 +341,47 @@ GET /api/games/{id}
 | `PagedResult` 위치 | `shared/domain/` | Analysis, Review 등 다른 도메인에서도 재사용 가능 |
 | `isNewEntity` 위치 변경 | constructor → body `@Transient var` | Spring Data R2DBC가 DB에서 엔티티 읽을 때 constructor parameter로 `isNewEntity`를 매핑하려다 실패. body property로 이동하면 constructor 매핑에서 제외됨 |
 | 정렬 기준 | `played_at DESC` 고정 | 사용자 관점에서 최근 게임이 먼저 보이는 게 자연스러움. 추후 정렬 옵션은 필요 시 추가 |
+
+## 2026-04-11: chess.com 게임 가져오기 (ChessComClient)
+
+### 무엇을
+- `ChessComClient` Adapter 구현 — chess.com Public API에서 게임 가져오기
+- `ChessComConfig` 설정 클래스 + `application.yml` 추가
+- PGN 파싱으로 수 목록(Move) 추출
+- MockWebServer 기반 테스트
+
+### 왜
+- lichess 외에 chess.com 사용자도 자신의 게임을 가져올 수 있도록 플랫폼 확장
+- Hexagonal 구조 덕분에 `ChessGameClient` 인터페이스 구현체만 추가하면 기존 코드 변경 없이 동작
+
+### chess.com API 구조
+- **아카이브 방식**: 먼저 `GET /pub/player/{username}/games/archives`로 월별 아카이브 URL 목록을 받고, 각 월별 URL을 호출하여 게임을 가져옴
+- **인증 불필요**: 완전 공개 API, `User-Agent` 헤더만 설정
+- **Rate limit**: 순차 요청 시 무제한, 병렬 요청 시 429
+
+### lichess vs chess.com 비교
+| 항목 | lichess | chess.com |
+|------|---------|-----------|
+| 스트리밍 | NDJSON (한 줄씩) | 월별 JSON 일괄 |
+| 인증 | Optional Bearer token | 불필요 (User-Agent만) |
+| 수 데이터 | `moves` 필드 (SAN 나열) + `clocks` 배열 | PGN에 `[%clk]` 포함 |
+| 오프닝 | `opening.eco` + `opening.name` | `eco` URL에서 이름 추출 |
+| 시간 제어 | `clock.initial` + `clock.increment` (초) | `time_control` 문자열 ("180+2") |
+| 결과 | `status` + `winner` | 각 플레이어의 `result` 필드 |
+
+### 변경 파일
+| 파일 | 설명 |
+|------|------|
+| `game/adapter/out/client/ChessComConfig.kt` | `@ConfigurationProperties` — baseUrl, userAgent |
+| `game/adapter/out/client/ChessComClient.kt` | `ChessGameClient` 구현 — 아카이브 조회 → 월별 게임 → 도메인 변환 |
+| `application.yml` | `chesscom.api` 설정 추가 |
+| `test/.../adapter/out/client/ChessComClientTest.kt` | MockWebServer 테스트 (게임 변환, max 제한, chess960 제외, 에러 처리) |
+
+### 의사결정 기록
+| 결정 | 선택 | 이유 |
+|------|------|------|
+| 게임 ID | `uuid` 필드 사용 | URL은 가변적, uuid가 고유 식별자로 적합 |
+| 수 파싱 | PGN 텍스트에서 직접 파싱 | chess.com은 별도 moves 필드 없이 PGN에 수가 포함. clock annotation은 건너뛰기 처리 |
+| 오프닝 이름 | eco URL에서 추출 | chess.com은 ECO 코드를 별도 제공하지 않고 URL만 제공. URL 마지막 경로를 이름으로 사용 |
+| 필터링 위치 | 클라이언트 측 필터 | chess.com API는 서버 사이드 필터 미지원. 월별 게임을 가져온 후 조건 매칭 |
+| 아카이브 순서 | 역순 (최신 월 먼저) | 사용자가 최근 게임을 먼저 보고 싶어하므로, max 제한 시 최신 게임 우선 |

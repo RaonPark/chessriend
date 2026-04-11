@@ -18,6 +18,19 @@ class GetGameService(
     override suspend fun getGame(id: Long): Game =
         gameRepository.findById(id) ?: throw GameNotFoundException(id)
 
+    override suspend fun deleteGame(id: Long) {
+        gameRepository.findById(id) ?: throw GameNotFoundException(id)
+        gameRepository.deleteById(id)
+    }
+
+    override suspend fun deleteGames(ids: List<Long>) {
+        gameRepository.deleteByIds(ids)
+    }
+
+    override suspend fun deleteAllGames() {
+        gameRepository.deleteAll()
+    }
+
     override suspend fun getGames(
         page: Int,
         size: Int,

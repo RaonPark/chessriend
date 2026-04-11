@@ -35,6 +35,9 @@ dependencies {
     // ── Environment ──
     implementation("me.paulschwarz:spring-dotenv:4.0.0")
 
+    // ── Netty (macOS DNS resolver) ──
+    runtimeOnly("io.netty:netty-resolver-dns-native-macos::osx-aarch_64")
+
     // ── Kotlin + Coroutines ──
     implementation("tools.jackson.module:jackson-module-kotlin")
     implementation("io.projectreactor.kotlin:reactor-kotlin-extensions")
@@ -69,4 +72,12 @@ kotlin {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+tasks.withType<JavaExec> {
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
+}
+
+tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
 }

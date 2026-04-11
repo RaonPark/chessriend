@@ -46,6 +46,7 @@ class GamePersistenceAdapterTest {
         id = null,
         source = GameSource.LICHESS,
         sourceGameId = sourceGameId,
+        ownerUsername = "testuser",
         players = Players(
             white = Player("Magnus", 2850),
             black = Player("Hikaru", 2800),

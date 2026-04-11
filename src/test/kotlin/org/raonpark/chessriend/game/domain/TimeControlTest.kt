@@ -31,9 +31,9 @@ class TimeControlTest : DescribeSpec({
     }
 
     describe("toString") {
-        it("초 단위로 출력") {
+        it("분+초 단위로 출력") {
             val tc = TimeControl(10.minutes, 5.seconds, TimeCategory.RAPID)
-            tc.toString() shouldBe "600+5"
+            tc.toString() shouldBe "10+5"
         }
     }
 })

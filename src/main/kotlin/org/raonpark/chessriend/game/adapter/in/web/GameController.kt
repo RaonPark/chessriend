@@ -44,6 +44,21 @@ class GameController(
         return GameResponse.from(game)
     }
 
+    @DeleteMapping("/{id}")
+    suspend fun deleteGame(@PathVariable id: Long) {
+        getGameUseCase.deleteGame(id)
+    }
+
+    @DeleteMapping("/batch")
+    suspend fun deleteGames(@RequestBody ids: List<Long>) {
+        getGameUseCase.deleteGames(ids)
+    }
+
+    @DeleteMapping("/all")
+    suspend fun deleteAllGames() {
+        getGameUseCase.deleteAllGames()
+    }
+
     @GetMapping("/import", produces = [MediaType.TEXT_EVENT_STREAM_VALUE])
     fun importGames(
         @RequestParam source: GameSource,

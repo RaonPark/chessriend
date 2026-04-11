@@ -24,6 +24,7 @@ class ImportGameService(
 
         return client.fetchGames(criteria)
             .filter { game -> !gameRepository.existsBySourceGameId(game.sourceGameId) }
+            .map { game -> game.copy(ownerUsername = criteria.username) }
             .map { game -> gameRepository.save(game) }
     }
 }

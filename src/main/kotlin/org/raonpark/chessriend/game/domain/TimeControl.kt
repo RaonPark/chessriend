@@ -28,5 +28,5 @@ data class TimeControl(
     }
 
     override fun toString(): String =
-        "${initialTime.inWholeSeconds}+${increment.inWholeSeconds}"
+        "${initialTime.inWholeMinutes}+${increment.inWholeSeconds}"
 }

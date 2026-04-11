@@ -18,6 +18,11 @@ lichess:
     base-url: https://lichess.org
     token: ${LICHESS_API_TOKEN:}
 
+chesscom:
+  api:
+    base-url: https://api.chess.com
+    user-agent: Chessriend/1.0
+
 server:
   port: 8080
 

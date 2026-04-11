@@ -6,6 +6,7 @@ data class Game(
     val id: Long?,
     val source: GameSource,
     val sourceGameId: String,
+    val ownerUsername: String,
     val players: Players,
     val moves: List<Move>,
     val result: GameResult,

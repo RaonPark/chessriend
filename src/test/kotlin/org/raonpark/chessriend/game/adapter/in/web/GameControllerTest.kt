@@ -59,7 +59,7 @@ class GameControllerTest {
             .expectStatus().isOk
             .expectBody()
             .jsonPath("$.content").isArray
-            .jsonPath("$.content[0].id").isEqualTo(1)
+            .jsonPath("$.content[0].id").isEqualTo("1")
             .jsonPath("$.content[0].source").isEqualTo("LICHESS")
             .jsonPath("$.content[0].white.name").isEqualTo("Magnus")
             .jsonPath("$.page").isEqualTo(0)
@@ -77,7 +77,7 @@ class GameControllerTest {
             .exchange()
             .expectStatus().isOk
             .expectBody()
-            .jsonPath("$.id").isEqualTo(1)
+            .jsonPath("$.id").isEqualTo("1")
             .jsonPath("$.source").isEqualTo("LICHESS")
             .jsonPath("$.white.name").isEqualTo("Magnus")
             .jsonPath("$.result").isEqualTo("1-0")
@@ -105,7 +105,7 @@ class GameControllerTest {
             .blockFirst()
 
         assert(response != null)
-        assert(response!!.id == 1L)
+        assert(response!!.id == "1")
         assert(response.source == "LICHESS")
         assert(response.white.name == "Magnus")
         assert(response.black.name == "Hikaru")
@@ -120,6 +120,7 @@ class GameControllerTest {
             id = 1L,
             source = GameSource.LICHESS,
             sourceGameId = "test123",
+            ownerUsername = "Magnus",
             players = Players(Player("Magnus", 2850), Player("Hikaru", 2800)),
             moves = listOf(
                 Move(1, Color.WHITE, "e4", "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1", 3.seconds, null),

@@ -4,9 +4,10 @@ import org.raonpark.chessriend.game.domain.*
 import java.time.Instant
 
 data class GameResponse(
-    val id: Long,
+    val id: String,
     val source: String,
     val sourceGameId: String,
+    val ownerUsername: String,
     val white: PlayerResponse,
     val black: PlayerResponse,
     val result: String,
@@ -17,9 +18,10 @@ data class GameResponse(
 ) {
     companion object {
         fun from(game: Game): GameResponse = GameResponse(
-            id = game.id!!,
+            id = game.id!!.toString(),
             source = game.source.name,
             sourceGameId = game.sourceGameId,
+            ownerUsername = game.ownerUsername,
             white = PlayerResponse(game.players.white.name, game.players.white.rating),
             black = PlayerResponse(game.players.black.name, game.players.black.rating),
             result = game.result.toPgnResult(),
