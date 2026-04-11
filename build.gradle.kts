@@ -27,17 +27,16 @@ dependencies {
 
     // ── Database (R2DBC + Flyway) ──
     implementation("org.springframework.boot:spring-boot-starter-data-r2dbc")
-    runtimeOnly("org.postgresql:r2dbc-postgresql")
-    implementation("org.flywaydb:flyway-core:12.3.0")
-    implementation("org.flywaydb:flyway-database-postgresql:12.3.0")
-    runtimeOnly("org.springframework.boot:spring-boot-starter-jdbc")
+    implementation("org.postgresql:r2dbc-postgresql")
+    implementation("org.springframework.boot:spring-boot-starter-flyway")
+    implementation("org.flywaydb:flyway-database-postgresql")
     runtimeOnly("org.postgresql:postgresql")
 
     // ── Environment ──
     implementation("me.paulschwarz:spring-dotenv:4.0.0")
 
     // ── Kotlin + Coroutines ──
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
+    implementation("tools.jackson.module:jackson-module-kotlin")
     implementation("io.projectreactor.kotlin:reactor-kotlin-extensions")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
@@ -48,15 +47,18 @@ dependencies {
 
     // ── Test ──
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.springframework.boot:spring-boot-webtestclient")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("io.projectreactor:reactor-test")
-    testImplementation("org.testcontainers:postgresql")
-    testImplementation("org.testcontainers:r2dbc")
+    testImplementation("org.testcontainers:testcontainers-postgresql:2.0.4")
+    testImplementation("org.testcontainers:testcontainers-r2dbc:2.0.4")
     testImplementation("io.kotest:kotest-runner-junit5:6.1.4")
     testImplementation("io.kotest:kotest-assertions-core:6.1.4")
-    testImplementation("io.kotest.extensions:kotest-extensions-spring:1.3.0")
+    // kotest-extensions-spring 1.3.0은 Kotest 5.x 전용, 6.x 미지원
+    // Spring 통합 테스트는 @SpringBootTest + constructor injection으로 대체
     testImplementation("io.mockk:mockk:1.14.9")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
+    testImplementation("com.squareup.okhttp3:mockwebserver3:5.3.2")
 }
 
 kotlin {

@@ -1,7 +1,7 @@
 package org.raonpark.chessriend.game.adapter.out.persistence
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
+import io.r2dbc.postgresql.codec.Json
+import tools.jackson.databind.ObjectMapper
 import org.raonpark.chessriend.game.domain.*
 import org.raonpark.chessriend.game.port.out.GameRepository
 import org.raonpark.chessriend.shared.id.SnowflakeIdGenerator
@@ -18,7 +18,7 @@ class GamePersistenceAdapter(
     override suspend fun save(game: Game): Game {
         val entity = toEntity(game)
         val saved = repository.save(entity)
-        return toDomain(saved)
+        return toDomain(saved.copy(isNewEntity = false))
     }
 
     override suspend fun existsBySourceGameId(sourceGameId: String): Boolean =
@@ -38,10 +38,11 @@ class GamePersistenceAdapter(
         timeCategory = game.timeControl.category.name,
         openingEco = game.opening?.eco,
         openingName = game.opening?.name,
-        moves = objectMapper.writeValueAsString(game.moves.map { it.toMap() }),
+        moves = Json.of(objectMapper.writeValueAsString(game.moves.map { it.toMap() })),
         pgn = game.pgn,
         playedAt = game.playedAt,
         importedAt = game.importedAt,
+        isNewEntity = game.id == null,
     )
 
     private fun toDomain(entity: GameEntity): Game = Game(
@@ -52,7 +53,7 @@ class GamePersistenceAdapter(
             white = Player(name = entity.whiteName, rating = entity.whiteRating),
             black = Player(name = entity.blackName, rating = entity.blackRating),
         ),
-        moves = parseMoves(entity.moves),
+        moves = parseMoves(entity.moves.asString()),
         result = GameResult.valueOf(entity.result),
         timeControl = TimeControl(
             initialTime = entity.initialTime.seconds,
@@ -76,8 +77,9 @@ class GamePersistenceAdapter(
         "comment" to comment,
     )
 
+    @Suppress("UNCHECKED_CAST")
     private fun parseMoves(json: String): List<Move> {
-        val list: List<Map<String, Any?>> = objectMapper.readValue(json)
+        val list = objectMapper.readValue(json, List::class.java) as List<Map<String, Any?>>
         return list.map { map ->
             Move(
                 number = (map["number"] as Number).toInt(),

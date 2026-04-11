@@ -171,3 +171,70 @@ GET /api/games/import?source=LICHESS&username={username}
 | 응답 방식 | SSE (text/event-stream) | end-to-end 스트리밍, 대량 import 시 실시간 진행 표시 가능 |
 | GraphQL 사용 | 불필요 | 서버→클라이언트 단방향 스트리밍은 SSE가 적합, WebFlux 네이티브 지원 |
 | HTTP method | GET | import는 외부 데이터 조회+저장이지만, 쿼리 파라미터로 조건 전달이 자연스러움 |
+
+## 2026-04-10 ~ 04-11: 테스트 구현 + Spring Boot 4 호환성 수정
+
+### 무엇을
+- 전 레이어 테스트 구현 (Domain 단위 + Application 단위 + Adapter 통합)
+- Spring Boot 4.0.5 마이그레이션 이슈 해결 (Jackson 3.x, Flyway 모듈 분리, WebTestClient 모듈 분리 등)
+
+### 왜
+- 도메인 로직의 정확성 보장, 리팩터링 안전망 확보
+- Spring Boot 4에서의 대규모 모듈 구조 변경에 대응
+
+### 변경 파일
+| 파일 | 설명 |
+|------|------|
+| `test/.../domain/ColorTest.kt` | Color enum 단위 테스트 (Kotest DescribeSpec) |
+| `test/.../domain/GameResultTest.kt` | GameResult PGN 변환 테스트 |
+| `test/.../domain/TimeControlTest.kt` | TimeControl 값 객체 테스트 |
+| `test/.../domain/PlayerTest.kt` | Player, Players 테스트 |
+| `test/.../domain/GameTest.kt` | Game 도메인 메서드 테스트 |
+| `test/.../application/ImportGameServiceTest.kt` | UseCase 단위 테스트 (MockK) |
+| `test/.../adapter/out/client/LichessClientTest.kt` | LichessClient 통합 테스트 (MockWebServer3) |
+| `test/.../adapter/out/persistence/GamePersistenceAdapterTest.kt` | Persistence 통합 테스트 (Testcontainers PostgreSQL) |
+| `test/.../adapter/in/web/GameControllerTest.kt` | Controller SSE 통합 테스트 (WebTestClient + mock UseCase) |
+| `test/.../ChessriendApplicationTests.kt` | 컨텍스트 로드 테스트 (Testcontainers) |
+| `build.gradle.kts` | 의존성 수정 — 아래 상세 참조 |
+| `game/adapter/out/client/LichessClient.kt` | Jackson 3.x import 수정 |
+| `game/adapter/out/persistence/GamePersistenceAdapter.kt` | Jackson 3.x import + JSONB 타입 수정 |
+| `game/adapter/out/persistence/GameEntity.kt` | `Persistable` 구현 + `Json` 타입 사용 |
+| `src/test/resources/application-test.yml` | 테스트 Flyway 설정 |
+
+### Spring Boot 4 마이그레이션 이슈 해결 기록
+
+| 이슈 | 원인 | 해결 |
+|------|------|------|
+| Jackson ObjectMapper 빈 없음 | Spring Boot 4는 Jackson 3.x 사용 (`tools.jackson` 패키지) | `com.fasterxml.jackson.databind.ObjectMapper` → `tools.jackson.databind.ObjectMapper` |
+| `jackson-module-kotlin` import 오류 | 그룹 변경 | `com.fasterxml.jackson.module:jackson-module-kotlin` → `tools.jackson.module:jackson-module-kotlin` |
+| `JsonNode.map` 타입 비호환 | Jackson 3.x `JsonNode` iteration 변경 | `buildList { node.forEach { add(it.asLong()) } }` 패턴 사용 |
+| Flyway 미실행 (테이블 없음) | Spring Boot 4에서 Flyway auto-config이 별도 모듈로 분리 | `flyway-core` → `spring-boot-starter-flyway`로 변경 |
+| JSONB 컬럼 타입 불일치 | R2DBC가 `String`을 `varchar`로 전송 | `GameEntity.moves` 타입을 `String` → `io.r2dbc.postgresql.codec.Json`으로 변경 |
+| INSERT 대신 UPDATE 실행 | Snowflake ID 사전 할당으로 Spring Data가 기존 엔티티로 판단 | `GameEntity`에 `Persistable<Long>` 구현 + `isNewEntity` 플래그 |
+| `@AutoConfigureWebTestClient` 못 찾음 | Spring Boot 4에서 패키지 이동 | `spring-boot-webtestclient` 모듈 추가 + `org.springframework.boot.webtestclient.autoconfigure` 패키지 사용 |
+| `MissingWebServerFactoryBeanException` | 내부 `@Configuration`이 메인 앱 설정을 대체 | `@Configuration` → `@TestConfiguration`으로 변경 |
+| `r2dbc-postgresql` 컴파일 오류 | `Json` 타입 사용하는데 `runtimeOnly` 설정 | `runtimeOnly` → `implementation`으로 변경 |
+
+### 의존성 변경 요약 (build.gradle.kts)
+```
+- implementation("org.flywaydb:flyway-core:12.3.0")
+- runtimeOnly("org.springframework.boot:spring-boot-starter-jdbc")
++ implementation("org.springframework.boot:spring-boot-starter-flyway")
+
+- implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
++ implementation("tools.jackson.module:jackson-module-kotlin")
+
+- runtimeOnly("org.postgresql:r2dbc-postgresql")
++ implementation("org.postgresql:r2dbc-postgresql")
+
++ testImplementation("org.springframework.boot:spring-boot-webtestclient")
+```
+
+### 의사결정 기록
+| 결정 | 선택 | 이유 |
+|------|------|------|
+| Domain 테스트 프레임워크 | Kotest 6 (DescribeSpec) | BDD 스타일, 가독성 우수 |
+| Spring 통합 테스트 프레임워크 | JUnit 5 | kotest-extensions-spring 1.3.0이 Kotest 6 미지원 |
+| LichessClient 테스트 방식 | MockWebServer3 (public API 통해 테스트) | internal 노출 없이 실제 HTTP 호출 검증 |
+| Persistence 테스트 | @SpringBootTest + Testcontainers | 실제 PostgreSQL에서 JSONB, Flyway 마이그레이션 검증 |
+| Controller 테스트 | @SpringBootTest + @AutoConfigureWebTestClient + mock UseCase | SSE 스트리밍 응답 e2e 검증, DB 의존성 제거 |

@@ -1,7 +1,7 @@
 package org.raonpark.chessriend.game.adapter.out.client
 
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.ObjectMapper
+import tools.jackson.databind.JsonNode
+import tools.jackson.databind.ObjectMapper
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.reactive.asFlow
 import org.raonpark.chessriend.game.domain.*
@@ -105,7 +105,9 @@ class LichessClient(
     private fun parseMoves(gameNode: JsonNode): List<Move> {
         val movesStr = gameNode["moves"]?.asText() ?: return emptyList()
         val sans = movesStr.split(" ").filter { it.isNotBlank() }
-        val clocks = gameNode["clocks"]?.map { it.asLong() } ?: emptyList()
+        val clocks: List<Long> = gameNode["clocks"]?.let { node ->
+            buildList { node.forEach { add(it.asLong()) } }
+        } ?: emptyList()
 
         // lichess clocks: [초기시간(centiseconds), 1수후 백 남은시간, 1수후 흑 남은시간, ...]
         val clockOffset = if (clocks.size > sans.size) 1 else 0

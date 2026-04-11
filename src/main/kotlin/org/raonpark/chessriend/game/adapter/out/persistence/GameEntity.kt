@@ -1,12 +1,15 @@
 package org.raonpark.chessriend.game.adapter.out.persistence
 
+import io.r2dbc.postgresql.codec.Json
 import org.springframework.data.annotation.Id
+import org.springframework.data.annotation.Transient
+import org.springframework.data.domain.Persistable
 import org.springframework.data.relational.core.mapping.Table
 import java.time.Instant
 
 @Table("games")
 data class GameEntity(
-    @Id val id: Long? = null,
+    @Id val id: Long,
     val source: String,
     val sourceGameId: String,
     val whiteName: String,
@@ -19,8 +22,12 @@ data class GameEntity(
     val timeCategory: String,
     val openingEco: String?,
     val openingName: String?,
-    val moves: String, // JSONB
+    val moves: Json,
     val pgn: String,
     val playedAt: Instant,
     val importedAt: Instant,
-)
+    @Transient val isNewEntity: Boolean = true,
+) : Persistable<Long> {
+    override fun getId(): Long = id
+    override fun isNew(): Boolean = isNewEntity
+}
