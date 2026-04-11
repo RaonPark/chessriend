@@ -1,4 +1,7 @@
 import { Link } from 'react-router-dom'
+import { ChessKing } from '@/shared/components/ChessKing'
+import { ConfirmDialog } from '@/shared/components/ConfirmDialog'
+import { useConfirm } from '@/shared/hooks/useConfirm'
 import { useDeleteGame } from '../api/mutations'
 import type { GameResponse } from '../types/game'
 
@@ -21,10 +24,10 @@ function getOutcome(game: GameResponse): Outcome {
   return 'draw'
 }
 
-const OUTCOME_STYLES: Record<Outcome, { text: string; className: string }> = {
-  win: { text: '승리', className: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
-  loss: { text: '패배', className: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' },
-  draw: { text: '무승부', className: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' },
+const OUTCOME_STYLES: Record<Outcome, { text: string; className: string; border: string }> = {
+  win: { text: '승리', className: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200', border: 'border-l-green-500' },
+  loss: { text: '패배', className: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200', border: 'border-l-red-500' },
+  draw: { text: '무승부', className: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200', border: 'border-l-amber-500' },
 }
 
 function formatDate(iso: string) {
@@ -39,10 +42,17 @@ export function GameListItem({ game, selected, onToggleSelect }: GameListItemPro
   const outcome = getOutcome(game)
   const style = OUTCOME_STYLES[outcome]
   const deleteMutation = useDeleteGame()
+  const { confirm, dialogProps } = useConfirm()
 
-  function handleDelete(e: React.MouseEvent) {
+  async function handleDelete(e: React.MouseEvent) {
     e.preventDefault()
-    if (!confirm('이 게임을 삭제하시겠습니까?')) return
+    const ok = await confirm({
+      title: '게임 삭제',
+      message: `${game.white.name} vs ${game.black.name} 게임을 삭제하시겠습니까?`,
+      confirmLabel: '삭제',
+      variant: 'danger',
+    })
+    if (!ok) return
     deleteMutation.mutate(game.id)
   }
 
@@ -52,9 +62,10 @@ export function GameListItem({ game, selected, onToggleSelect }: GameListItemPro
   }
 
   return (
+    <>
     <Link
       to={`/games/${game.id}`}
-      className="block rounded-lg border border-gray-200 p-4 transition hover:border-indigo-300 hover:shadow-sm dark:border-gray-700 dark:hover:border-indigo-600"
+      className={`block rounded-lg border border-amber-200 border-l-4 ${style.border} bg-white p-4 transition hover:shadow-md dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-750`}
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -64,24 +75,24 @@ export function GameListItem({ game, selected, onToggleSelect }: GameListItemPro
               checked={selected ?? false}
               onClick={handleCheckbox}
               readOnly
-              className="h-4 w-4 shrink-0 rounded border-gray-300"
+              className="h-4 w-4 shrink-0 rounded border-amber-300 accent-amber-700"
             />
           )}
           <div className="text-left">
-            <p className="font-medium text-gray-900 dark:text-gray-100">
-              <span className="text-xs text-gray-400">[백]</span>{' '}
+            <p className="flex items-center gap-1.5 font-medium text-gray-900 dark:text-gray-100">
+              <ChessKing color="white" size={22} />
               {game.white.name}
-              {game.white.rating != null && <span className="ml-1 text-sm text-gray-500">({game.white.rating})</span>}
-              <span className="mx-2 text-gray-400">vs</span>
-              <span className="text-xs text-gray-400">[흑]</span>{' '}
+              {game.white.rating != null && <span className="ml-0.5 text-sm text-gray-500">({game.white.rating})</span>}
+              <span className="mx-1 text-amber-400">vs</span>
+              <ChessKing color="black" size={22} />
               {game.black.name}
-              {game.black.rating != null && <span className="ml-1 text-sm text-gray-500">({game.black.rating})</span>}
+              {game.black.rating != null && <span className="ml-0.5 text-sm text-gray-500">({game.black.rating})</span>}
             </p>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               {game.opening?.name ?? '오프닝 정보 없음'}
-              <span className="mx-1.5">·</span>
+              <span className="mx-1.5 text-amber-300">·</span>
               {game.timeControl.category}
-              <span className="mx-1.5">·</span>
+              <span className="mx-1.5 text-amber-300">·</span>
               {game.totalMoves}수
             </p>
           </div>
@@ -104,5 +115,7 @@ export function GameListItem({ game, selected, onToggleSelect }: GameListItemPro
         </div>
       </div>
     </Link>
+    <ConfirmDialog {...dialogProps} />
+    </>
   )
 }

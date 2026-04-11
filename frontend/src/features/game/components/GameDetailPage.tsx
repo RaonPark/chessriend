@@ -1,6 +1,9 @@
 import { useParams, Link, useNavigate } from 'react-router-dom'
+import { ChessKing } from '@/shared/components/ChessKing'
 import { LoadingSpinner } from '@/shared/components/LoadingSpinner'
 import { ErrorMessage } from '@/shared/components/ErrorMessage'
+import { ConfirmDialog } from '@/shared/components/ConfirmDialog'
+import { useConfirm } from '@/shared/hooks/useConfirm'
 import { useGame } from '../api/queries'
 import { useDeleteGame } from '../api/mutations'
 
@@ -38,9 +41,16 @@ export function GameDetailPage() {
   const navigate = useNavigate()
   const { data: game, isLoading, error, refetch } = useGame(id!)
   const deleteMutation = useDeleteGame()
+  const { confirm, dialogProps } = useConfirm()
 
-  function handleDelete() {
-    if (!confirm('이 게임을 삭제하시겠습니까?')) return
+  async function handleDelete() {
+    const ok = await confirm({
+      title: '게임 삭제',
+      message: '이 게임을 삭제하시겠습니까?',
+      confirmLabel: '삭제',
+      variant: 'danger',
+    })
+    if (!ok) return
     deleteMutation.mutate(id!, {
       onSuccess: () => navigate('/games'),
     })
@@ -53,7 +63,7 @@ export function GameDetailPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <Link to="/games" className="text-sm text-indigo-600 hover:underline dark:text-indigo-400">
+        <Link to="/games" className="text-sm text-amber-700 hover:underline dark:text-amber-400">
           &larr; 게임 목록
         </Link>
         <button
@@ -65,22 +75,22 @@ export function GameDetailPage() {
         </button>
       </div>
 
-      <div className="rounded-lg border border-gray-200 p-6 dark:border-gray-700">
+      <div className="rounded-xl border border-amber-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
         {/* 대국자 정보 */}
-        <div className="flex items-center justify-center gap-6 text-lg">
-          <div className="text-right">
-            <p className="text-xs text-gray-400">백</p>
-            <p className="font-semibold text-gray-900 dark:text-gray-100">{game.white.name}</p>
+        <div className="flex items-center justify-center gap-10 text-lg">
+          <div className="text-center">
+            <ChessKing color="white" size={56} />
+            <p className="mt-2 font-semibold text-gray-900 dark:text-gray-100">{game.white.name}</p>
             {game.white.rating != null && (
-              <p className="text-sm text-gray-500">{game.white.rating}</p>
+              <p className="text-sm text-amber-700 dark:text-amber-400">{game.white.rating}</p>
             )}
           </div>
-          <span className="text-2xl text-gray-400">vs</span>
-          <div className="text-left">
-            <p className="text-xs text-gray-400">흑</p>
-            <p className="font-semibold text-gray-900 dark:text-gray-100">{game.black.name}</p>
+          <span className="text-2xl font-light text-amber-400">vs</span>
+          <div className="text-center">
+            <ChessKing color="black" size={56} />
+            <p className="mt-2 font-semibold text-gray-900 dark:text-gray-100">{game.black.name}</p>
             {game.black.rating != null && (
-              <p className="text-sm text-gray-500">{game.black.rating}</p>
+              <p className="text-sm text-amber-700 dark:text-amber-400">{game.black.rating}</p>
             )}
           </div>
         </div>
@@ -97,38 +107,41 @@ export function GameDetailPage() {
         })()}
 
         {/* 메타 정보 */}
-        <div className="mt-6 grid grid-cols-2 gap-4 border-t border-gray-200 pt-4 text-sm dark:border-gray-700 md:grid-cols-4">
+        <div className="mt-6 grid grid-cols-2 gap-4 border-t border-amber-100 pt-4 text-sm dark:border-gray-700 md:grid-cols-4">
           <div>
-            <p className="text-gray-500 dark:text-gray-400">플랫폼</p>
+            <p className="text-amber-600 dark:text-amber-500">플랫폼</p>
             <p className="font-medium text-gray-900 dark:text-gray-100">{game.source}</p>
           </div>
           <div>
-            <p className="text-gray-500 dark:text-gray-400">시간 제한</p>
+            <p className="text-amber-600 dark:text-amber-500">시간 제한</p>
             <p className="font-medium text-gray-900 dark:text-gray-100">
               {game.timeControl.time} ({game.timeControl.category})
             </p>
           </div>
           <div>
-            <p className="text-gray-500 dark:text-gray-400">오프닝</p>
+            <p className="text-amber-600 dark:text-amber-500">오프닝</p>
             <p className="font-medium text-gray-900 dark:text-gray-100">
               {game.opening ? `${game.opening.name}${game.opening.eco ? ` (${game.opening.eco})` : ''}` : '-'}
             </p>
           </div>
           <div>
-            <p className="text-gray-500 dark:text-gray-400">총 수</p>
+            <p className="text-amber-600 dark:text-amber-500">총 수</p>
             <p className="font-medium text-gray-900 dark:text-gray-100">{game.totalMoves}수</p>
           </div>
         </div>
 
-        <p className="mt-4 text-center text-xs text-gray-400 dark:text-gray-500">
+        <p className="mt-4 text-center text-xs text-amber-500 dark:text-gray-500">
           {formatDate(game.playedAt)}
         </p>
       </div>
 
       {/* 추후 체스보드 영역 */}
-      <div className="rounded-lg border-2 border-dashed border-gray-300 p-12 text-center text-gray-400 dark:border-gray-600 dark:text-gray-500">
-        체스보드 뷰어 (추후 구현)
+      <div className="rounded-xl border-2 border-dashed border-amber-300 bg-amber-50/50 p-12 text-center text-amber-500 dark:border-gray-600 dark:bg-gray-800/50 dark:text-gray-500">
+        <span className="text-4xl">&#9814;</span>
+        <p className="mt-2">체스보드 뷰어 (추후 구현)</p>
       </div>
+
+      <ConfirmDialog {...dialogProps} />
     </div>
   )
 }

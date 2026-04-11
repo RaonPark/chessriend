@@ -54,7 +54,7 @@ class GameController(
         getGameUseCase.deleteGames(ids)
     }
 
-    @DeleteMapping
+    @DeleteMapping("/all")
     suspend fun deleteAllGames() {
         getGameUseCase.deleteAllGames()
     }

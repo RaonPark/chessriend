@@ -48,6 +48,8 @@ export interface ImportParams {
   source: GameSource
   username: string
   max?: number
+  since?: string
+  until?: string
   timeCategory?: TimeCategory
   rated?: boolean
 }

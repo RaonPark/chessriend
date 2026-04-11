@@ -38,7 +38,7 @@ export async function deleteGames(ids: string[]): Promise<void> {
 }
 
 export async function deleteAllGames(): Promise<void> {
-  const res = await fetch('/api/games', { method: 'DELETE' })
+  const res = await fetch('/api/games/all', { method: 'DELETE' })
   if (!res.ok) {
     const body = await res.json().catch(() => null)
     throw new ApiError(res.status, body?.message ?? res.statusText)
@@ -50,6 +50,8 @@ export function createImportEventSource(params: ImportParams): EventSource {
   query.set('source', params.source)
   query.set('username', params.username)
   if (params.max != null) query.set('max', String(params.max))
+  if (params.since) query.set('since', params.since)
+  if (params.until) query.set('until', params.until)
   if (params.timeCategory) query.set('timeCategory', params.timeCategory)
   if (params.rated != null) query.set('rated', String(params.rated))
 
