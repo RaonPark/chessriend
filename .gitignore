@@ -41,3 +41,9 @@ out/
 
 ### Local config (machine-specific JDK path) ###
 gradle.properties
+
+### Environment ###
+.env
+
+### Claude Code ###
+.claude/settings.json

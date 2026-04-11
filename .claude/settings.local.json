@@ -1,10 +1,12 @@
 {
   "mcpServers": {
-    "postgres": {
-      "command": "npx",
+    "postgresql": {
+      "command": "cmd",
       "args": [
+        "/c",
+        "npx",
         "-y",
-        "@anthropic/postgres-mcp",
+        "@modelcontextprotocol/server-postgres",
         "postgresql://chessriend:chessriend@localhost:5432/chessriend"
       ]
     }

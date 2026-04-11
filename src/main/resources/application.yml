@@ -13,6 +13,11 @@ spring:
     password: chessriend
     locations: classpath:db/migration
 
+lichess:
+  api:
+    base-url: https://lichess.org
+    token: ${LICHESS_API_TOKEN:}
+
 server:
   port: 8080
 
