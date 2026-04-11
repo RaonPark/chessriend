@@ -73,9 +73,10 @@
 - SpringDoc 설정 확인 + API 문서 자동 생성 검증
 - 엔드포인트별 설명 추가
 
-### 4-3. 페이지네이션/정렬
-- 게임 목록 조회 API (played_at DESC, 필터링)
-- `GameRepository`에 조회 메서드 추가
+### ~~4-3. 페이지네이션/정렬~~ ✅ 완료 (2026-04-11)
+- ~~게임 목록 조회 API (played_at DESC, 필터링)~~
+- ~~`GameRepository`에 조회 메서드 추가~~
+- `GET /api/games?page=0&size=20&source=LICHESS&timeCategory=BLITZ` + `GET /api/games/{id}` 구현 완료
 
 ---
 
@@ -83,6 +84,6 @@
 
 1. ~~**GlobalExceptionHandler**~~ ✅ 완료
 2. ~~**lichess API 에러 처리**~~ ✅ 완료
-3. **게임 목록 조회 API** — import한 게임을 볼 수 있어야 다음 단계 진행 가능
+3. ~~**게임 목록 조회 API**~~ ✅ 완료 (2026-04-11) — GET /api/games (페이지네이션+필터), GET /api/games/{id}
 4. **프론트엔드 게임 Import + 목록** — 백엔드 API와 연동
 5. **chess.com 지원** 또는 **Analysis 도메인** (우선순위에 따라)

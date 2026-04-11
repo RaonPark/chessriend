@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.map
 import org.raonpark.chessriend.game.domain.Color
 import org.raonpark.chessriend.game.domain.GameSource
 import org.raonpark.chessriend.game.domain.TimeCategory
+import org.raonpark.chessriend.game.port.`in`.GetGameUseCase
 import org.raonpark.chessriend.game.port.`in`.ImportGameUseCase
 import org.raonpark.chessriend.game.port.out.GameFetchCriteria
 import org.springframework.http.MediaType
@@ -15,7 +16,33 @@ import java.time.Instant
 @RequestMapping("/api/games")
 class GameController(
     private val importGameUseCase: ImportGameUseCase,
+    private val getGameUseCase: GetGameUseCase,
 ) {
+
+    @GetMapping
+    suspend fun getGames(
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "20") size: Int,
+        @RequestParam(required = false) source: GameSource?,
+        @RequestParam(required = false) timeCategory: TimeCategory?,
+    ): PagedGameResponse {
+        val result = getGameUseCase.getGames(page, size, source, timeCategory)
+        return PagedGameResponse(
+            content = result.content.map { GameResponse.from(it) },
+            page = result.page,
+            size = result.size,
+            totalElements = result.totalElements,
+            totalPages = result.totalPages,
+            hasNext = result.hasNext,
+            hasPrevious = result.hasPrevious,
+        )
+    }
+
+    @GetMapping("/{id}")
+    suspend fun getGame(@PathVariable id: Long): GameResponse {
+        val game = getGameUseCase.getGame(id)
+        return GameResponse.from(game)
+    }
 
     @GetMapping("/import", produces = [MediaType.TEXT_EVENT_STREAM_VALUE])
     fun importGames(

@@ -295,3 +295,49 @@ GET /api/games/import?source=LICHESS&username={username}
 | LichessClient 테스트 방식 | MockWebServer3 (public API 통해 테스트) | internal 노출 없이 실제 HTTP 호출 검증 |
 | Persistence 테스트 | @SpringBootTest + Testcontainers | 실제 PostgreSQL에서 JSONB, Flyway 마이그레이션 검증 |
 | Controller 테스트 | @SpringBootTest + @AutoConfigureWebTestClient + mock UseCase | SSE 스트리밍 응답 e2e 검증, DB 의존성 제거 |
+
+## 2026-04-11: 게임 목록 조회 API (페이지네이션 + 필터링)
+
+### 무엇을
+- 게임 목록 조회 API 구현 (페이지네이션, source/timeCategory 필터링, played_at DESC 정렬)
+- 게임 단건 조회 API 구현 (ID 기반)
+- `PagedResult<T>` 공통 도메인 객체 추가
+- `GameEntity`의 `isNewEntity` 필드를 constructor에서 body property로 이동 (Spring Data R2DBC 읽기 호환)
+
+### 왜
+- import한 게임을 조회할 수 있어야 프론트엔드 연동, 분석, 리뷰 등 후속 기능 진행 가능
+- 페이지네이션은 대량 게임 목록에서 성능 확보 필수
+- source/timeCategory 필터는 사용자가 "lichess Blitz 게임만 보기" 같은 사용 패턴에 필요
+
+### API
+```
+GET /api/games?page=0&size=20&source=LICHESS&timeCategory=BLITZ
+  response: PagedGameResponse { content, page, size, totalElements, totalPages, hasNext, hasPrevious }
+
+GET /api/games/{id}
+  response: GameResponse
+```
+
+### 변경 파일
+| 파일 | 설명 |
+|------|------|
+| `shared/domain/PagedResult.kt` | 페이지네이션 결과 공통 도메인 객체 (content, page, size, totalElements, totalPages, hasNext, hasPrevious) |
+| `game/port/out/GameRepository.kt` | `findById`, `findAll` (offset/limit/filters), `count` 메서드 추가 |
+| `game/port/in/GetGameUseCase.kt` | `getGame(id)`, `getGames(page, size, source?, timeCategory?)` 유스케이스 인터페이스 |
+| `game/application/GetGameService.kt` | GetGameUseCase 구현 — 페이지네이션 계산 + GameNotFoundException 처리 |
+| `game/adapter/out/persistence/GamePersistenceAdapter.kt` | `findById`, `findAll` (DatabaseClient 동적 쿼리), `count` 구현 |
+| `game/adapter/out/persistence/GameEntity.kt` | `isNewEntity`를 constructor → body `@Transient var`로 이동 |
+| `game/adapter/in/web/GameController.kt` | `GET /api/games`, `GET /api/games/{id}` 엔드포인트 추가 |
+| `game/adapter/in/web/GameResponse.kt` | `PagedGameResponse` DTO 추가 |
+| `test/.../application/GetGameServiceTest.kt` | GetGameService 단위 테스트 (Kotest DescribeSpec + MockK) |
+| `test/.../adapter/out/persistence/GamePersistenceAdapterTest.kt` | FindById, FindAll, Count 통합 테스트 추가 |
+| `test/.../adapter/in/web/GameControllerTest.kt` | 목록 조회, 단건 조회, 404 테스트 추가 |
+
+### 의사결정 기록
+| 결정 | 선택 | 이유 |
+|------|------|------|
+| 동적 필터 쿼리 방식 | `DatabaseClient` + 조건부 WHERE 조합 | Spring Data R2DBC의 derived query는 optional 파라미터 조합에 비효율적 (메서드 폭발). DatabaseClient로 SQL을 동적 조합하면 깔끔 |
+| 페이지네이션 | offset/limit 직접 계산 | Spring Data R2DBC의 `Pageable` 지원이 제한적, 직접 계산이 투명하고 단순 |
+| `PagedResult` 위치 | `shared/domain/` | Analysis, Review 등 다른 도메인에서도 재사용 가능 |
+| `isNewEntity` 위치 변경 | constructor → body `@Transient var` | Spring Data R2DBC가 DB에서 엔티티 읽을 때 constructor parameter로 `isNewEntity`를 매핑하려다 실패. body property로 이동하면 constructor 매핑에서 제외됨 |
+| 정렬 기준 | `played_at DESC` 고정 | 사용자 관점에서 최근 게임이 먼저 보이는 게 자연스러움. 추후 정렬 옵션은 필요 시 추가 |

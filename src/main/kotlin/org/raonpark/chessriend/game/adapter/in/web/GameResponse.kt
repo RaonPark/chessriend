@@ -48,3 +48,13 @@ data class OpeningResponse(
     val eco: String?,
     val name: String,
 )
+
+data class PagedGameResponse(
+    val content: List<GameResponse>,
+    val page: Int,
+    val size: Int,
+    val totalElements: Long,
+    val totalPages: Int,
+    val hasNext: Boolean,
+    val hasPrevious: Boolean,
+)

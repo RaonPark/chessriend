@@ -26,8 +26,10 @@ data class GameEntity(
     val pgn: String,
     val playedAt: Instant,
     val importedAt: Instant,
-    @Transient val isNewEntity: Boolean = true,
 ) : Persistable<Long> {
+    @Transient
+    var isNewEntity: Boolean = true
+
     override fun getId(): Long = id
     override fun isNew(): Boolean = isNewEntity
 }

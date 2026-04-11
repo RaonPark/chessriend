@@ -1,5 +1,6 @@
 package org.raonpark.chessriend.game.adapter.out.persistence
 
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Nested
@@ -99,6 +100,89 @@ class GamePersistenceAdapterTest {
             val saved = adapter.save(game)
 
             assertNull(saved.opening)
+        }
+    }
+
+    @Nested
+    inner class FindById {
+        @Test
+        fun `ID로 게임을 조회한다`() = runTest {
+            val saved = adapter.save(createGame("findbyid-test-1"))
+            val found = adapter.findById(saved.id!!)
+
+            assertNotNull(found)
+            assertEquals(saved.id, found!!.id)
+            assertEquals("findbyid-test-1", found.sourceGameId)
+            assertEquals("Magnus", found.players.white.name)
+            assertEquals(5, found.moves.size)
+        }
+
+        @Test
+        fun `존재하지 않는 ID는 null을 반환한다`() = runTest {
+            val found = adapter.findById(999999L)
+            assertNull(found)
+        }
+    }
+
+    @Nested
+    inner class FindAll {
+        @Test
+        fun `페이지네이션으로 게임 목록을 조회한다`() = runTest {
+            adapter.save(createGame("findall-test-1").copy(playedAt = Instant.parse("2026-04-10T10:00:00Z")))
+            adapter.save(createGame("findall-test-2").copy(playedAt = Instant.parse("2026-04-10T12:00:00Z")))
+            adapter.save(createGame("findall-test-3").copy(playedAt = Instant.parse("2026-04-10T11:00:00Z")))
+
+            val result = adapter.findAll(0, 2, null, null).toList()
+
+            assertEquals(2, result.size)
+            // played_at DESC 정렬 확인
+            assertTrue(result[0].playedAt >= result[1].playedAt)
+        }
+
+        @Test
+        fun `source 필터로 조회한다`() = runTest {
+            adapter.save(createGame("findall-source-1"))
+
+            val result = adapter.findAll(0, 100, GameSource.LICHESS, null).toList()
+            assertTrue(result.isNotEmpty())
+            assertTrue(result.all { it.source == GameSource.LICHESS })
+
+            val chessComResult = adapter.findAll(0, 100, GameSource.CHESS_COM, null).toList()
+            assertTrue(chessComResult.isEmpty())
+        }
+
+        @Test
+        fun `timeCategory 필터로 조회한다`() = runTest {
+            adapter.save(createGame("findall-tc-1"))
+
+            val result = adapter.findAll(0, 100, null, TimeCategory.RAPID).toList()
+            assertTrue(result.isNotEmpty())
+            assertTrue(result.all { it.timeControl.category == TimeCategory.RAPID })
+
+            val bulletResult = adapter.findAll(0, 100, null, TimeCategory.BULLET).toList()
+            assertTrue(bulletResult.isEmpty())
+        }
+    }
+
+    @Nested
+    inner class Count {
+        @Test
+        fun `전체 개수를 조회한다`() = runTest {
+            adapter.save(createGame("count-test-1"))
+
+            val count = adapter.count(null, null)
+            assertTrue(count >= 1)
+        }
+
+        @Test
+        fun `source 필터로 개수를 조회한다`() = runTest {
+            adapter.save(createGame("count-source-1"))
+
+            val lichessCount = adapter.count(GameSource.LICHESS, null)
+            assertTrue(lichessCount >= 1)
+
+            val chessComCount = adapter.count(GameSource.CHESS_COM, null)
+            assertEquals(0L, chessComCount)
         }
     }
 
