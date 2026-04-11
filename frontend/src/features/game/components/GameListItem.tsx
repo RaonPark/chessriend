@@ -5,13 +5,23 @@ interface GameListItemProps {
   game: GameResponse
 }
 
-function resultLabel(result: string) {
-  switch (result) {
-    case '1-0': return { text: '백 승', className: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' }
-    case '0-1': return { text: '흑 승', className: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' }
-    case '1/2-1/2': return { text: '무승부', className: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' }
-    default: return { text: result, className: 'bg-gray-100 text-gray-700' }
-  }
+type Outcome = 'win' | 'loss' | 'draw'
+
+function getOutcome(game: GameResponse): Outcome {
+  const owner = game.ownerUsername.toLowerCase()
+  const isWhite = game.white.name.toLowerCase() === owner
+  const isBlack = game.black.name.toLowerCase() === owner
+
+  if (game.result === '1/2-1/2') return 'draw'
+  if (game.result === '1-0') return isWhite ? 'win' : isBlack ? 'loss' : 'draw'
+  if (game.result === '0-1') return isBlack ? 'win' : isWhite ? 'loss' : 'draw'
+  return 'draw'
+}
+
+const OUTCOME_STYLES: Record<Outcome, { text: string; className: string }> = {
+  win: { text: '승리', className: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
+  loss: { text: '패배', className: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' },
+  draw: { text: '무승부', className: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' },
 }
 
 function formatDate(iso: string) {
@@ -23,7 +33,8 @@ function formatDate(iso: string) {
 }
 
 export function GameListItem({ game }: GameListItemProps) {
-  const result = resultLabel(game.result)
+  const outcome = getOutcome(game)
+  const style = OUTCOME_STYLES[outcome]
 
   return (
     <Link
@@ -52,8 +63,8 @@ export function GameListItem({ game }: GameListItemProps) {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${result.className}`}>
-            {result.text}
+          <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${style.className}`}>
+            {style.text}
           </span>
           <span className="text-sm text-gray-400 dark:text-gray-500">
             {formatDate(game.playedAt)}

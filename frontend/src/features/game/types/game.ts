@@ -27,6 +27,7 @@ export interface GameResponse {
   id: string
   source: string
   sourceGameId: string
+  ownerUsername: string
   white: PlayerResponse
   black: PlayerResponse
   result: string

@@ -90,6 +90,7 @@ class LichessClient(
             id = null,
             source = GameSource.LICHESS,
             sourceGameId = node["id"].asText(),
+            ownerUsername = "",
             players = Players(
                 white = parsePlayer(players["white"]),
                 black = parsePlayer(players["black"]),

@@ -59,6 +59,7 @@ class GamePersistenceAdapter(
                 id = row.get("id", java.lang.Long::class.java)!!.toLong(),
                 source = row.get("source", String::class.java)!!,
                 sourceGameId = row.get("source_game_id", String::class.java)!!,
+                ownerUsername = row.get("owner_username", String::class.java)!!,
                 whiteName = row.get("white_name", String::class.java)!!,
                 whiteRating = row.get("white_rating", java.lang.Integer::class.java)?.toInt(),
                 blackName = row.get("black_name", String::class.java)!!,
@@ -106,6 +107,7 @@ class GamePersistenceAdapter(
             id = game.id ?: snowflakeIdGenerator.nextId(),
             source = game.source.name,
             sourceGameId = game.sourceGameId,
+            ownerUsername = game.ownerUsername,
             whiteName = game.players.white.name,
             whiteRating = game.players.white.rating,
             blackName = game.players.black.name,
@@ -129,6 +131,7 @@ class GamePersistenceAdapter(
         id = entity.id,
         source = GameSource.valueOf(entity.source),
         sourceGameId = entity.sourceGameId,
+        ownerUsername = entity.ownerUsername,
         players = Players(
             white = Player(name = entity.whiteName, rating = entity.whiteRating),
             black = Player(name = entity.blackName, rating = entity.blackRating),

@@ -22,6 +22,7 @@ class GetGameServiceTest : DescribeSpec({
         id = id,
         source = GameSource.LICHESS,
         sourceGameId = sourceGameId,
+        ownerUsername = "testuser",
         players = Players(Player("White", 1500), Player("Black", 1500)),
         moves = listOf(Move(1, Color.WHITE, "e4", "fen", 3.seconds, null)),
         result = GameResult.WHITE_WIN,

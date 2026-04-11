@@ -120,6 +120,7 @@ class GameControllerTest {
             id = 1L,
             source = GameSource.LICHESS,
             sourceGameId = "test123",
+            ownerUsername = "Magnus",
             players = Players(Player("Magnus", 2850), Player("Hikaru", 2800)),
             moves = listOf(
                 Move(1, Color.WHITE, "e4", "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1", 3.seconds, null),

@@ -3,13 +3,23 @@ import { LoadingSpinner } from '@/shared/components/LoadingSpinner'
 import { ErrorMessage } from '@/shared/components/ErrorMessage'
 import { useGame } from '../api/queries'
 
-function resultLabel(result: string) {
-  switch (result) {
-    case '1-0': return '백 승 (1-0)'
-    case '0-1': return '흑 승 (0-1)'
-    case '1/2-1/2': return '무승부 (1/2-1/2)'
-    default: return result
-  }
+type Outcome = 'win' | 'loss' | 'draw'
+
+function getOutcome(game: { ownerUsername: string; white: { name: string }; black: { name: string }; result: string }): Outcome {
+  const owner = game.ownerUsername.toLowerCase()
+  const isWhite = game.white.name.toLowerCase() === owner
+  const isBlack = game.black.name.toLowerCase() === owner
+
+  if (game.result === '1/2-1/2') return 'draw'
+  if (game.result === '1-0') return isWhite ? 'win' : isBlack ? 'loss' : 'draw'
+  if (game.result === '0-1') return isBlack ? 'win' : isWhite ? 'loss' : 'draw'
+  return 'draw'
+}
+
+const OUTCOME_LABELS: Record<Outcome, { text: string; className: string }> = {
+  win: { text: '승리', className: 'text-green-600 dark:text-green-400' },
+  loss: { text: '패배', className: 'text-red-600 dark:text-red-400' },
+  draw: { text: '무승부', className: 'text-gray-600 dark:text-gray-400' },
 }
 
 function formatDate(iso: string) {
@@ -57,9 +67,15 @@ export function GameDetailPage() {
         </div>
 
         {/* 결과 */}
-        <p className="mt-4 text-center text-lg font-medium text-gray-700 dark:text-gray-300">
-          {resultLabel(game.result)}
-        </p>
+        {(() => {
+          const outcome = getOutcome(game)
+          const label = OUTCOME_LABELS[outcome]
+          return (
+            <p className={`mt-4 text-center text-lg font-semibold ${label.className}`}>
+              {label.text} ({game.result})
+            </p>
+          )
+        })()}
 
         {/* 메타 정보 */}
         <div className="mt-6 grid grid-cols-2 gap-4 border-t border-gray-200 pt-4 text-sm dark:border-gray-700 md:grid-cols-4">

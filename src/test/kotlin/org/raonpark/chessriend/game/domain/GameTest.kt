@@ -20,6 +20,7 @@ class GameTest : DescribeSpec({
         id = 1L,
         source = GameSource.LICHESS,
         sourceGameId = "abc123",
+        ownerUsername = "Magnus",
         players = Players(
             white = Player("Magnus", 2850),
             black = Player("Hikaru", 2800),

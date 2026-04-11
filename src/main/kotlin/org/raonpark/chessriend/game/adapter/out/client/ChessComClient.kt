@@ -36,6 +36,7 @@ class ChessComClient(
         WebClient.builder()
             .baseUrl(chessComConfig.baseUrl)
             .defaultHeader("User-Agent", chessComConfig.userAgent)
+            .codecs { it.defaultCodecs().maxInMemorySize(16 * 1024 * 1024) } // 16MB (월별 아카이브가 클 수 있음)
             .build()
     }
 
@@ -183,6 +184,7 @@ class ChessComClient(
             id = null,
             source = GameSource.CHESS_COM,
             sourceGameId = node["uuid"]?.asText() ?: node["url"]?.asText() ?: "",
+            ownerUsername = "",
             players = Players(
                 white = Player(
                     name = white["username"]?.asText() ?: "Anonymous",
