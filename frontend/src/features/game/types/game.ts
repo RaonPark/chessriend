@@ -23,6 +23,27 @@ export interface OpeningResponse {
   name: string
 }
 
+export interface MoveResponse {
+  number: number
+  color: 'WHITE' | 'BLACK'
+  san: string
+}
+
+export interface GameDetailResponse {
+  id: string
+  source: string
+  sourceGameId: string
+  ownerUsername: string
+  white: PlayerResponse
+  black: PlayerResponse
+  result: string
+  timeControl: TimeControlResponse
+  opening: OpeningResponse | null
+  moves: MoveResponse[]
+  totalMoves: number
+  playedAt: string
+}
+
 export interface GameResponse {
   id: string
   source: string
