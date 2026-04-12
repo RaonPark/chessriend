@@ -16,6 +16,7 @@ interface GameViewerProps {
 export function GameViewer({ moves, ownerUsername, whiteName }: GameViewerProps) {
   const loadMoves = useBoardStore((s) => s.loadMoves)
   const currentFen = useBoardStore((s) => s.currentFen)
+  const isInVariation = useBoardStore((s) => s.isInVariation)
 
   const isOwnerBlack = ownerUsername.toLowerCase() !== whiteName.toLowerCase()
   const orientation = isOwnerBlack ? 'black' : 'white'
@@ -54,6 +55,11 @@ export function GameViewer({ moves, ownerUsername, whiteName }: GameViewerProps)
             <span className="text-xs text-amber-600 dark:text-amber-400">
               {isReady ? (isEvaluating ? '분석 중...' : `Stockfish 18 · depth ${evaluation?.depth ?? '-'}`) : 'Stockfish 로딩 중...'}
             </span>
+            {isInVariation && (
+              <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+                분석 모드
+              </span>
+            )}
           </div>
           <MoveList />
         </div>

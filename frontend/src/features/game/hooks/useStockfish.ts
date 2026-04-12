@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 export interface EvalResult {
-  cp: number | null     // centipawn (백 관점으로 정규화, 양수=백 유리)
-  mate: number | null   // mate in N (백 관점으로 정규화, 양수=백 메이트)
+  cp: number | null     // centipawn (백 관점, 양수=백 유리)
+  mate: number | null   // mate in N (백 관점, 양수=백 메이트)
   depth: number
 }
 
@@ -13,6 +13,9 @@ export function useStockfish(depth = 18) {
   const [isEvaluating, setIsEvaluating] = useState(false)
   const pendingFenRef = useRef<string | null>(null)
   const currentFenRef = useRef<string>('')
+  // 마지막 info를 누적하고, bestmove 시점에 반영
+  const latestInfoRef = useRef<EvalResult | null>(null)
+  const searchIdRef = useRef(0)
 
   useEffect(() => {
     let cancelled = false
@@ -36,27 +39,36 @@ export function useStockfish(depth = 18) {
         engine.setNnueBuffer(nnueData, 0)
 
         engine.listen = (line: string) => {
-          // info depth 18 ... score cp 35 ...
-          // UCI는 항상 side-to-move 관점으로 반환하므로 백 관점으로 정규화
-          if (line.startsWith('info') && line.includes('score')) {
-            const depthMatch = line.match(/depth (\d+)/)
-            const cpMatch = line.match(/score cp (-?\d+)/)
-            const mateMatch = line.match(/score mate (-?\d+)/)
-
-            // FEN에서 현재 차례 확인: "... w ..." = 백, "... b ..." = 흑
-            const isBlackTurn = currentFenRef.current.split(' ')[1] === 'b'
-            const flip = isBlackTurn ? -1 : 1
+          if (line.startsWith('info') && line.includes(' score ')) {
+            const depthMatch = line.match(/\bdepth (\d+)/)
+            const cpMatch = line.match(/\bscore cp (-?\d+)/)
+            const mateMatch = line.match(/\bscore mate (-?\d+)/)
 
             if (depthMatch) {
               const d = parseInt(depthMatch[1])
+              // UCI는 side-to-move 관점 → 백 관점으로 정규화
+              const fen = currentFenRef.current
+              const isBlackTurn = fen.split(' ')[1] === 'b'
+              const flip = isBlackTurn ? -1 : 1
+
               if (cpMatch) {
-                setEvaluation({ cp: parseInt(cpMatch[1]) * flip, mate: null, depth: d })
+                latestInfoRef.current = { cp: parseInt(cpMatch[1]) * flip, mate: null, depth: d }
               } else if (mateMatch) {
-                setEvaluation({ cp: null, mate: parseInt(mateMatch[1]) * flip, depth: d })
+                latestInfoRef.current = { cp: null, mate: parseInt(mateMatch[1]) * flip, depth: d }
+              }
+
+              // depth 진행 중에도 UI 업데이트 (최신 depth만)
+              if (latestInfoRef.current) {
+                setEvaluation({ ...latestInfoRef.current })
               }
             }
           }
+
           if (line.startsWith('bestmove')) {
+            // 최종 결과 확정
+            if (latestInfoRef.current) {
+              setEvaluation({ ...latestInfoRef.current })
+            }
             setIsEvaluating(false)
           }
         }
@@ -71,6 +83,7 @@ export function useStockfish(depth = 18) {
           const fen = pendingFenRef.current
           currentFenRef.current = fen
           pendingFenRef.current = null
+          latestInfoRef.current = null
           engine.uci('ucinewgame')
           engine.uci(`position fen ${fen}`)
           engine.uci(`go depth ${depth}`)
@@ -85,13 +98,15 @@ export function useStockfish(depth = 18) {
 
     return () => {
       cancelled = true
-      // 엔진 종료
       engineRef.current?.uci('quit')
     }
   }, [depth])
 
   const evaluate = useCallback((fen: string) => {
     currentFenRef.current = fen
+    latestInfoRef.current = null
+    searchIdRef.current++
+
     const engine = engineRef.current
     if (!engine) {
       pendingFenRef.current = fen
