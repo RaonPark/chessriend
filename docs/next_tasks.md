@@ -45,19 +45,17 @@
 
 ## 3. 프론트엔드
 
-### 3-1. 게임 Import UI
-- SSE EventSource 연동
-- import 진행 상태 실시간 표시
-- 게임 목록 렌더링
+### ~~3-1. 게임 Import UI~~ ✅ 완료
+- SSE EventSource 연동, import 진행 상태 실시간 표시, 게임 목록 렌더링
 
-### 3-2. 게임 뷰어
-- react-chessboard + chess.js 기반 체스보드
-- 수 이동 (앞/뒤 네비게이션)
-- 오프닝 정보 표시
+### ~~3-2. 게임 뷰어~~ ✅ 완료 (2026-04-12)
+- react-chessboard + chess.js 체스보드, 수 네비게이션, Stockfish 18 WASM 실시간 평가
 
-### 3-3. 분석/리뷰 UI
-- Stockfish 평가 그래프
-- Blunder/Mistake 하이라이트
+### 3-3. 인터랙티브 분석
+- 기물 드래그하여 자유 이동 (분석 모드)
+- 원래 기보로 복귀 기능
+- Blunder/Mistake/Inaccuracy 분류
+- 전체 게임 평가 그래프
 - 수 단위 메모 입력/수정
 
 ---
