@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Stockfish NNUE network files (large binaries, download separately)
+*.nnue
