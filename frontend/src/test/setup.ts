@@ -1,0 +1,22 @@
+import '@testing-library/jest-dom/vitest'
+import { cleanup } from '@testing-library/react'
+import { afterAll, afterEach, beforeAll } from 'vitest'
+import { server } from './mocks/server'
+
+// jsdom does not implement HTMLDialogElement methods
+if (typeof HTMLDialogElement !== 'undefined') {
+  HTMLDialogElement.prototype.showModal ??= function (this: HTMLDialogElement) {
+    this.setAttribute('open', '')
+  }
+  HTMLDialogElement.prototype.close ??= function (this: HTMLDialogElement) {
+    this.removeAttribute('open')
+    this.dispatchEvent(new Event('close'))
+  }
+}
+
+beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
+afterEach(() => {
+  cleanup()
+  server.resetHandlers()
+})
+afterAll(() => server.close())
