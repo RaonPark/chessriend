@@ -45,5 +45,13 @@ gradle.properties
 ### Environment ###
 .env
 
+### Node ###
+node_modules/
+package-lock.json
+coverage/
+
+### Frontend build ###
+frontend/dist/
+
 ### Claude Code ###
 .claude/settings.json
