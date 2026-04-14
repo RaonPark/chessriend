@@ -90,6 +90,46 @@ curl -sL -o nn-4ca89e4b3abf.nnue "https://tests.stockfishchess.org/api/nn/nn-4ca
 ```
 
 ### TODO
-- [ ] 인터랙티브 분석 (기물 이동 + 원래 기보로 복귀)
+- [x] 인터랙티브 분석 (기물 이동 + 원래 기보로 복귀)
 - [ ] Blunder/Mistake/Inaccuracy 분류
 - [ ] 전체 게임 평가 그래프
+
+## 2026-04-12~15: 인터랙티브 분석 + Annotation 백엔드
+
+### 무엇을
+- 체스보드에서 기물 드래그 이동 → 변형선(variation) 분기
+- 원래 기보로 복귀 (Esc, 버튼, ← 자동 복귀)
+- 변형선을 MoveList에서 분기 지점 바로 아래에 인라인 표시
+- `GameAnnotation` 도메인 + DB(JSONB) + CRUD API (`PUT /api/games/{id}/annotations`)
+- 수 단위 메모 + 변형선 단위 메모 데이터 구조
+
+### 왜
+- 분석 시 "여기서 다른 수를 뒀으면 어땠을까" 탐색이 체스 리뷰의 핵심
+- 변형선과 메모를 저장해야 나중에 복습할 수 있음
+
+### 변경 파일
+| 파일 | 설명 |
+|------|------|
+| `game/domain/Annotation.kt` | `GameAnnotation`, `Variation` 도메인 객체 |
+| `game/domain/Game.kt` | `annotations: GameAnnotation` 필드 추가 |
+| `V3__add_annotations.sql` | `annotations` JSONB 컬럼 추가 |
+| `GameEntity.kt` | `annotations: Json` 필드 |
+| `GamePersistenceAdapter.kt` | annotations JSONB 직렬화/역직렬화, `updateAnnotations` |
+| `GameRepository.kt` | `updateAnnotations` 메서드 추가 |
+| `GetGameUseCase.kt` | `updateAnnotations` 메서드 추가 |
+| `GetGameService.kt` | `updateAnnotations` 구현 |
+| `GameController.kt` | `PUT /api/games/{id}/annotations` 엔드포인트 |
+| `GameResponse.kt` | `AnnotationRequest/Response`, `VariationRequest/Response` DTO |
+| `boardStore.ts` | mainline + variation 분리, `makeMove`, `exitVariation` |
+| `GameBoard.tsx` | `allowDragging: true`, `onPieceDrop` 핸들링 |
+| `MoveList.tsx` | 변형선 인라인 표시 (분기 지점 바로 아래) |
+| `BoardControls.tsx` | ↑↓ 단축키, Esc 변형선 복귀 |
+
+### 의사결정 기록
+| 결정 | 선택 | 이유 |
+|------|------|------|
+| Annotation 이름 | `GameAnnotation` | `Annotation`은 `kotlin.Annotation`과 충돌 |
+| 저장 구조 | Game 도메인에 annotations JSONB 추가 | 별도 Review 도메인보다 간단, Game과 항상 함께 로드 |
+| 메모 단위 | 수 단위 + 변형선 단위 모두 지원 | 사용자가 원하는 곳에 자유롭게 메모 |
+| 변형선 표시 | MoveList 분기 지점 바로 아래 인라인 | 별도 영역보다 기보 흐름에서 자연스럽게 보임 |
+| 단축키 | ←→ (수 이동), ↑↓ (처음/끝), Esc (변형선 복귀) | 방향키가 직관적 |

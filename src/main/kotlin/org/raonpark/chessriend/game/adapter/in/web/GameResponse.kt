@@ -76,6 +76,7 @@ data class GameDetailResponse(
     val timeControl: TimeControlResponse,
     val opening: OpeningResponse?,
     val moves: List<MoveResponse>,
+    val annotations: AnnotationResponse,
     val totalMoves: Int,
     val playedAt: Instant,
 ) {
@@ -94,9 +95,56 @@ data class GameDetailResponse(
             ),
             opening = game.opening?.let { OpeningResponse(it.eco, it.name) },
             moves = game.moves.map { MoveResponse.from(it) },
+            annotations = AnnotationResponse.from(game.annotations),
             totalMoves = game.totalMoves,
             playedAt = game.playedAt,
         )
+    }
+}
+
+data class AnnotationRequest(
+    val moveComments: Map<String, String> = emptyMap(),
+    val variations: List<VariationRequest> = emptyList(),
+) {
+    fun toDomain(): GameAnnotation = GameAnnotation(
+        moveComments = moveComments,
+        variations = variations.map { it.toDomain() },
+    )
+}
+
+data class VariationRequest(
+    val startMoveIndex: Int,
+    val moves: List<String>,
+    val comment: String = "",
+) {
+    fun toDomain(): org.raonpark.chessriend.game.domain.Variation =
+        org.raonpark.chessriend.game.domain.Variation(
+            startMoveIndex = startMoveIndex,
+            moves = moves,
+            comment = comment,
+        )
+}
+
+data class AnnotationResponse(
+    val moveComments: Map<String, String>,
+    val variations: List<VariationResponse>,
+) {
+    companion object {
+        fun from(annotation: GameAnnotation): AnnotationResponse = AnnotationResponse(
+            moveComments = annotation.moveComments,
+            variations = annotation.variations.map { VariationResponse.from(it) },
+        )
+    }
+}
+
+data class VariationResponse(
+    val startMoveIndex: Int,
+    val moves: List<String>,
+    val comment: String,
+) {
+    companion object {
+        fun from(v: org.raonpark.chessriend.game.domain.Variation): VariationResponse =
+            VariationResponse(startMoveIndex = v.startMoveIndex, moves = v.moves, comment = v.comment)
     }
 }
 

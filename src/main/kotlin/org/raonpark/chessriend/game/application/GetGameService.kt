@@ -1,6 +1,7 @@
 package org.raonpark.chessriend.game.application
 
 import kotlinx.coroutines.flow.toList
+import org.raonpark.chessriend.game.domain.GameAnnotation
 import org.raonpark.chessriend.game.domain.Game
 import org.raonpark.chessriend.game.domain.GameSource
 import org.raonpark.chessriend.game.domain.TimeCategory
@@ -29,6 +30,11 @@ class GetGameService(
 
     override suspend fun deleteAllGames() {
         gameRepository.deleteAll()
+    }
+
+    override suspend fun updateAnnotations(id: Long, annotations: GameAnnotation) {
+        gameRepository.findById(id) ?: throw GameNotFoundException(id)
+        gameRepository.updateAnnotations(id, annotations)
     }
 
     override suspend fun getGames(

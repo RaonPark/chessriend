@@ -44,6 +44,14 @@ class GameController(
         return GameDetailResponse.from(game)
     }
 
+    @PutMapping("/{id}/annotations")
+    suspend fun updateAnnotations(
+        @PathVariable id: Long,
+        @RequestBody request: AnnotationRequest,
+    ) {
+        getGameUseCase.updateAnnotations(id, request.toDomain())
+    }
+
     @DeleteMapping("/{id}")
     suspend fun deleteGame(@PathVariable id: Long) {
         getGameUseCase.deleteGame(id)

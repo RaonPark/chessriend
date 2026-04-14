@@ -27,6 +27,7 @@ data class GameEntity(
     val pgn: String,
     val playedAt: Instant,
     val importedAt: Instant,
+    val annotations: Json,
 ) : Persistable<Long> {
     @Transient
     var isNewEntity: Boolean = true
