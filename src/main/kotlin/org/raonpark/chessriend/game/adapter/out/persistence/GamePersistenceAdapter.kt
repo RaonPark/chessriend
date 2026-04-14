@@ -4,6 +4,7 @@ import io.r2dbc.postgresql.codec.Json
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.reactive.asFlow
+import kotlinx.coroutines.reactive.awaitFirstOrNull
 import kotlinx.coroutines.reactor.awaitSingle
 import tools.jackson.databind.ObjectMapper
 import org.raonpark.chessriend.game.domain.*
@@ -47,6 +48,15 @@ class GamePersistenceAdapter(
         repository.deleteAll()
     }
 
+    override suspend fun updateAnnotations(id: Long, annotations: GameAnnotation) {
+        val json = objectMapper.writeValueAsString(annotations)
+        databaseClient.sql("UPDATE games SET annotations = :annotations::jsonb WHERE id = :id")
+            .bind("annotations", json)
+            .bind("id", id)
+            .then()
+            .awaitFirstOrNull()
+    }
+
     override fun findAll(offset: Int, limit: Int, source: GameSource?, timeCategory: TimeCategory?): Flow<Game> {
         val conditions = mutableListOf<String>()
         val bindings = mutableMapOf<String, Any>()
@@ -87,6 +97,7 @@ class GamePersistenceAdapter(
                 pgn = row.get("pgn", String::class.java)!!,
                 playedAt = row.get("played_at", java.time.Instant::class.java)!!,
                 importedAt = row.get("imported_at", java.time.Instant::class.java)!!,
+                annotations = row.get("annotations", Json::class.java) ?: Json.of("""{"moveComments":{},"variations":[]}"""),
             ).also { it.isNewEntity = false }
         }.all().asFlow().map { toDomain(it) }
     }
@@ -135,6 +146,7 @@ class GamePersistenceAdapter(
             pgn = game.pgn,
             playedAt = game.playedAt,
             importedAt = game.importedAt,
+            annotations = Json.of(objectMapper.writeValueAsString(game.annotations)),
         )
         entity.isNewEntity = game.id == null
         return entity
@@ -162,6 +174,7 @@ class GamePersistenceAdapter(
         pgn = entity.pgn,
         playedAt = entity.playedAt,
         importedAt = entity.importedAt,
+        annotations = parseAnnotations(entity.annotations.asString()),
     )
 
     private fun Move.toMap(): Map<String, Any?> = mapOf(
@@ -186,5 +199,19 @@ class GamePersistenceAdapter(
                 comment = map["comment"] as? String,
             )
         }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun parseAnnotations(json: String): GameAnnotation {
+        val map = objectMapper.readValue(json, Map::class.java) as Map<String, Any?>
+        val moveComments = (map["moveComments"] as? Map<String, String>) ?: emptyMap()
+        val variations = (map["variations"] as? List<Map<String, Any?>>)?.map { v ->
+            Variation(
+                startMoveIndex = (v["startMoveIndex"] as Number).toInt(),
+                moves = (v["moves"] as List<String>),
+                comment = v["comment"] as? String ?: "",
+            )
+        } ?: emptyList()
+        return GameAnnotation(moveComments = moveComments, variations = variations)
     }
 }

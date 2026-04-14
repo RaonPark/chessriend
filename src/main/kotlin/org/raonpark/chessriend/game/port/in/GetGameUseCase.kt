@@ -1,6 +1,7 @@
 package org.raonpark.chessriend.game.port.`in`
 
 import org.raonpark.chessriend.game.domain.Game
+import org.raonpark.chessriend.game.domain.GameAnnotation
 import org.raonpark.chessriend.game.domain.GameSource
 import org.raonpark.chessriend.game.domain.TimeCategory
 import org.raonpark.chessriend.shared.domain.PagedResult
@@ -11,4 +12,5 @@ interface GetGameUseCase {
     suspend fun deleteGame(id: Long)
     suspend fun deleteGames(ids: List<Long>)
     suspend fun deleteAllGames()
+    suspend fun updateAnnotations(id: Long, annotations: GameAnnotation)
 }
