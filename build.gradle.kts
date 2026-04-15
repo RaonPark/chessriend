@@ -26,6 +26,9 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
 
+    // ── Monitoring (Prometheus) ──
+    runtimeOnly("io.micrometer:micrometer-registry-prometheus")
+
     // ── Database (R2DBC + Flyway) ──
     implementation("org.springframework.boot:spring-boot-starter-data-r2dbc")
     implementation("org.postgresql:r2dbc-postgresql")
