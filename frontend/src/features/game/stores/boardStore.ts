@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { Chess } from 'chess.js'
-import type { AnnotationResponse, MoveResponse, VariationResponse } from '../types/game'
+import type { AnnotationResponse, GameAnalysis, MoveClassification, MoveResponse, VariationResponse } from '../types/game'
 
 interface BoardState {
   // 원래 기보 (mainline)
@@ -24,6 +24,10 @@ interface BoardState {
   annotationsDirty: boolean    // 변경 사항 유무
   activeVariationIndex: number // 현재 진입한 저장된 변형선의 인덱스 (-1 = 새 변형선/메인라인)
 
+  // Game analysis (Blunder/Mistake/Inaccuracy 분류)
+  analysis: GameAnalysis | null
+  classificationByMove: Record<number, MoveClassification>
+
   // Actions
   loadMoves: (moves: MoveResponse[]) => void
   loadAnnotations: (annotations: AnnotationResponse) => void
@@ -40,7 +44,9 @@ interface BoardState {
   saveCurrentVariation: (comment?: string) => void
   deleteSavedVariation: (index: number) => void
   enterSavedVariation: (variation: VariationResponse, index: number) => void
-  getAnnotationsSnapshot: () => { moveComments: Record<string, string>; variations: VariationResponse[] }
+  setAnalysis: (analysis: GameAnalysis) => void
+  clearAnalysis: () => void
+  getAnnotationsSnapshot: () => { moveComments: Record<string, string>; variations: VariationResponse[]; analysis?: GameAnalysis }
   markAnnotationsClean: () => void
 }
 
@@ -72,6 +78,9 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   annotationsDirty: false,
   activeVariationIndex: -1,
 
+  analysis: null,
+  classificationByMove: {},
+
   loadMoves: (moves) => {
     const fens = computeFens(moves)
     set({
@@ -88,13 +97,25 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       savedVariations: [],
       annotationsDirty: false,
       activeVariationIndex: -1,
+      analysis: null,
+      classificationByMove: {},
     })
   },
 
   loadAnnotations: (annotations) => {
+    const classificationByMove: Record<number, MoveClassification> = {}
+    if (annotations.analysis) {
+      for (const ev of annotations.analysis.evaluations) {
+        if (ev.classification) {
+          classificationByMove[ev.moveIndex] = ev.classification
+        }
+      }
+    }
     set({
       moveComments: { ...annotations.moveComments },
       savedVariations: [...annotations.variations],
+      analysis: annotations.analysis ?? null,
+      classificationByMove,
       annotationsDirty: false,
     })
   },
@@ -300,9 +321,27 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     })
   },
 
+  setAnalysis: (analysis) => {
+    const classificationByMove: Record<number, MoveClassification> = {}
+    for (const ev of analysis.evaluations) {
+      if (ev.classification) {
+        classificationByMove[ev.moveIndex] = ev.classification
+      }
+    }
+    set({ analysis, classificationByMove, annotationsDirty: true })
+  },
+
+  clearAnalysis: () => {
+    set({ analysis: null, classificationByMove: {}, annotationsDirty: true })
+  },
+
   getAnnotationsSnapshot: () => {
-    const { moveComments, savedVariations } = get()
-    return { moveComments: { ...moveComments }, variations: [...savedVariations] }
+    const { moveComments, savedVariations, analysis } = get()
+    return {
+      moveComments: { ...moveComments },
+      variations: [...savedVariations],
+      ...(analysis ? { analysis } : {}),
+    }
   },
 
   markAnnotationsClean: () => {

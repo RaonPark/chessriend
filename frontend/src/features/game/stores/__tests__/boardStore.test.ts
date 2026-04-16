@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useBoardStore } from '../boardStore'
-import type { AnnotationResponse, MoveResponse, VariationResponse } from '../../types/game'
+import type { AnnotationResponse, GameAnalysis, MoveResponse, VariationResponse } from '../../types/game'
 
 const SAMPLE_MOVES: MoveResponse[] = [
   { number: 1, color: 'WHITE', san: 'e4' },
@@ -231,6 +231,81 @@ describe('boardStore — Annotation', () => {
 
       getState().markAnnotationsClean()
       expect(getState().annotationsDirty).toBe(false)
+    })
+  })
+
+  describe('analysis (Blunder/Mistake/Inaccuracy)', () => {
+    const sampleAnalysis: GameAnalysis = {
+      evaluations: [
+        { moveIndex: 0, evalBefore: { cp: 20, mate: null }, evalAfter: { cp: 15, mate: null }, cpLoss: 5, classification: null },
+        { moveIndex: 1, evalBefore: { cp: 15, mate: null }, evalAfter: { cp: 50, mate: null }, cpLoss: 35, classification: null },
+        { moveIndex: 2, evalBefore: { cp: 50, mate: null }, evalAfter: { cp: -100, mate: null }, cpLoss: 150, classification: 'mistake' },
+        { moveIndex: 3, evalBefore: { cp: -100, mate: null }, evalAfter: { cp: 200, mate: null }, cpLoss: 300, classification: 'blunder' },
+      ],
+      depth: 16,
+      analyzedAt: '2026-04-17T00:00:00.000Z',
+    }
+
+    it('setAnalysis가 analysis와 classificationByMove를 설정한다', () => {
+      getState().setAnalysis(sampleAnalysis)
+
+      expect(getState().analysis).toBe(sampleAnalysis)
+      expect(getState().classificationByMove[2]).toBe('mistake')
+      expect(getState().classificationByMove[3]).toBe('blunder')
+      expect(getState().classificationByMove[0]).toBeUndefined()
+      expect(getState().annotationsDirty).toBe(true)
+    })
+
+    it('clearAnalysis가 analysis를 초기화한다', () => {
+      getState().setAnalysis(sampleAnalysis)
+      getState().clearAnalysis()
+
+      expect(getState().analysis).toBeNull()
+      expect(getState().classificationByMove).toEqual({})
+      expect(getState().annotationsDirty).toBe(true)
+    })
+
+    it('loadAnnotations가 저장된 analysis를 복원한다', () => {
+      const annotationsWithAnalysis: AnnotationResponse = {
+        ...SAMPLE_ANNOTATIONS,
+        analysis: sampleAnalysis,
+      }
+
+      getState().loadAnnotations(annotationsWithAnalysis)
+
+      expect(getState().analysis).toEqual(sampleAnalysis)
+      expect(getState().classificationByMove[2]).toBe('mistake')
+      expect(getState().classificationByMove[3]).toBe('blunder')
+      expect(getState().annotationsDirty).toBe(false)
+    })
+
+    it('loadAnnotations에 analysis가 없으면 null로 설정한다', () => {
+      getState().setAnalysis(sampleAnalysis)
+      getState().loadAnnotations(SAMPLE_ANNOTATIONS)
+
+      expect(getState().analysis).toBeNull()
+      expect(getState().classificationByMove).toEqual({})
+    })
+
+    it('getAnnotationsSnapshot에 analysis가 포함된다', () => {
+      getState().setAnalysis(sampleAnalysis)
+      const snapshot = getState().getAnnotationsSnapshot()
+
+      expect(snapshot.analysis).toBe(sampleAnalysis)
+    })
+
+    it('analysis가 없으면 snapshot에 analysis가 없다', () => {
+      const snapshot = getState().getAnnotationsSnapshot()
+
+      expect(snapshot.analysis).toBeUndefined()
+    })
+
+    it('loadMoves가 analysis를 초기화한다', () => {
+      getState().setAnalysis(sampleAnalysis)
+      getState().loadMoves(SAMPLE_MOVES)
+
+      expect(getState().analysis).toBeNull()
+      expect(getState().classificationByMove).toEqual({})
     })
   })
 

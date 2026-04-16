@@ -20,22 +20,15 @@
 | 10 | 인터랙티브 분석 (기물 이동 + 변형선 분기/복귀) | 2026-04-12 |
 | 11 | Annotation 백엔드 (GameAnnotation 도메인 + DB + CRUD API) | 2026-04-15 |
 | 12 | 프론트엔드: 메모 입력 UI + 변형선 저장 | 2026-04-16 |
+| 13 | Blunder/Mistake/Inaccuracy 분류 (배치 Stockfish 분석 + MoveList 하이라이트 + 요약) | 2026-04-17 |
 
 ---
 
 ## 다음 작업
 
-### 1. Blunder/Mistake/Inaccuracy 분류
-- **해야할 것**:
-  - 전체 게임을 Stockfish로 분석하여 각 수의 평가치 차이 계산
-  - centipawn loss 기준으로 분류:
-    - Inaccuracy: 50~100cp loss
-    - Mistake: 100~200cp loss
-    - Blunder: 200cp+ loss
-  - MoveList에서 해당 수를 색상으로 하이라이트 (노랑/주황/빨강)
-  - 게임 요약 (Blunder x개, Mistake x개, Inaccuracy x개)
+### 1. ~~Blunder/Mistake/Inaccuracy 분류~~ ✅ 완료 (2026-04-17)
 
-### 3. 전체 게임 평가 그래프
+### 2. 전체 게임 평가 그래프
 - **해야할 것**:
   - 전 수에 대한 Stockfish 평가치 그래프 (lichess 스타일)
   - X축: 수 번호, Y축: centipawn (백 관점)
@@ -66,8 +59,8 @@
 
 ## 권장 작업 순서
 
-1. **Blunder/Mistake 분류** — Stockfish 평가 인프라 이미 있음, 분류 로직만 추가
-2. **전체 게임 평가 그래프** — 위 1번의 데이터를 시각화
+1. ~~Blunder/Mistake 분류~~ ✅
+2. **전체 게임 평가 그래프** — Blunder 분류 데이터를 시각화
 3. **Review 확장 (노트, 태그)** — 리뷰 경험 강화
 4. **홈/검색/모바일** — 사용성 개선
 5. **인프라 (OpenAPI, 인증)** — 배포 준비

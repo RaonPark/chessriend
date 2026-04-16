@@ -55,21 +55,226 @@ game/
 
 ## Code Conventions
 
-- Kotlin: 공식 코딩 컨벤션 준수, coroutines 우선
-- Port/UseCase: suspend fun + Flow (순수 코루틴, Spring 의존 없음)
-- Adapter(DB): CoroutineCrudRepository + CoroutineSortingRepository 사용 (R2DBC 코루틴 지원, Spring Data 3.x+에서 분리됨)
-- React: Functional components only, hooks 패턴
+### 공통 원칙
+
+- 한국어 주석 허용, 코드(변수명, 함수명, 클래스명)는 영어
+- 최신 스택의 공식 권장 패턴 준수, deprecated API 사용 금지
+- 깔끔한 코드 우선: 보일러플레이트·수동 캐스팅·불필요한 래핑 최소화
+- 라이브러리/프레임워크 기능 적극 활용 (직접 구현 전에 제공 기능 확인)
 - 모든 비즈니스 로직은 테스트 필수
-- 한국어 주석 허용, 코드는 영어
 
-## Code Style Patterns
+---
 
-- **Suspend functions**: Controller, Service 모두 `suspend fun` 사용
-- **Flow for streaming**: 스트리밍 응답(lichess NDJSON 등)은 `Flow<T>` 사용
-- **Immutable data classes**: 엔티티, 값 객체 모두 `data class` + `val`
-- **Companion objects**: 상수, 팩토리 메서드에 활용
-- **Extension functions**: 변환 로직에 Kotlin idiomatic 패턴 사용
-- **Explicit null handling**: nullable 타입(`?`)과 null-safe 연산자 사용
+### Kotlin 2.x 공식 패턴
+
+- **Immutable 우선**: `val` 기본, `var`는 명확한 이유가 있을 때만
+- **Trailing lambda**: 마지막 파라미터가 람다면 괄호 밖으로, 유일한 인자면 괄호 생략
+- **Scope functions**: `?.let {}` (null-safe 체이닝), `apply {}` (객체 설정), `also {}` (사이드이펙트)
+- **Null safety**: `?.let {}` > `if (x != null)`, `requireNotNull()` > `!!`, elvis(`?:`) 적극 활용
+- **Sealed class/interface**: exhaustive `when` 분기 보장, `else` 브랜치 최소화
+- **Named arguments**: 같은 타입 파라미터 2개 이상이면 반드시 사용
+- **`data object`**: toString 필요한 싱글턴에 사용 (Kotlin 2.x)
+- **Visibility**: `internal` > `public` 기본, 최소 공개 원칙
+
+```kotlin
+// ✅ Kotlin idiomatic
+user?.let { save(it) }
+requireNotNull(id) { "ID required" }
+list.filter { it > 0 }.map { it.toString() }
+
+// ❌ 금지
+if (user != null) save(user)  // let 체이닝 가능한 경우
+id!!  // requireNotNull 대신 사용
+```
+
+### Kotlin Coroutines 패턴
+
+- **Structured concurrency**: 모든 코루틴은 `CoroutineScope`에 속해야 함. `GlobalScope` 금지
+- **`suspend fun` 기본**: 순차 비동기는 suspend fun, 병렬은 `coroutineScope { async {} }`
+- **`Flow<T>` for streams**: cold stream 기본, hot 필요시 `.stateIn()` / `.shareIn()`
+- **Blocking 호출**: `withContext(Dispatchers.IO) { blockingCall() }` 필수
+- **Cancellation 협력**: 장시간 루프에서 `ensureActive()` 체크
+- **`CancellationException`**: catch 하면 반드시 rethrow
+
+```kotlin
+// ✅ 병렬 실행
+coroutineScope {
+    val a = async { fetchA() }
+    val b = async { fetchB() }
+    Result(a.await(), b.await())
+}
+
+// ❌ 금지
+GlobalScope.launch { ... }
+async { fetchA() }.await()  // 바로 await하면 그냥 suspend fun 사용
+```
+
+---
+
+### Spring WebFlux + Coroutines (Spring Boot 4.x)
+
+- **Controller**: `suspend fun`으로 직접 반환, `Mono<T>` / `ResponseEntity` 래핑 불필요
+- **Streaming**: `Flow<T>` 반환 → Spring이 자동으로 `Flux` 변환
+- **Repository**: `CoroutineCrudRepository` 사용 (not `ReactiveCrudRepository`)
+- **WebClient**: `awaitBody<T>()`, `bodyToFlow<T>()` 코루틴 확장 함수 사용, `.block()` 금지
+- **DI**: 생성자 주입만 사용, `@Autowired` 필드 주입 금지, 인터페이스(Port) 주입
+- **예외**: Service에서 커스텀 예외 throw → `@RestControllerAdvice`에서 중앙 처리
+- **`@Transactional`**: Spring 7에서 suspend fun에 네이티브 지원
+
+```kotlin
+// ✅ 코루틴 컨트롤러
+@GetMapping("/{id}")
+suspend fun getGame(@PathVariable id: Long): GameDetailResponse =
+    GameDetailResponse.from(getGameUseCase.getGame(id))
+
+// ❌ 금지 패턴
+fun getGame(id: Long): Mono<GameDetailResponse>  // Mono 래핑
+fun getGame(id: Long): ResponseEntity<GameDetailResponse>  // Service에서 ResponseEntity
+```
+
+#### Jackson / JSON 직렬화
+
+```kotlin
+// ✅ ObjectMapper 타입 변환 사용
+objectMapper.readValue(json, GameAnnotation::class.java)
+
+// ✅ 유동적 외부 API 응답만 JsonNode 사용
+val node = objectMapper.readTree(body)
+node["archives"]?.forEach { add(it.asText()) }
+
+// ❌ 수동 캐스팅 금지
+val map = objectMapper.readValue(json, Map::class.java) as Map<String, Any?>
+```
+
+#### DTO 매핑 규칙
+
+```kotlin
+// Domain → DTO: companion object { fun from() }
+data class GameResponse(...) {
+    companion object {
+        fun from(game: Game): GameResponse = GameResponse(...)
+    }
+}
+
+// DTO → Domain: fun toDomain()
+data class AnnotationRequest(...) {
+    fun toDomain(): GameAnnotation = GameAnnotation(...)
+}
+```
+
+#### R2DBC 규칙
+
+- 단순 CRUD → `CoroutineCrudRepository` 메서드
+- 복잡한 쿼리(동적 WHERE, 페이지네이션) → `DatabaseClient.sql()` + named bind
+- JSONB 컬럼 → `io.r2dbc.postgresql.codec.Json.of()`
+
+---
+
+### React 19 공식 패턴
+
+- **Functional components only**, class component 금지
+- **`ref` as prop**: `forwardRef()` deprecated → `ref`를 일반 prop으로 전달
+- **`use()` API**: 조건부 호출 가능한 promise/context 읽기 (Suspense와 함께)
+- **`useActionState`**: 폼 제출 + 비동기 상태 + pending을 한번에 처리
+- **`useOptimistic`**: 비동기 작업 중 낙관적 UI 업데이트
+- **React Compiler (v1.0)**: 자동 메모이제이션 → 수동 `useMemo`/`useCallback`/`React.memo` 최소화
+- **Suspense 경계**: 데이터 로딩은 `<Suspense fallback={...}>` 활용
+- **Context 직접 렌더링**: `<Context>` 가능, `<Context.Provider>` 불필요
+
+```tsx
+// ✅ React 19 패턴
+function Input({ ref, ...props }) {  // forwardRef 불필요
+  return <input ref={ref} {...props} />
+}
+
+// ✅ ref cleanup
+<div ref={(node) => { setup(node); return () => cleanup(node); }} />
+
+// ❌ deprecated
+const Input = forwardRef((props, ref) => ...)
+```
+
+#### 상태 관리 규칙
+
+- **서버 상태**: React Query (`useQuery`, `useMutation`)
+- **클라이언트 상태**: Zustand (`create` + 개별 selector)
+- **Query key factory**: `gameKeys.detail(id)` 패턴으로 중앙 관리
+- **캐시 무효화**: mutation `onSuccess`에서 관련 query key invalidate
+
+```typescript
+// ✅ 개별 selector (불필요한 리렌더 방지)
+const currentFen = useBoardStore((s) => s.currentFen)
+
+// ❌ 전체 store 구독 금지
+const store = useBoardStore()
+```
+
+#### 컴포넌트 패턴
+
+```tsx
+// ✅ 로딩/에러/빈 상태 항상 처리
+if (isLoading) return <LoadingSpinner />
+if (error) return <ErrorMessage message="..." onRetry={() => refetch()} />
+
+// ✅ mutation pending 상태 반영
+<button disabled={mutation.isPending}>
+  {mutation.isPending ? '저장 중...' : '저장'}
+</button>
+```
+
+---
+
+### TypeScript 6.x 공식 패턴
+
+- **`import type`**: 타입 전용 import는 반드시 `import type` 사용 (`verbatimModuleSyntax`)
+- **`unknown` > `any`**: 불확실한 타입은 `unknown` + 타입 가드로 좁히기
+- **`satisfies`**: 타입 호환성 검증 without 타입 확장 (`as` 대신 사용)
+- **Discriminated union**: 패턴 매칭용 유니온 타입, exhaustive switch
+- **Interface vs Type**: 객체 형태 → `interface`, union/literal → `type`
+- **Strict mode**: `strict: true` + `noUncheckedIndexedAccess` 권장
+
+```typescript
+// ✅ satisfies로 타입 검증 (타입 추론 유지)
+const config = { port: 3000 } satisfies ServerConfig
+
+// ✅ discriminated union
+type Result = { status: 'ok'; data: T } | { status: 'error'; message: string }
+
+// ❌ 금지
+const config = { port: 3000 } as ServerConfig  // 타입 단언
+let data: any  // any 사용
+```
+
+---
+
+### Tailwind CSS / UI 규칙
+
+- **Chess amber 테마**: primary 색상은 amber 계열 (amber-600~900)
+- **Dark mode 필수**: 모든 인터랙티브 요소에 `dark:` variant 포함
+- **클래스 순서**: display → sizing → spacing → border → colors → shadow → transition → dark:
+- **UI 라이브러리 금지**: 네이티브 HTML + Tailwind 커스텀 컴포넌트
+- **의미론적 색상 체계**:
+  - Primary: amber (체스 테마)
+  - Analysis: indigo (변형선, 분석 모드)
+  - Saved: emerald (저장된 변형선)
+  - Error/Danger: red
+  - Classification: red (블런더) / orange (미스테이크) / yellow (부정확)
+
+### Import 순서
+
+```typescript
+// Frontend
+// 1. React / 외부 라이브러리
+// 2. Shared (@ alias)
+// 3. Feature 내부 (상대 경로)
+// 4. Type imports
+
+// Backend
+// 1. kotlinx (coroutines 등)
+// 2. Spring framework
+// 3. 프로젝트 도메인 (org.raonpark)
+// 4. Java / 외부 라이브러리
+```
 
 ## Exception Handling
 

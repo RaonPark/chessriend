@@ -29,6 +29,28 @@ export interface MoveResponse {
   san: string
 }
 
+// Analysis / Classification types
+export type MoveClassification = 'blunder' | 'mistake' | 'inaccuracy'
+
+export interface EvalScore {
+  cp: number | null
+  mate: number | null
+}
+
+export interface MoveEvaluation {
+  moveIndex: number
+  evalBefore: EvalScore
+  evalAfter: EvalScore
+  cpLoss: number
+  classification: MoveClassification | null
+}
+
+export interface GameAnalysis {
+  evaluations: MoveEvaluation[]
+  depth: number
+  analyzedAt: string
+}
+
 export interface VariationResponse {
   startMoveIndex: number
   moves: string[]
@@ -39,11 +61,13 @@ export interface VariationResponse {
 export interface AnnotationResponse {
   moveComments: Record<string, string>
   variations: VariationResponse[]
+  analysis?: GameAnalysis
 }
 
 export interface AnnotationRequest {
   moveComments: Record<string, string>
   variations: VariationResponse[]
+  analysis?: GameAnalysis
 }
 
 export interface GameDetailResponse {

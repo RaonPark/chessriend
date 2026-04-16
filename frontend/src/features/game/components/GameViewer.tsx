@@ -1,10 +1,13 @@
 import { useEffect, useCallback } from 'react'
 import { useBoardStore } from '../stores/boardStore'
 import { useStockfish } from '../hooks/useStockfish'
+import { useBatchAnalysis } from '../hooks/useBatchAnalysis'
 import { GameBoard } from './GameBoard'
 import { MoveList } from './MoveList'
 import { BoardControls } from './BoardControls'
 import { EvalBar } from './EvalBar'
+import { AnalysisProgress } from './AnalysisProgress'
+import { AnalysisSummary } from './AnalysisSummary'
 import type { AnnotationResponse, MoveResponse } from '../types/game'
 
 interface GameViewerProps {
@@ -23,18 +26,39 @@ export function GameViewer({ moves, annotations, ownerUsername, whiteName, onSav
   const isInVariation = useBoardStore((s) => s.isInVariation)
   const annotationsDirty = useBoardStore((s) => s.annotationsDirty)
 
+  const mainlineFens = useBoardStore((s) => s.mainlineFens)
+  const analysis = useBoardStore((s) => s.analysis)
+  const setAnalysis = useBoardStore((s) => s.setAnalysis)
+
   const isOwnerBlack = ownerUsername.toLowerCase() !== whiteName.toLowerCase()
   const orientation = isOwnerBlack ? 'black' : 'white'
 
   const { isReady, evaluation, isEvaluating, evaluate } = useStockfish(18)
+  const batch = useBatchAnalysis()
+
+  // 배치 분석 완료 시 스토어에 반영
+  useEffect(() => {
+    if (batch.analysis) {
+      setAnalysis(batch.analysis)
+    }
+  }, [batch.analysis, setAnalysis])
+
+  const handleStartAnalysis = useCallback(() => {
+    if (mainlineFens.length > 0) {
+      batch.startAnalysis(mainlineFens, moves)
+    }
+  }, [mainlineFens, moves, batch.startAnalysis])
 
   useEffect(() => {
     loadMoves(moves)
   }, [moves, loadMoves])
 
+  // dirty 상태가 아닐 때만 서버 annotations를 로드 (refetch로 인한 유실 방지)
   useEffect(() => {
-    loadAnnotations(annotations)
-  }, [annotations, loadAnnotations])
+    if (!annotationsDirty) {
+      loadAnnotations(annotations)
+    }
+  }, [annotations, loadAnnotations, annotationsDirty])
 
   // FEN이 바뀔 때마다 평가 요청
   useEffect(() => {
@@ -80,6 +104,14 @@ export function GameViewer({ moves, annotations, ownerUsername, whiteName, onSav
               {isReady ? (isEvaluating ? '분석 중...' : `Stockfish 18 · depth ${evaluation?.depth ?? '-'}`) : 'Stockfish 로딩 중...'}
             </span>
             <div className="flex items-center gap-2">
+              {!batch.isAnalyzing && !analysis && isReady && (
+                <button
+                  onClick={handleStartAnalysis}
+                  className="rounded-lg border border-amber-300 px-3 py-1 text-xs font-medium text-amber-700 transition hover:bg-amber-50 dark:border-gray-600 dark:text-amber-400 dark:hover:bg-gray-700"
+                >
+                  게임 분석
+                </button>
+              )}
               {isInVariation && (
                 <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
                   분석 모드
@@ -96,6 +128,29 @@ export function GameViewer({ moves, annotations, ownerUsername, whiteName, onSav
               )}
             </div>
           </div>
+
+          {/* 배치 분석 진행률 */}
+          {batch.isAnalyzing && (
+            <div className="mb-2">
+              <AnalysisProgress
+                current={batch.progress.current}
+                total={batch.progress.total}
+                onCancel={batch.cancelAnalysis}
+              />
+            </div>
+          )}
+
+          {/* 분석 결과 요약 */}
+          {analysis && !batch.isAnalyzing && (
+            <div className="mb-2">
+              <AnalysisSummary
+                analysis={analysis}
+                moves={moves}
+                onReanalyze={handleStartAnalysis}
+              />
+            </div>
+          )}
+
           <MoveList />
         </div>
       </div>
