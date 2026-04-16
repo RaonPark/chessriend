@@ -9,34 +9,44 @@
         </encoder>
     </appender>
 
-    <!-- Loki Appender -->
-    <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
-        <http>
-            <url>http://localhost:3100/loki/api/v1/push</url>
-        </http>
-        <format>
-            <label>
-                <pattern>application=${appName},level=%level,logger=%logger{36}</pattern>
-            </label>
-            <message>
-                <pattern>
-                    {
-                        "timestamp": "%d{yyyy-MM-dd HH:mm:ss.SSS}",
-                        "level": "%level",
-                        "thread": "%thread",
-                        "logger": "%logger{36}",
-                        "traceId": "%mdc{traceId:-}",
-                        "spanId": "%mdc{spanId:-}",
-                        "message": "%msg"
-                    }
-                </pattern>
-            </message>
-            <sortByTime>true</sortByTime>
-        </format>
-    </appender>
+    <!-- Loki Appender (test 프로파일에서는 비활성화) -->
+    <springProfile name="!test">
+        <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
+            <http>
+                <url>http://localhost:3100/loki/api/v1/push</url>
+            </http>
+            <format>
+                <label>
+                    <pattern>application=${appName},level=%level,logger=%logger{36}</pattern>
+                </label>
+                <message>
+                    <pattern>
+                        {
+                            "timestamp": "%d{yyyy-MM-dd HH:mm:ss.SSS}",
+                            "level": "%level",
+                            "thread": "%thread",
+                            "logger": "%logger{36}",
+                            "traceId": "%mdc{traceId:-}",
+                            "spanId": "%mdc{spanId:-}",
+                            "message": "%msg"
+                        }
+                    </pattern>
+                </message>
+                <sortByTime>true</sortByTime>
+            </format>
+        </appender>
+    </springProfile>
 
-    <root level="INFO">
-        <appender-ref ref="CONSOLE"/>
-        <appender-ref ref="LOKI"/>
-    </root>
+    <springProfile name="!test">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="LOKI"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="test">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
 </configuration>
