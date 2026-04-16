@@ -5,7 +5,8 @@ import { ErrorMessage } from '@/shared/components/ErrorMessage'
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog'
 import { useConfirm } from '@/shared/hooks/useConfirm'
 import { useGame } from '../api/queries'
-import { useDeleteGame } from '../api/mutations'
+import { useDeleteGame, useUpdateAnnotations } from '../api/mutations'
+import { useBoardStore } from '../stores/boardStore'
 import { GameViewer } from './GameViewer'
 
 type Outcome = 'win' | 'loss' | 'draw'
@@ -42,7 +43,17 @@ export function GameDetailPage() {
   const navigate = useNavigate()
   const { data: game, isLoading, error, refetch } = useGame(id!)
   const deleteMutation = useDeleteGame()
+  const annotationMutation = useUpdateAnnotations(id!)
+  const getAnnotationsSnapshot = useBoardStore((s) => s.getAnnotationsSnapshot)
+  const markAnnotationsClean = useBoardStore((s) => s.markAnnotationsClean)
   const { confirm, dialogProps } = useConfirm()
+
+  function handleSaveAnnotations() {
+    const snapshot = getAnnotationsSnapshot()
+    annotationMutation.mutate(snapshot, {
+      onSuccess: () => markAnnotationsClean(),
+    })
+  }
 
   async function handleDelete() {
     const ok = await confirm({
@@ -140,8 +151,11 @@ export function GameDetailPage() {
       {game.moves && game.moves.length > 0 && (
         <GameViewer
           moves={game.moves}
+          annotations={game.annotations}
           ownerUsername={game.ownerUsername}
           whiteName={game.white.name}
+          onSaveAnnotations={handleSaveAnnotations}
+          isSaving={annotationMutation.isPending}
         />
       )}
 

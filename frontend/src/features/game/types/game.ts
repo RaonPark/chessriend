@@ -29,6 +29,23 @@ export interface MoveResponse {
   san: string
 }
 
+export interface VariationResponse {
+  startMoveIndex: number
+  moves: string[]
+  comment: string
+  moveComments: Record<string, string>
+}
+
+export interface AnnotationResponse {
+  moveComments: Record<string, string>
+  variations: VariationResponse[]
+}
+
+export interface AnnotationRequest {
+  moveComments: Record<string, string>
+  variations: VariationResponse[]
+}
+
 export interface GameDetailResponse {
   id: string
   source: string
@@ -40,6 +57,7 @@ export interface GameDetailResponse {
   timeControl: TimeControlResponse
   opening: OpeningResponse | null
   moves: MoveResponse[]
+  annotations: AnnotationResponse
   totalMoves: number
   playedAt: string
 }

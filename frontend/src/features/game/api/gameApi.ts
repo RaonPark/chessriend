@@ -1,6 +1,6 @@
 import { apiFetch, ApiError } from '@/shared/api/apiClient'
 import type { PagedResponse } from '@/shared/types/api'
-import type { GameDetailResponse, GameFilter, GameResponse, ImportParams } from '../types/game'
+import type { AnnotationRequest, GameDetailResponse, GameFilter, GameResponse, ImportParams } from '../types/game'
 
 export async function fetchGames(filters: GameFilter = {}): Promise<PagedResponse<GameResponse>> {
   const params = new URLSearchParams()
@@ -43,6 +43,13 @@ export async function deleteAllGames(): Promise<void> {
     const body = await res.json().catch(() => null)
     throw new ApiError(res.status, body?.message ?? res.statusText)
   }
+}
+
+export async function updateAnnotations(id: string, annotations: AnnotationRequest): Promise<void> {
+  await apiFetch(`/api/games/${id}/annotations`, {
+    method: 'PUT',
+    body: JSON.stringify(annotations),
+  })
 }
 
 export function createImportEventSource(params: ImportParams): EventSource {
