@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { Chess } from 'chess.js'
-import type { MoveResponse } from '../types/game'
+import type { AnnotationResponse, MoveResponse, VariationResponse } from '../types/game'
 
 interface BoardState {
   // 원래 기보 (mainline)
@@ -18,8 +18,15 @@ interface BoardState {
   variationIndex: number       // variation 내 인덱스 (-1 = variation 시작 포지션)
   variationStartIndex: number  // mainline에서 분기한 지점
 
+  // Annotations (저장된 메모 + 변형선)
+  moveComments: Record<string, string>
+  savedVariations: VariationResponse[]
+  annotationsDirty: boolean    // 변경 사항 유무
+  activeVariationIndex: number // 현재 진입한 저장된 변형선의 인덱스 (-1 = 새 변형선/메인라인)
+
   // Actions
   loadMoves: (moves: MoveResponse[]) => void
+  loadAnnotations: (annotations: AnnotationResponse) => void
   goToMove: (index: number) => void
   goToStart: () => void
   goToEnd: () => void
@@ -28,6 +35,13 @@ interface BoardState {
   makeMove: (from: string, to: string, promotion?: string) => boolean
   exitVariation: () => void
   goToVariationMove: (index: number) => void
+  setMoveComment: (moveIndex: number, comment: string) => void
+  setVariationMoveComment: (variationMoveIndex: number, comment: string) => void
+  saveCurrentVariation: (comment?: string) => void
+  deleteSavedVariation: (index: number) => void
+  enterSavedVariation: (variation: VariationResponse, index: number) => void
+  getAnnotationsSnapshot: () => { moveComments: Record<string, string>; variations: VariationResponse[] }
+  markAnnotationsClean: () => void
 }
 
 function computeFens(moves: MoveResponse[]): string[] {
@@ -53,6 +67,11 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   variationIndex: -1,
   variationStartIndex: -1,
 
+  moveComments: {},
+  savedVariations: [],
+  annotationsDirty: false,
+  activeVariationIndex: -1,
+
   loadMoves: (moves) => {
     const fens = computeFens(moves)
     set({
@@ -65,6 +84,18 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       variationFens: [],
       variationIndex: -1,
       variationStartIndex: -1,
+      moveComments: {},
+      savedVariations: [],
+      annotationsDirty: false,
+      activeVariationIndex: -1,
+    })
+  },
+
+  loadAnnotations: (annotations) => {
+    set({
+      moveComments: { ...annotations.moveComments },
+      savedVariations: [...annotations.variations],
+      annotationsDirty: false,
     })
   },
 
@@ -121,6 +152,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
           variationFens: [],
           variationIndex: -1,
           variationStartIndex: -1,
+          activeVariationIndex: -1,
           currentIndex: variationStartIndex,
           currentFen: mainlineFens[variationStartIndex + 1],
         })
@@ -178,6 +210,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       variationFens: [],
       variationIndex: -1,
       variationStartIndex: -1,
+      activeVariationIndex: -1,
       currentIndex: returnIndex,
       currentFen: mainlineFens[returnIndex + 1],
     })
@@ -187,5 +220,92 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     const { variationFens } = get()
     const clamped = Math.max(-1, Math.min(index, variationFens.length - 2))
     set({ variationIndex: clamped, currentFen: variationFens[clamped + 1] })
+  },
+
+  setMoveComment: (moveIndex, comment) => {
+    const { moveComments } = get()
+    const updated = { ...moveComments }
+    if (comment.trim()) {
+      updated[String(moveIndex)] = comment
+    } else {
+      delete updated[String(moveIndex)]
+    }
+    set({ moveComments: updated, annotationsDirty: true })
+  },
+
+  setVariationMoveComment: (variationMoveIndex, comment) => {
+    const { activeVariationIndex, savedVariations } = get()
+    if (activeVariationIndex < 0 || activeVariationIndex >= savedVariations.length) return
+    const updated = [...savedVariations]
+    const variation = { ...updated[activeVariationIndex] }
+    const mc = { ...variation.moveComments }
+    if (comment.trim()) {
+      mc[String(variationMoveIndex)] = comment
+    } else {
+      delete mc[String(variationMoveIndex)]
+    }
+    variation.moveComments = mc
+    updated[activeVariationIndex] = variation
+    set({ savedVariations: updated, annotationsDirty: true })
+  },
+
+  saveCurrentVariation: (comment = '') => {
+    const { isInVariation, variationStartIndex, variationMoves, savedVariations } = get()
+    if (!isInVariation || variationMoves.length === 0) return
+    const newVariation: VariationResponse = {
+      startMoveIndex: variationStartIndex,
+      moves: [...variationMoves],
+      comment,
+      moveComments: {},
+    }
+    set({
+      savedVariations: [...savedVariations, newVariation],
+      annotationsDirty: true,
+    })
+  },
+
+  deleteSavedVariation: (index) => {
+    const { savedVariations } = get()
+    set({
+      savedVariations: savedVariations.filter((_, i) => i !== index),
+      annotationsDirty: true,
+    })
+  },
+
+  enterSavedVariation: (variation, index) => {
+    const { mainlineFens } = get()
+    const startFen = mainlineFens[variation.startMoveIndex + 1]
+    const chess = new Chess(startFen)
+    const fens = [startFen]
+    const validMoves: string[] = []
+    for (const san of variation.moves) {
+      try {
+        chess.move(san)
+      } catch {
+        break
+      }
+      validMoves.push(san)
+      fens.push(chess.fen())
+    }
+    if (validMoves.length === 0) return
+    set({
+      isInVariation: true,
+      variationStartIndex: variation.startMoveIndex,
+      variationMoves: validMoves,
+      variationFens: fens,
+      variationIndex: -1,
+      currentIndex: variation.startMoveIndex,
+      currentFen: startFen,
+      activeVariationIndex: index,
+    })
+  },
+
+  getAnnotationsSnapshot: () => {
+    const { moveComments, savedVariations } = get()
+    return { moveComments: { ...moveComments }, variations: [...savedVariations] }
+  },
+
+  markAnnotationsClean: () => {
+    set({ annotationsDirty: false })
   },
 }))

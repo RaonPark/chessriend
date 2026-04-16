@@ -116,12 +116,14 @@ data class VariationRequest(
     val startMoveIndex: Int,
     val moves: List<String>,
     val comment: String = "",
+    val moveComments: Map<String, String> = emptyMap(),
 ) {
     fun toDomain(): org.raonpark.chessriend.game.domain.Variation =
         org.raonpark.chessriend.game.domain.Variation(
             startMoveIndex = startMoveIndex,
             moves = moves,
             comment = comment,
+            moveComments = moveComments,
         )
 }
 
@@ -141,10 +143,16 @@ data class VariationResponse(
     val startMoveIndex: Int,
     val moves: List<String>,
     val comment: String,
+    val moveComments: Map<String, String> = emptyMap(),
 ) {
     companion object {
         fun from(v: org.raonpark.chessriend.game.domain.Variation): VariationResponse =
-            VariationResponse(startMoveIndex = v.startMoveIndex, moves = v.moves, comment = v.comment)
+            VariationResponse(
+                startMoveIndex = v.startMoveIndex,
+                moves = v.moves,
+                comment = v.comment,
+                moveComments = v.moveComments,
+            )
     }
 }
 

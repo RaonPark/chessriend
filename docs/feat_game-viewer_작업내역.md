@@ -133,3 +133,90 @@ curl -sL -o nn-4ca89e4b3abf.nnue "https://tests.stockfishchess.org/api/nn/nn-4ca
 | 메모 단위 | 수 단위 + 변형선 단위 모두 지원 | 사용자가 원하는 곳에 자유롭게 메모 |
 | 변형선 표시 | MoveList 분기 지점 바로 아래 인라인 | 별도 영역보다 기보 흐름에서 자연스럽게 보임 |
 | 단축키 | ←→ (수 이동), ↑↓ (처음/끝), Esc (변형선 복귀) | 방향키가 직관적 |
+
+## 2026-04-16: 메모 입력 UI + 변형선 저장 (프론트엔드)
+
+### 무엇을
+- Annotation 백엔드 API를 프론트엔드에 연결 (타입, API 함수, React Query mutation)
+- boardStore에 annotation 상태 추가 (moveComments, savedVariations, dirty 플래그)
+- CommentPanel 컴포넌트 — MoveList 하단에 수별 메모 입력/수정/삭제 패널
+- MoveList 개선:
+  - 저장된 변형선을 분기 지점 아래에 인라인 표시 (emerald 색상)
+  - 변형선 클릭으로 재생, 삭제 버튼 (hover 시 표시)
+  - 현재 분석 중인 변형선에 "저장" 버튼 추가
+  - 메모가 있는 수에 연필 아이콘(✎) 표시
+- GameViewer에 "저장 (Ctrl+S)" 버튼 + 변경 감지 (annotationsDirty)
+- GameDetailPage에서 useUpdateAnnotations mutation 연결
+
+### 왜
+- Annotation 백엔드가 완성되었으나 프론트엔드에서 사용할 수 없었음
+- 수별 메모 + 변형선 저장은 체스 리뷰 앱의 핵심 기능
+- "내 게임을 분석하고 기록하는" 경험 완성
+
+### 변경 파일
+| 파일 | 설명 |
+|------|------|
+| `features/game/types/game.ts` | `AnnotationResponse`, `VariationResponse`, `AnnotationRequest` 타입 추가, `GameDetailResponse.annotations` 필드 |
+| `features/game/api/gameApi.ts` | `updateAnnotations()` API 함수 |
+| `features/game/api/mutations.ts` | `useUpdateAnnotations` mutation (캐시 무효화 포함) |
+| `features/game/stores/boardStore.ts` | annotation 상태 (moveComments, savedVariations, dirty), loadAnnotations, setMoveComment, saveCurrentVariation, deleteSavedVariation, enterSavedVariation |
+| `features/game/components/CommentPanel.tsx` | 신규 — MoveList 하단 메모 입력 패널 (Ctrl+Enter 저장, Esc 취소) |
+| `features/game/components/MoveList.tsx` | 저장된 변형선 인라인 표시, 메모 아이콘, 변형선 저장 버튼 |
+| `features/game/components/GameViewer.tsx` | annotations prop, 저장 버튼(Ctrl+S), loadAnnotations 연결 |
+| `features/game/components/GameDetailPage.tsx` | useUpdateAnnotations mutation 연결, 저장 핸들러 |
+
+### 의사결정 기록
+| 결정 | 선택 | 이유 |
+|------|------|------|
+| 메모 패널 위치 | MoveList 하단 | 시선 이동 최소화, lichess 스타일과 유사 |
+| 저장된 변형선 표시 | 인라인 (emerald 색상) | 현재 분석 변형선(indigo)과 시각 구분, 기보 흐름에서 자연스럽게 표시 |
+| 저장 방식 | 수동 저장 (Ctrl+S + 버튼) | 메모 입력 중 자동저장은 API 호출이 잦아짐, dirty 플래그로 변경 감지 |
+| 메모 편집 | 클릭 → 편집 모드 전환 | 항상 텍스트 영역을 보여주면 공간 낭비 |
+
+## 2026-04-16: EvalBar orientation 버그 수정
+
+### 무엇을
+- EvalBar가 `orientation='black'`일 때 평가치를 반대로 표시하던 버그 수정
+- 상단/하단 영역의 색상을 보드 방향에 따라 동적으로 뒤집도록 변경
+
+### 왜
+- 기존 코드는 `topPercent`만 뒤집고 상단/하단 색상은 하드코딩 (상단=흑, 하단=백)
+- `orientation='black'`에서 상단은 백, 하단은 흑이어야 하는데 색상이 고정이라 반대로 보임
+- 예: 초기 포지션(백 약간 유리)에서 흑이 유리하게 표시됨
+
+### 변경 파일
+| 파일 | 설명 |
+|------|------|
+| `features/game/components/EvalBar.tsx` | orientation에 따라 상단/하단 배경색, 텍스트 색상을 동적으로 전환 |
+
+## 2026-04-16: 변형선 수별 메모 + 다중 변형선
+
+### 무엇을
+- **백엔드**: `Variation` 도메인에 `moveComments` 필드 추가 (JSONB이라 DB 마이그레이션 불필요)
+- **프론트엔드**: 
+  - 저장된 변형선에 진입 시 `activeVariationIndex` 추적
+  - `setVariationMoveComment` 액션으로 변형선 수별 메모 CRUD
+  - CommentPanel이 메인라인/변형선 모드 모두 지원 (변형선은 emerald 색상)
+  - MoveList에서 저장된 변형선 수의 메모 아이콘(✎) 표시
+  - 같은 분기점에서 여러 변형선 저장 가능 (구조적으로 이미 지원, UI 확인)
+
+### 왜
+- 변형선 분석 시 각 수에 대한 메모가 없으면 나중에 왜 그 변형선을 탐색했는지 기억하기 어려움
+- 같은 지점에서 여러 후보수를 비교하는 것이 체스 분석의 핵심
+
+### 변경 파일
+| 파일 | 설명 |
+|------|------|
+| `game/domain/Annotation.kt` | `Variation.moveComments` 필드 추가 |
+| `game/adapter/in/web/GameResponse.kt` | `VariationRequest/Response.moveComments` 추가 |
+| `features/game/types/game.ts` | `VariationResponse.moveComments` 추가 |
+| `features/game/stores/boardStore.ts` | `activeVariationIndex`, `setVariationMoveComment` 추가, 변형선 진입/복귀 시 인덱스 관리 |
+| `features/game/components/CommentPanel.tsx` | 메인라인/변형선 양쪽 모드 지원, 색상 분기 |
+| `features/game/components/MoveList.tsx` | `enterSavedVariation`에 index 전달, 변형선 수 메모 아이콘 |
+
+### 의사결정 기록
+| 결정 | 선택 | 이유 |
+|------|------|------|
+| 변형선 구조 | flat (중첩 미지원) | 현재 사용 패턴에 충분, 트리 구조는 복잡도 대비 이점이 적음 |
+| 변형선 메모 저장 | VariationResponse 내부 moveComments | 메인라인 메모와 동일한 패턴, 별도 모델 불필요 |
+| DB 마이그레이션 | 불필요 | JSONB 컬럼이라 새 필드가 자동으로 직렬화/역직렬화됨 |

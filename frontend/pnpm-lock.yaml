@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@lichess-org/stockfish-web':
+        specifier: ^0.3.0
+        version: 0.3.0
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.8(@types/node@24.12.2)(jiti@2.6.1))
@@ -369,6 +372,9 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
+
+  '@lichess-org/stockfish-web@0.3.0':
+    resolution: {integrity: sha512-BZrxKiL2UvcLM5sJ+Veh/BzAa8Xs4g4/Pv9dy6+v63y7enXfAcaKVVHaRzgu95LhLZTqp9G5gyOKvahfqaPO0g==}
 
   '@mswjs/interceptors@0.41.3':
     resolution: {integrity: sha512-cXu86tF4VQVfwz8W1SPbhoRyHJkti6mjH/XJIxp40jhO4j2k1m4KYrEykxqWPkFF3vrK4rgQppBh//AwyGSXPA==}
@@ -2110,6 +2116,8 @@ snapshots:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
+
+  '@lichess-org/stockfish-web@0.3.0': {}
 
   '@mswjs/interceptors@0.41.3':
     dependencies:
