@@ -220,3 +220,69 @@ curl -sL -o nn-4ca89e4b3abf.nnue "https://tests.stockfishchess.org/api/nn/nn-4ca
 | 변형선 구조 | flat (중첩 미지원) | 현재 사용 패턴에 충분, 트리 구조는 복잡도 대비 이점이 적음 |
 | 변형선 메모 저장 | VariationResponse 내부 moveComments | 메인라인 메모와 동일한 패턴, 별도 모델 불필요 |
 | DB 마이그레이션 | 불필요 | JSONB 컬럼이라 새 필드가 자동으로 직렬화/역직렬화됨 |
+
+## 2026-04-17: Blunder/Mistake/Inaccuracy 분류
+
+### 무엇을
+- 전체 게임을 Stockfish WASM으로 일괄 분석하여 각 수의 centipawn loss 계산
+- 분류 기준: Inaccuracy (50-100cp), Mistake (100-200cp), Blunder (200+cp)
+- MoveList에서 분류된 수를 색상으로 하이라이트:
+  - Blunder: 빨강 (`bg-red-100`), 활성 수는 왼쪽 빨강 보더
+  - Mistake: 주황 (`bg-orange-100`), 활성 수는 왼쪽 주황 보더
+  - Inaccuracy: 노랑 (`bg-yellow-100`), 활성 수는 왼쪽 노랑 보더
+- AnalysisSummary 컴포넌트: 전체/백/흑 별 분류 카운트 표시
+- AnalysisProgress 컴포넌트: 분석 진행 바 + 취소 버튼
+- "게임 분석" 버튼으로 수동 시작, 분석 결과는 annotation으로 저장/복원
+- 별도 Stockfish 인스턴스로 배치 분석 (라이브 평가와 독립)
+
+### 왜
+- 자신의 실수를 한눈에 파악하는 것이 체스 리뷰의 핵심 기능
+- lichess/chess.com의 게임 분석과 동일한 핵심 기능
+- 기존 Stockfish WASM 인프라를 재활용하여 추가 백엔드 없이 구현
+
+### 아키텍처
+
+```
+[GameViewer] → "게임 분석" 버튼 클릭
+    ↓
+[useBatchAnalysis 훅] — 전용 Stockfish WASM 인스턴스
+    ↓ mainlineFens 배열 순차 평가 (depth 16)
+    ↓ 각 포지션: "position fen X" → "go depth 16" → bestmove 대기
+    ↓ UCI score → 백 관점으로 정규화
+[classification.ts] — computeClassifications()
+    ↓ positionEvals[i] vs [i+1] → cpLoss 계산
+    ↓ 백의 수: cpLoss = evalBefore - evalAfter
+    ↓ 흑의 수: cpLoss = evalAfter - evalBefore
+    ↓ mate 처리: mate-in-N → ±(10000 - |N|) centipawn
+[GameAnalysis] → boardStore.setAnalysis()
+    ↓ classificationByMove 맵 구축 (O(1) lookup)
+    ↓ annotationsDirty = true → 저장 가능
+[MoveList] → classificationByMove로 색상 적용
+[AnalysisSummary] → B/M/I 카운트 + 백/흑 분리
+```
+
+### 변경 파일
+| 파일 | 변경 유형 | 설명 |
+|------|----------|------|
+| `features/game/types/game.ts` | 수정 | `MoveClassification`, `MoveEvaluation`, `GameAnalysis`, `EvalScore` 타입 추가, `AnnotationResponse/Request`에 optional `analysis` 필드 |
+| `features/game/utils/classification.ts` | 신규 | `evalToCp()`, `classifyMove()`, `computeClassifications()` 순수 함수 |
+| `features/game/hooks/useBatchAnalysis.ts` | 신규 | 전용 Stockfish 인스턴스, 순차 FEN 평가, 진행률 추적, 취소 지원 |
+| `features/game/stores/boardStore.ts` | 수정 | `analysis`, `classificationByMove` 상태, `setAnalysis()`, `clearAnalysis()`, `loadAnnotations()` 복원, `getAnnotationsSnapshot()` 포함 |
+| `features/game/components/AnalysisProgress.tsx` | 신규 | 진행 바 (amber 테마) + 취소 버튼 |
+| `features/game/components/AnalysisSummary.tsx` | 신규 | B/M/I 카운트 (빨강/주황/노랑 dot), 백/흑 분리, 재분석 버튼 |
+| `features/game/components/MoveList.tsx` | 수정 | MoveCell에 `classification` prop, 비활성 수에 분류 배경색, 활성 수에 왼쪽 컬러 보더 |
+| `features/game/components/GameViewer.tsx` | 수정 | `useBatchAnalysis` 연결, "게임 분석" 버튼, AnalysisProgress/AnalysisSummary 조건부 렌더링 |
+| `game/domain/Annotation.kt` | 수정 | `GameAnalysisData`, `MoveEvaluationData`, `EvalScore` 도메인 클래스, `GameAnnotation.analysis` 필드 |
+| `game/adapter/in/web/GameResponse.kt` | 수정 | 분석 관련 Request/Response DTO + 매핑 |
+| `game/adapter/out/persistence/GamePersistenceAdapter.kt` | 수정 | `parseAnnotations`를 ObjectMapper `readValue` 직접 역직렬화로 변경 (수동 캐스팅 제거) |
+
+### 의사결정 기록
+| 결정 | 선택 | 이유 |
+|------|------|------|
+| 분석 Stockfish 인스턴스 | 별도 인스턴스 | 라이브 평가(depth 18)와 독립 실행, 사용자가 수를 탐색하면서 배치 분석 동시 진행 가능 |
+| 배치 분석 depth | 16 | depth 18보다 ~2배 빠르면서 분류 정확도 충분 |
+| 분석 트리거 | 수동 ("게임 분석" 버튼) | 40수 게임 = 81 포지션 × 1~3초 = 수 분 소요, 자동 실행은 부담 |
+| 분류 기준 | 50/100/200 cp | lichess/chess.com 표준과 동일 |
+| Mate 처리 | ±(10000 - \|N\|) cp 변환 | mate-in-1 = 9999cp, mate-in-5 = 9995cp로 연속적 비교 가능 |
+| 분류 결과 저장 | annotations.analysis 필드 | 기존 annotation 저장 플로우 재활용, JSONB라 DB 마이그레이션 불필요 |
+| parseAnnotations 방식 | ObjectMapper readValue 직접 | 수동 캐스팅 제거, CLAUDE.md 코딩 컨벤션에 반영 |

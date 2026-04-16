@@ -201,17 +201,6 @@ class GamePersistenceAdapter(
         }
     }
 
-    @Suppress("UNCHECKED_CAST")
-    private fun parseAnnotations(json: String): GameAnnotation {
-        val map = objectMapper.readValue(json, Map::class.java) as Map<String, Any?>
-        val moveComments = (map["moveComments"] as? Map<String, String>) ?: emptyMap()
-        val variations = (map["variations"] as? List<Map<String, Any?>>)?.map { v ->
-            Variation(
-                startMoveIndex = (v["startMoveIndex"] as Number).toInt(),
-                moves = (v["moves"] as List<String>),
-                comment = v["comment"] as? String ?: "",
-            )
-        } ?: emptyList()
-        return GameAnnotation(moveComments = moveComments, variations = variations)
-    }
+    private fun parseAnnotations(json: String): GameAnnotation =
+        objectMapper.readValue(json, GameAnnotation::class.java)
 }

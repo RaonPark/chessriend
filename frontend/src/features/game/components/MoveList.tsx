@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useBoardStore } from '../stores/boardStore'
 import { CommentPanel } from './CommentPanel'
-import type { VariationResponse } from '../types/game'
+import type { MoveClassification, VariationResponse } from '../types/game'
 
 export function MoveList() {
   const moves = useBoardStore((s) => s.mainlineMoves)
@@ -19,6 +19,7 @@ export function MoveList() {
   const deleteSavedVariation = useBoardStore((s) => s.deleteSavedVariation)
   const saveCurrentVariation = useBoardStore((s) => s.saveCurrentVariation)
   const activeVariationIndex = useBoardStore((s) => s.activeVariationIndex)
+  const classificationByMove = useBoardStore((s) => s.classificationByMove)
   const activeRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
@@ -86,6 +87,7 @@ export function MoveList() {
                     isActive={!isInVariation && pair.white?.index === currentIndex}
                     isBranchPoint={isInVariation && pair.white?.index === variationStartIndex}
                     hasComment={pair.white != null && String(pair.white.index) in moveComments}
+                    classification={pair.white ? classificationByMove[pair.white.index] : undefined}
                     goToMove={goToMove}
                     activeRef={activeRef}
                   />
@@ -94,6 +96,7 @@ export function MoveList() {
                     isActive={!isInVariation && pair.black?.index === currentIndex}
                     isBranchPoint={isInVariation && pair.black?.index === variationStartIndex}
                     hasComment={pair.black != null && String(pair.black.index) in moveComments}
+                    classification={pair.black ? classificationByMove[pair.black.index] : undefined}
                     goToMove={goToMove}
                     activeRef={activeRef}
                   />
@@ -119,13 +122,15 @@ export function MoveList() {
                     <div className="mb-1.5 flex items-center justify-between">
                       <span className="text-[10px] font-medium text-indigo-500 dark:text-indigo-400">변형선</span>
                       <div className="flex gap-1">
-                        <button
-                          onClick={() => saveCurrentVariation()}
-                          className="rounded px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 hover:bg-emerald-100 dark:text-emerald-400 dark:hover:bg-emerald-900/30"
-                          title="변형선 저장"
-                        >
-                          저장
-                        </button>
+                        {activeVariationIndex < 0 && (
+                          <button
+                            onClick={() => saveCurrentVariation()}
+                            className="rounded px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 hover:bg-emerald-100 dark:text-emerald-400 dark:hover:bg-emerald-900/30"
+                            title="변형선 저장"
+                          >
+                            저장
+                          </button>
+                        )}
                         <button
                           onClick={exitVariation}
                           className="rounded px-1.5 py-0.5 text-[10px] font-medium text-indigo-600 hover:bg-indigo-100 dark:text-indigo-400 dark:hover:bg-indigo-900/30"
@@ -171,26 +176,44 @@ export function MoveList() {
   )
 }
 
-function MoveCell({ move, isActive, isBranchPoint, hasComment, goToMove, activeRef }: {
+const CLASSIFICATION_BORDER: Record<MoveClassification, string> = {
+  blunder: 'border-l-2 border-l-red-500',
+  mistake: 'border-l-2 border-l-orange-500',
+  inaccuracy: 'border-l-2 border-l-yellow-500',
+}
+
+const CLASSIFICATION_BG: Record<MoveClassification, string> = {
+  blunder: 'bg-red-100 dark:bg-red-900/30',
+  mistake: 'bg-orange-100 dark:bg-orange-900/30',
+  inaccuracy: 'bg-yellow-100 dark:bg-yellow-900/30',
+}
+
+function MoveCell({ move, isActive, isBranchPoint, hasComment, classification, goToMove, activeRef }: {
   move?: { san: string; index: number }
   isActive: boolean
   isBranchPoint: boolean
   hasComment: boolean
+  classification?: MoveClassification
   goToMove: (index: number) => void
   activeRef: React.RefObject<HTMLButtonElement | null>
 }) {
   if (!move) return <div />
 
+  const classificationBorder = isActive && classification ? CLASSIFICATION_BORDER[classification] : ''
+  const classificationBg = !isActive && !isBranchPoint && classification ? CLASSIFICATION_BG[classification] : ''
+
   return (
     <button
       ref={isActive ? activeRef : undefined}
       onClick={() => goToMove(move.index)}
-      className={`flex items-center gap-1 px-2 py-1 text-left text-sm transition ${
+      className={`flex items-center gap-1 px-2 py-1 text-left text-sm transition ${classificationBorder} ${classificationBg} ${
         isActive
           ? 'bg-amber-200 font-semibold text-amber-900 dark:bg-amber-800 dark:text-amber-100'
           : isBranchPoint
             ? 'bg-indigo-100 font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
-            : 'text-gray-700 hover:bg-amber-50 dark:text-gray-300 dark:hover:bg-gray-700'
+            : classification
+              ? 'text-gray-700 dark:text-gray-300'
+              : 'text-gray-700 hover:bg-amber-50 dark:text-gray-300 dark:hover:bg-gray-700'
       }`}
     >
       <span>{move.san}</span>

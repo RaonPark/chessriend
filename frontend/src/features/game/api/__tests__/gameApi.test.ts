@@ -125,7 +125,7 @@ describe('updateAnnotations', () => {
 
     const annotations = {
       moveComments: { '0': '좋은 수' },
-      variations: [{ startMoveIndex: 1, moves: ['d6'], comment: '' }],
+      variations: [{ startMoveIndex: 1, moves: ['d6'], comment: '', moveComments: {} }],
     }
 
     await updateAnnotations('42', annotations)
