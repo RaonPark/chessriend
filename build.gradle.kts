@@ -26,6 +26,16 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
 
+    // ── Monitoring (Prometheus) ──
+    runtimeOnly("io.micrometer:micrometer-registry-prometheus")
+
+    // ── Distributed Tracing (Tempo via OTLP) ──
+    implementation("io.micrometer:micrometer-tracing-bridge-otel")
+    implementation("io.opentelemetry:opentelemetry-exporter-otlp")
+
+    // ── Centralized Logging (Loki) ──
+    implementation("com.github.loki4j:loki-logback-appender:1.6.0")
+
     // ── Database (R2DBC + Flyway) ──
     implementation("org.springframework.boot:spring-boot-starter-data-r2dbc")
     implementation("org.postgresql:r2dbc-postgresql")

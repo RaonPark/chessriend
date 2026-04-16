@@ -24,10 +24,26 @@ chesscom:
     user-agent: Chessriend/1.0
 
 server:
-  port: 8080
+  port: 8081
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: http://localhost:4318/v1/traces
+
+logging:
+  pattern:
+    correlation: "[${spring.application.name:},%mdc{traceId:-},%mdc{spanId:-}] "
