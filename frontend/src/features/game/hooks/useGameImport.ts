@@ -28,6 +28,7 @@ export function useGameImport() {
 
     const es = createImportEventSource(params)
     eventSourceRef.current = es
+    let completed = false
 
     es.onmessage = (event) => {
       const game: GameResponse = JSON.parse(event.data)
@@ -38,11 +39,23 @@ export function useGameImport() {
       }))
     }
 
-    es.onerror = () => {
-      // SSE 스트림이 끝나면 EventSource는 error 이벤트를 발생시키고
-      // readyState를 CONNECTING으로 설정하여 재연결을 시도한다.
-      // 데이터를 하나라도 받았으면 정상 종료로 간주한다.
+    // 서버에서 스트림 정상 완료 시 전송하는 이벤트
+    es.addEventListener('complete', () => {
+      completed = true
       es.close()
+      setState((prev) => ({
+        ...prev,
+        isImporting: false,
+        error: receivedCount === 0
+          ? '새로 가져올 게임이 없습니다. 이미 모두 가져온 상태입니다.'
+          : null,
+      }))
+      queryClient.invalidateQueries({ queryKey: gameKeys.lists() })
+    })
+
+    es.onerror = () => {
+      es.close()
+      if (completed) return
       if (receivedCount > 0) {
         setState((prev) => ({ ...prev, isImporting: false }))
       } else {
@@ -52,7 +65,6 @@ export function useGameImport() {
           error: 'Import 중 오류가 발생했습니다. 사용자명을 확인해주세요.',
         }))
       }
-      // import 완료 후 게임 목록 캐시 무효화
       queryClient.invalidateQueries({ queryKey: gameKeys.lists() })
     }
   }, [queryClient])

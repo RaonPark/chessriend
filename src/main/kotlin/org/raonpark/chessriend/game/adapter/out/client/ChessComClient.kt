@@ -82,7 +82,7 @@ class ChessComClient(
 
         val node = objectMapper.readTree(body)
         return buildList {
-            node["archives"]?.forEach { add(it.asText()) }
+            node["archives"]?.forEach { add(it.textValue()) }
         }
     }
 
@@ -136,23 +136,23 @@ class ChessComClient(
 
     private fun matchesCriteria(gameNode: JsonNode, criteria: GameFetchCriteria): Boolean {
         // 체스 규칙만 (chess960 등 제외)
-        val rules = gameNode["rules"]?.asText()
+        val rules = gameNode["rules"]?.textValue()
         if (rules != "chess") return false
 
         if (criteria.timeCategory != null) {
-            val timeClass = gameNode["time_class"]?.asText()
+            val timeClass = gameNode["time_class"]?.textValue()
             if (timeClass != criteria.timeCategory.toChessComTimeClass()) return false
         }
 
         if (criteria.rated != null) {
-            val rated = gameNode["rated"]?.asBoolean() ?: false
+            val rated = gameNode["rated"]?.booleanValue() ?: false
             if (rated != criteria.rated) return false
         }
 
         if (criteria.color != null) {
             val username = criteria.username.lowercase()
-            val whiteUsername = gameNode["white"]?.get("username")?.asText()?.lowercase()
-            val blackUsername = gameNode["black"]?.get("username")?.asText()?.lowercase()
+            val whiteUsername = gameNode["white"]?.get("username")?.textValue()?.lowercase()
+            val blackUsername = gameNode["black"]?.get("username")?.textValue()?.lowercase()
             val userColor = when (username) {
                 whiteUsername -> Color.WHITE
                 blackUsername -> Color.BLACK
@@ -162,8 +162,8 @@ class ChessComClient(
         }
 
         if (criteria.vs != null) {
-            val whiteUsername = gameNode["white"]?.get("username")?.asText()?.lowercase()
-            val blackUsername = gameNode["black"]?.get("username")?.asText()?.lowercase()
+            val whiteUsername = gameNode["white"]?.get("username")?.textValue()?.lowercase()
+            val blackUsername = gameNode["black"]?.get("username")?.textValue()?.lowercase()
             val vsLower = criteria.vs.lowercase()
             if (whiteUsername != vsLower && blackUsername != vsLower) return false
         }
@@ -174,29 +174,29 @@ class ChessComClient(
     private fun parseGame(node: JsonNode): Game {
         val white = node["white"]
         val black = node["black"]
-        val pgn = node["pgn"]?.asText() ?: ""
-        val timeControlStr = node["time_control"]?.asText() ?: "0"
-        val timeClass = node["time_class"]?.asText() ?: "rapid"
+        val pgn = node["pgn"]?.textValue() ?: ""
+        val timeControlStr = node["time_control"]?.textValue() ?: "0"
+        val timeClass = node["time_class"]?.textValue() ?: "rapid"
 
         val (initialTime, increment) = parseTimeControl(timeControlStr)
 
         return Game(
             id = null,
             source = GameSource.CHESS_COM,
-            sourceGameId = node["uuid"]?.asText() ?: node["url"]?.asText() ?: "",
+            sourceGameId = node["uuid"]?.textValue() ?: node["url"]?.textValue() ?: "",
             ownerUsername = "",
             players = Players(
                 white = Player(
-                    name = white["username"]?.asText() ?: "Anonymous",
-                    rating = white["rating"]?.asInt(),
+                    name = white["username"]?.textValue() ?: "Anonymous",
+                    rating = white["rating"]?.intValue(),
                 ),
                 black = Player(
-                    name = black["username"]?.asText() ?: "Anonymous",
-                    rating = black["rating"]?.asInt(),
+                    name = black["username"]?.textValue() ?: "Anonymous",
+                    rating = black["rating"]?.intValue(),
                 ),
             ),
             moves = parseMoves(pgn),
-            result = parseResult(white["result"]?.asText(), black["result"]?.asText()),
+            result = parseResult(white["result"]?.textValue(), black["result"]?.textValue()),
             timeControl = TimeControl(
                 initialTime = initialTime.seconds,
                 increment = increment.seconds,
@@ -204,7 +204,7 @@ class ChessComClient(
             ),
             opening = parseOpening(node),
             pgn = pgn,
-            playedAt = Instant.ofEpochSecond(node["end_time"]?.asLong() ?: 0),
+            playedAt = Instant.ofEpochSecond(node["end_time"]?.longValue() ?: 0),
             importedAt = Instant.now(),
         )
     }
@@ -295,7 +295,7 @@ class ChessComClient(
     }
 
     private fun parseOpening(node: JsonNode): Opening? {
-        val ecoUrl = node["eco"]?.asText() ?: return null
+        val ecoUrl = node["eco"]?.textValue() ?: return null
         // URL 형식: https://www.chess.com/openings/French-Defense-Winawer-...
         val name = ecoUrl.substringAfterLast("/").replace("-", " ")
         return Opening(eco = null, name = name)
