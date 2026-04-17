@@ -89,27 +89,27 @@ class LichessClient(
         return Game(
             id = null,
             source = GameSource.LICHESS,
-            sourceGameId = node["id"].asText(),
+            sourceGameId = node["id"].textValue(),
             ownerUsername = "",
             players = Players(
                 white = parsePlayer(players["white"]),
                 black = parsePlayer(players["black"]),
             ),
             moves = parseMoves(node),
-            result = parseResult(node["status"].asText(), node["winner"]?.asText()),
+            result = parseResult(node["status"].textValue(), node["winner"]?.textValue()),
             timeControl = TimeControl(
-                initialTime = (clock["initial"].asLong()).seconds,
-                increment = (clock["increment"].asLong()).seconds,
-                category = parseTimeCategory(node["speed"].asText()),
+                initialTime = (clock["initial"].longValue()).seconds,
+                increment = (clock["increment"].longValue()).seconds,
+                category = parseTimeCategory(node["speed"].textValue()),
             ),
             opening = opening?.let {
                 Opening(
-                    eco = it["eco"]?.asText(),
-                    name = it["name"]?.asText() ?: "Unknown",
+                    eco = it["eco"]?.textValue(),
+                    name = it["name"]?.textValue() ?: "Unknown",
                 )
             },
-            pgn = node["pgn"]?.asText() ?: "",
-            playedAt = Instant.ofEpochMilli(node["createdAt"].asLong()),
+            pgn = node["pgn"]?.textValue() ?: "",
+            playedAt = Instant.ofEpochMilli(node["createdAt"].longValue()),
             importedAt = Instant.now(),
         )
     }
@@ -117,16 +117,16 @@ class LichessClient(
     private fun parsePlayer(node: JsonNode): Player {
         val user = node["user"]
         return Player(
-            name = user?.get("name")?.asText() ?: "Anonymous",
-            rating = node["rating"]?.asInt(),
+            name = user?.get("name")?.textValue() ?: "Anonymous",
+            rating = node["rating"]?.intValue(),
         )
     }
 
     private fun parseMoves(gameNode: JsonNode): List<Move> {
-        val movesStr = gameNode["moves"]?.asText() ?: return emptyList()
+        val movesStr = gameNode["moves"]?.textValue() ?: return emptyList()
         val sans = movesStr.split(" ").filter { it.isNotBlank() }
         val clocks: List<Long> = gameNode["clocks"]?.let { node ->
-            buildList { node.forEach { add(it.asLong()) } }
+            buildList { node.forEach { add(it.longValue()) } }
         } ?: emptyList()
 
         // lichess clocks: [초기시간(centiseconds), 1수후 백 남은시간, 1수후 흑 남은시간, ...]
