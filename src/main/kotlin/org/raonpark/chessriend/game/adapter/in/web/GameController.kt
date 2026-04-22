@@ -2,6 +2,7 @@ package org.raonpark.chessriend.game.adapter.`in`.web
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onCompletion
 import org.raonpark.chessriend.game.domain.Color
 import org.raonpark.chessriend.game.domain.GameSource
 import org.raonpark.chessriend.game.domain.TimeCategory
@@ -9,6 +10,7 @@ import org.raonpark.chessriend.game.port.`in`.GetGameUseCase
 import org.raonpark.chessriend.game.port.`in`.ImportGameUseCase
 import org.raonpark.chessriend.game.port.out.GameFetchCriteria
 import org.springframework.http.MediaType
+import org.springframework.http.codec.ServerSentEvent
 import org.springframework.web.bind.annotation.*
 import java.time.Instant
 
@@ -39,9 +41,17 @@ class GameController(
     }
 
     @GetMapping("/{id}")
-    suspend fun getGame(@PathVariable id: Long): GameResponse {
+    suspend fun getGame(@PathVariable id: Long): GameDetailResponse {
         val game = getGameUseCase.getGame(id)
-        return GameResponse.from(game)
+        return GameDetailResponse.from(game)
+    }
+
+    @PutMapping("/{id}/annotations")
+    suspend fun updateAnnotations(
+        @PathVariable id: Long,
+        @RequestBody request: AnnotationRequest,
+    ) {
+        getGameUseCase.updateAnnotations(id, request.toDomain())
     }
 
     @DeleteMapping("/{id}")
@@ -70,7 +80,7 @@ class GameController(
         @RequestParam(required = false) rated: Boolean?,
         @RequestParam(required = false) color: Color?,
         @RequestParam(required = false) vs: String?,
-    ): Flow<GameResponse> {
+    ): Flow<ServerSentEvent<Any>> {
         val criteria = GameFetchCriteria(
             username = username,
             since = since,
@@ -84,5 +94,20 @@ class GameController(
 
         return importGameUseCase.importGames(source, criteria)
             .map { game -> GameResponse.from(game) }
+            .map { game ->
+                ServerSentEvent.builder<Any>()
+                    .data(game)
+                    .build()
+            }
+            .onCompletion { cause ->
+                if (cause == null) {
+                    emit(
+                        ServerSentEvent.builder<Any>()
+                            .event("complete")
+                            .data("done")
+                            .build()
+                    )
+                }
+            }
     }
 }

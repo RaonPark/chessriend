@@ -55,3 +55,6 @@ frontend/dist/
 
 ### Claude Code ###
 .claude/settings.json
+
+### Playwright MCP ###
+.playwright-mcp/

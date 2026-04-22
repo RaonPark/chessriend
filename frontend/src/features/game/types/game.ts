@@ -23,6 +23,69 @@ export interface OpeningResponse {
   name: string
 }
 
+export interface MoveResponse {
+  number: number
+  color: 'WHITE' | 'BLACK'
+  san: string
+}
+
+// Analysis / Classification types
+export type MoveClassification = 'blunder' | 'mistake' | 'inaccuracy'
+
+export interface EvalScore {
+  cp: number | null
+  mate: number | null
+}
+
+export interface MoveEvaluation {
+  moveIndex: number
+  evalBefore: EvalScore
+  evalAfter: EvalScore
+  cpLoss: number
+  classification: MoveClassification | null
+}
+
+export interface GameAnalysis {
+  evaluations: MoveEvaluation[]
+  depth: number
+  analyzedAt: string
+}
+
+export interface VariationResponse {
+  startMoveIndex: number
+  moves: string[]
+  comment: string
+  moveComments: Record<string, string>
+}
+
+export interface AnnotationResponse {
+  moveComments: Record<string, string>
+  variations: VariationResponse[]
+  analysis?: GameAnalysis
+}
+
+export interface AnnotationRequest {
+  moveComments: Record<string, string>
+  variations: VariationResponse[]
+  analysis?: GameAnalysis
+}
+
+export interface GameDetailResponse {
+  id: string
+  source: string
+  sourceGameId: string
+  ownerUsername: string
+  white: PlayerResponse
+  black: PlayerResponse
+  result: string
+  timeControl: TimeControlResponse
+  opening: OpeningResponse | null
+  moves: MoveResponse[]
+  annotations: AnnotationResponse
+  totalMoves: number
+  playedAt: string
+}
+
 export interface GameResponse {
   id: string
   source: string

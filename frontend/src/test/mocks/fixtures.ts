@@ -1,9 +1,9 @@
-import type { GameResponse } from '@/features/game/types/game'
+import type { GameDetailResponse, GameResponse } from '@/features/game/types/game'
 import type { PagedResponse } from '@/shared/types/api'
 
 let idCounter = 1
 
-export function createGameResponse(overrides: Partial<GameResponse> = {}): GameResponse {
+export function createGameResponse(overrides: Partial<GameResponse & GameDetailResponse> = {}): GameResponse & Partial<GameDetailResponse> {
   const id = String(idCounter++)
   return {
     id,
@@ -17,6 +17,7 @@ export function createGameResponse(overrides: Partial<GameResponse> = {}): GameR
     opening: { eco: 'B20', name: 'Sicilian Defense' },
     totalMoves: 35,
     playedAt: '2025-04-10T12:00:00Z',
+    annotations: { moveComments: {}, variations: [] },
     ...overrides,
   }
 }

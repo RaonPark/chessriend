@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { fetchGames, fetchGame, deleteGame, deleteGames, deleteAllGames, createImportEventSource } from '../gameApi'
+import { fetchGames, fetchGame, deleteGame, deleteGames, deleteAllGames, updateAnnotations, createImportEventSource } from '../gameApi'
 import { ApiError } from '@/shared/api/apiClient'
 
 describe('fetchGames', () => {
@@ -110,6 +110,38 @@ describe('deleteAllGames', () => {
     await deleteAllGames()
 
     expect(fetch).toHaveBeenCalledWith('/api/games/all', { method: 'DELETE' })
+  })
+})
+
+describe('updateAnnotations', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('PUT /api/games/:id/annotations를 호출한다', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(null, { status: 204, headers: { 'content-length': '0' } }),
+    )
+
+    const annotations = {
+      moveComments: { '0': '좋은 수' },
+      variations: [{ startMoveIndex: 1, moves: ['d6'], comment: '', moveComments: {} }],
+    }
+
+    await updateAnnotations('42', annotations)
+
+    const [url, init] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0]
+    expect(url).toContain('/api/games/42/annotations')
+    expect(init.method).toBe('PUT')
+    expect(JSON.parse(init.body)).toEqual(annotations)
+  })
+
+  it('실패 시 ApiError를 던진다', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ message: 'Game not found' }), { status: 404 }),
+    )
+
+    await expect(updateAnnotations('999', { moveComments: {}, variations: [] })).rejects.toThrow(ApiError)
   })
 })
 

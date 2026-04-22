@@ -12,11 +12,19 @@ export default defineConfig({
     },
   },
   server: {
+    headers: {
+      // Stockfish WASM 멀티스레드에 필요
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:8081',
         changeOrigin: true,
       },
     },
+  },
+  optimizeDeps: {
+    exclude: ['@lichess-org/stockfish-web'],
   },
 })
