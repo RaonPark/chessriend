@@ -41,23 +41,16 @@ class ChessComClient(
     }
 
     override fun fetchGames(criteria: GameFetchCriteria): Flow<Game> = flow {
+        // chess.com PubAPI는 archives/games 모두 오래된 순으로 반환하므로
+        // 양쪽 경계에서 newest-first로 정렬한 뒤 순차 emit.
+        // max는 서비스 계층이 중복 제거 후 take()로 적용 (Flow 취소 → 상류 fetch 중단).
         val archiveUrls = fetchArchiveUrls(criteria.username)
+        val monthsNewestFirst = filterArchivesByDate(archiveUrls, criteria.since, criteria.until).reversed()
 
-        // 최신 월부터 조회하기 위해 역순 정렬
-        val filtered = filterArchivesByDate(archiveUrls, criteria.since, criteria.until).reversed()
-
-        var emitted = 0
-        for (url in filtered) {
-            if (criteria.max != null && emitted >= criteria.max) break
-
-            val games = fetchMonthlyGames(url)
-            for (gameNode in games) {
-                if (criteria.max != null && emitted >= criteria.max) break
+        for (url in monthsNewestFirst) {
+            for (gameNode in fetchMonthlyGames(url)) {
                 if (!matchesCriteria(gameNode, criteria)) continue
-
-                val game = parseGame(gameNode)
-                emit(game)
-                emitted++
+                emit(parseGame(gameNode))
             }
         }
     }
@@ -82,10 +75,14 @@ class ChessComClient(
 
         val node = objectMapper.readTree(body)
         return buildList {
-            node["archives"]?.forEach { add(it.asText()) }
+            node["archives"]?.forEach { add(it.textValue()) }
         }
     }
 
+    /**
+     * 특정 월의 게임 목록을 **최신 → 오래된 순**으로 반환.
+     * chess.com API는 end_time 오름차순(오래된 것부터)으로 반환하므로 내부에서 뒤집어 통일된 순서를 보장.
+     */
     private suspend fun fetchMonthlyGames(archiveUrl: String): List<JsonNode> {
         // archiveUrl은 전체 URL (https://api.chess.com/pub/player/.../games/2026/04)
         // baseUrl을 제거하고 상대 경로로 요청
@@ -108,7 +105,7 @@ class ChessComClient(
         val node = objectMapper.readTree(body)
         return buildList {
             node["games"]?.forEach { add(it) }
-        }
+        }.asReversed()
     }
 
     private fun filterArchivesByDate(
@@ -136,23 +133,23 @@ class ChessComClient(
 
     private fun matchesCriteria(gameNode: JsonNode, criteria: GameFetchCriteria): Boolean {
         // 체스 규칙만 (chess960 등 제외)
-        val rules = gameNode["rules"]?.asText()
+        val rules = gameNode["rules"]?.textValue()
         if (rules != "chess") return false
 
         if (criteria.timeCategory != null) {
-            val timeClass = gameNode["time_class"]?.asText()
+            val timeClass = gameNode["time_class"]?.textValue()
             if (timeClass != criteria.timeCategory.toChessComTimeClass()) return false
         }
 
         if (criteria.rated != null) {
-            val rated = gameNode["rated"]?.asBoolean() ?: false
+            val rated = gameNode["rated"]?.booleanValue() ?: false
             if (rated != criteria.rated) return false
         }
 
         if (criteria.color != null) {
             val username = criteria.username.lowercase()
-            val whiteUsername = gameNode["white"]?.get("username")?.asText()?.lowercase()
-            val blackUsername = gameNode["black"]?.get("username")?.asText()?.lowercase()
+            val whiteUsername = gameNode["white"]?.get("username")?.textValue()?.lowercase()
+            val blackUsername = gameNode["black"]?.get("username")?.textValue()?.lowercase()
             val userColor = when (username) {
                 whiteUsername -> Color.WHITE
                 blackUsername -> Color.BLACK
@@ -162,8 +159,8 @@ class ChessComClient(
         }
 
         if (criteria.vs != null) {
-            val whiteUsername = gameNode["white"]?.get("username")?.asText()?.lowercase()
-            val blackUsername = gameNode["black"]?.get("username")?.asText()?.lowercase()
+            val whiteUsername = gameNode["white"]?.get("username")?.textValue()?.lowercase()
+            val blackUsername = gameNode["black"]?.get("username")?.textValue()?.lowercase()
             val vsLower = criteria.vs.lowercase()
             if (whiteUsername != vsLower && blackUsername != vsLower) return false
         }
@@ -174,29 +171,29 @@ class ChessComClient(
     private fun parseGame(node: JsonNode): Game {
         val white = node["white"]
         val black = node["black"]
-        val pgn = node["pgn"]?.asText() ?: ""
-        val timeControlStr = node["time_control"]?.asText() ?: "0"
-        val timeClass = node["time_class"]?.asText() ?: "rapid"
+        val pgn = node["pgn"]?.textValue() ?: ""
+        val timeControlStr = node["time_control"]?.textValue() ?: "0"
+        val timeClass = node["time_class"]?.textValue() ?: "rapid"
 
         val (initialTime, increment) = parseTimeControl(timeControlStr)
 
         return Game(
             id = null,
             source = GameSource.CHESS_COM,
-            sourceGameId = node["uuid"]?.asText() ?: node["url"]?.asText() ?: "",
+            sourceGameId = node["uuid"]?.textValue() ?: node["url"]?.textValue() ?: "",
             ownerUsername = "",
             players = Players(
                 white = Player(
-                    name = white["username"]?.asText() ?: "Anonymous",
-                    rating = white["rating"]?.asInt(),
+                    name = white["username"]?.textValue() ?: "Anonymous",
+                    rating = white["rating"]?.intValue(),
                 ),
                 black = Player(
-                    name = black["username"]?.asText() ?: "Anonymous",
-                    rating = black["rating"]?.asInt(),
+                    name = black["username"]?.textValue() ?: "Anonymous",
+                    rating = black["rating"]?.intValue(),
                 ),
             ),
             moves = parseMoves(pgn),
-            result = parseResult(white["result"]?.asText(), black["result"]?.asText()),
+            result = parseResult(white["result"]?.textValue(), black["result"]?.textValue()),
             timeControl = TimeControl(
                 initialTime = initialTime.seconds,
                 increment = increment.seconds,
@@ -204,7 +201,7 @@ class ChessComClient(
             ),
             opening = parseOpening(node),
             pgn = pgn,
-            playedAt = Instant.ofEpochSecond(node["end_time"]?.asLong() ?: 0),
+            playedAt = Instant.ofEpochSecond(node["end_time"]?.longValue() ?: 0),
             importedAt = Instant.now(),
         )
     }
@@ -295,7 +292,7 @@ class ChessComClient(
     }
 
     private fun parseOpening(node: JsonNode): Opening? {
-        val ecoUrl = node["eco"]?.asText() ?: return null
+        val ecoUrl = node["eco"]?.textValue() ?: return null
         // URL 형식: https://www.chess.com/openings/French-Defense-Winawer-...
         val name = ecoUrl.substringAfterLast("/").replace("-", " ")
         return Opening(eco = null, name = name)

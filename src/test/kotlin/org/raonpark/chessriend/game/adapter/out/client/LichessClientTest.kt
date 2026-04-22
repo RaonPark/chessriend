@@ -106,7 +106,8 @@ class LichessClientTest : DescribeSpec({
             val query = url?.query ?: ""
 
             url?.encodedPath shouldBe "/api/games/user/magnus"
-            query.contains("max=10") shouldBe true
+            // max는 서비스 계층에서 중복 제거 후 take()로 적용하므로 쿼리 파라미터로 전달되지 않음
+            query.contains("max=") shouldBe false
             query.contains("rated=true") shouldBe true
             query.contains("perfType=blitz") shouldBe true
             query.contains("color=white") shouldBe true

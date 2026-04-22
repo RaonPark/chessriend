@@ -110,7 +110,45 @@ class ChessComClientTest : DescribeSpec({
             game.moves[4].color shouldBe Color.WHITE
         }
 
-        it("max 파라미터로 게임 수를 제한한다") {
+        it("월 내부 게임을 newest-first 순서로 emit한다 (chess.com API가 oldest-first로 내려주므로 뒤집어야 함)") {
+            val baseUrl = mockServer.url("/").toString().trimEnd('/')
+            // API는 end_time 오름차순 반환: [old, mid, new]
+            val oldGame = sampleGame.replace("chesscom-game-001", "game-old").replace("1712700000", "1712000000")
+            val midGame = sampleGame.replace("chesscom-game-001", "game-mid").replace("1712700000", "1712300000")
+            val newGame = sampleGame.replace("chesscom-game-001", "game-new").replace("1712700000", "1712700000")
+            val threeGames = """{"games":[$oldGame, $midGame, $newGame]}"""
+
+            mockServer.enqueue(
+                MockResponse.Builder()
+                    .addHeader("Content-Type", "application/json")
+                    .body(archivesResponse(baseUrl, "testuser"))
+                    .build()
+            )
+            // 2026/04: 3 games
+            mockServer.enqueue(
+                MockResponse.Builder()
+                    .addHeader("Content-Type", "application/json")
+                    .body(threeGames)
+                    .build()
+            )
+            // 2026/03: empty
+            mockServer.enqueue(
+                MockResponse.Builder()
+                    .addHeader("Content-Type", "application/json")
+                    .body("""{"games":[]}""")
+                    .build()
+            )
+
+            val games = client.fetchGames(GameFetchCriteria(username = "testuser")).toList()
+
+            games shouldHaveSize 3
+            // newest-first: new → mid → old
+            games[0].sourceGameId shouldBe "game-new"
+            games[1].sourceGameId shouldBe "game-mid"
+            games[2].sourceGameId shouldBe "game-old"
+        }
+
+        it("max 제한은 클라이언트에서 적용하지 않고 전체를 emit한다 (서비스 계층 책임)") {
             val baseUrl = mockServer.url("/").toString().trimEnd('/')
             val twoGames = """{"games":[$sampleGame, ${sampleGame.replace("chesscom-game-001", "chesscom-game-002")}]}"""
 
@@ -126,11 +164,16 @@ class ChessComClientTest : DescribeSpec({
                     .body(twoGames)
                     .build()
             )
+            mockServer.enqueue(
+                MockResponse.Builder()
+                    .addHeader("Content-Type", "application/json")
+                    .body("""{"games":[]}""")
+                    .build()
+            )
 
-            val criteria = GameFetchCriteria(username = "testuser", max = 1)
-            val games = client.fetchGames(criteria).toList()
+            val games = client.fetchGames(GameFetchCriteria(username = "testuser", max = 1)).toList()
 
-            games shouldHaveSize 1
+            games shouldHaveSize 2
         }
 
         it("chess960 게임은 제외한다") {
