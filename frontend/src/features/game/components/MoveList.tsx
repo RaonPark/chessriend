@@ -177,12 +177,14 @@ export function MoveList() {
 }
 
 const CLASSIFICATION_BORDER: Record<MoveClassification, string> = {
+  brilliant: 'border-l-2 border-l-cyan-500',
   blunder: 'border-l-2 border-l-red-500',
   mistake: 'border-l-2 border-l-orange-500',
   inaccuracy: 'border-l-2 border-l-yellow-500',
 }
 
 const CLASSIFICATION_BG: Record<MoveClassification, string> = {
+  brilliant: 'bg-cyan-100 dark:bg-cyan-900/30',
   blunder: 'bg-red-100 dark:bg-red-900/30',
   mistake: 'bg-orange-100 dark:bg-orange-900/30',
   inaccuracy: 'bg-yellow-100 dark:bg-yellow-900/30',
@@ -217,6 +219,9 @@ function MoveCell({ move, isActive, isBranchPoint, hasComment, classification, g
       }`}
     >
       <span>{move.san}</span>
+      {classification === 'brilliant' && (
+        <span className="text-[10px] font-bold text-cyan-600 dark:text-cyan-400" title="Brilliant!!">!!</span>
+      )}
       {hasComment && (
         <span className="text-[10px] text-amber-500 dark:text-amber-600" title="메모 있음">&#9998;</span>
       )}
