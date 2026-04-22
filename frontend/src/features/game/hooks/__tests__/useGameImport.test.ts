@@ -11,10 +11,28 @@ class MockEventSource {
   onmessage: ((event: MessageEvent) => void) | null = null
   onerror: (() => void) | null = null
   close = vi.fn()
+  private listeners = new Map<string, Array<(event: Event) => void>>()
 
   constructor(url: string) {
     this.url = url
     MockEventSource.instances.push(this)
+  }
+
+  addEventListener(type: string, callback: (event: Event) => void) {
+    const list = this.listeners.get(type) ?? []
+    list.push(callback)
+    this.listeners.set(type, list)
+  }
+
+  removeEventListener(type: string, callback: (event: Event) => void) {
+    const list = this.listeners.get(type)
+    if (!list) return
+    this.listeners.set(type, list.filter((cb) => cb !== callback))
+  }
+
+  /** 테스트에서 custom event (예: 'complete')를 트리거할 때 사용 */
+  dispatch(type: string, event: Event = new Event(type)) {
+    for (const cb of this.listeners.get(type) ?? []) cb(event)
   }
 
   static instances: MockEventSource[] = []
