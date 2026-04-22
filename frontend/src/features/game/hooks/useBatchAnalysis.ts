@@ -116,7 +116,7 @@ export function useBatchAnalysis() {
 
       if (gen !== generationRef.current) return
 
-      const evaluations: MoveEvaluation[] = computeClassifications(positionEvals, moves)
+      const evaluations: MoveEvaluation[] = computeClassifications(fens, positionEvals, moves)
       const analysis: GameAnalysis = {
         evaluations,
         depth: BATCH_DEPTH,
