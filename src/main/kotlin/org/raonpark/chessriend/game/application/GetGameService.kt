@@ -1,5 +1,6 @@
 package org.raonpark.chessriend.game.application
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.flow.toList
 import org.raonpark.chessriend.game.domain.GameAnnotation
 import org.raonpark.chessriend.game.domain.Game
@@ -10,6 +11,8 @@ import org.raonpark.chessriend.game.port.out.GameRepository
 import org.raonpark.chessriend.shared.domain.PagedResult
 import org.raonpark.chessriend.shared.exception.GameNotFoundException
 import org.springframework.stereotype.Service
+
+private val log = KotlinLogging.logger {}
 
 @Service
 class GetGameService(
@@ -22,19 +25,23 @@ class GetGameService(
     override suspend fun deleteGame(id: Long) {
         gameRepository.findById(id) ?: throw GameNotFoundException(id)
         gameRepository.deleteById(id)
+        log.info { "game deleted: id=$id" }
     }
 
     override suspend fun deleteGames(ids: List<Long>) {
         gameRepository.deleteByIds(ids)
+        log.info { "games deleted in batch: count=${ids.size}" }
     }
 
     override suspend fun deleteAllGames() {
         gameRepository.deleteAll()
+        log.warn { "all games deleted" }
     }
 
     override suspend fun updateAnnotations(id: Long, annotations: GameAnnotation) {
         gameRepository.findById(id) ?: throw GameNotFoundException(id)
         gameRepository.updateAnnotations(id, annotations)
+        log.debug { "annotations updated: gameId=$id" }
     }
 
     override suspend fun getGames(

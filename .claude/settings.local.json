@@ -1,4 +1,10 @@
 {
+  "permissions": {
+    "allow": [
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_snapshot"
+    ]
+  },
   "mcpServers": {
     "postgresql": {
       "command": "npx",
@@ -11,11 +17,16 @@
     "serena": {
       "command": "/Users/raonpark/.local/bin/uvx",
       "args": [
-        "--python", "3.13",
-        "--from", "git+https://github.com/oraios/serena",
-        "serena", "start-mcp-server",
-        "--context", "claude-code",
-        "--project", "/Users/raonpark/chessriend"
+        "--python",
+        "3.13",
+        "--from",
+        "git+https://github.com/oraios/serena",
+        "serena",
+        "start-mcp-server",
+        "--context",
+        "claude-code",
+        "--project",
+        "/Users/raonpark/chessriend"
       ]
     }
   }
