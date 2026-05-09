@@ -1,5 +1,6 @@
 package org.raonpark.chessriend.game.adapter.out.client
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.ObjectMapper
 import kotlinx.coroutines.flow.Flow
@@ -22,6 +23,8 @@ import java.time.Instant
 import java.time.YearMonth
 import java.time.ZoneOffset
 import kotlin.time.Duration.Companion.seconds
+
+private val log = KotlinLogging.logger {}
 
 @Component
 @EnableConfigurationProperties(ChessComConfig::class)
@@ -46,6 +49,7 @@ class ChessComClient(
         // max는 서비스 계층이 중복 제거 후 take()로 적용 (Flow 취소 → 상류 fetch 중단).
         val archiveUrls = fetchArchiveUrls(criteria.username)
         val monthsNewestFirst = filterArchivesByDate(archiveUrls, criteria.since, criteria.until).reversed()
+        log.debug { "chess.com archives resolved: username=${criteria.username} months=${monthsNewestFirst.size}" }
 
         for (url in monthsNewestFirst) {
             for (gameNode in fetchMonthlyGames(url)) {

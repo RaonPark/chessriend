@@ -1,8 +1,12 @@
 package org.raonpark.chessriend.game.application
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onCompletion
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.take
 import org.raonpark.chessriend.game.domain.Game
 import org.raonpark.chessriend.game.domain.GameSource
@@ -12,6 +16,8 @@ import org.raonpark.chessriend.game.port.out.GameFetchCriteria
 import org.raonpark.chessriend.game.port.out.GameRepository
 import org.raonpark.chessriend.shared.exception.UnsupportedGameSourceException
 import org.springframework.stereotype.Service
+
+private val log = KotlinLogging.logger {}
 
 @Service
 class ImportGameService(
@@ -32,6 +38,16 @@ class ImportGameService(
 
         val limited = criteria.max?.let { newGames.take(it) } ?: newGames
 
-        return limited.map { game -> gameRepository.save(game) }
+        var saved = 0
+        return limited
+            .onStart { log.info { "game import started: source=$source username=${criteria.username} max=${criteria.max}" } }
+            .map { game -> gameRepository.save(game) }
+            .onEach { saved++ }
+            .onCompletion { cause ->
+                when (cause) {
+                    null -> log.info { "game import completed: source=$source username=${criteria.username} saved=$saved" }
+                    else -> log.warn(cause) { "game import aborted: source=$source username=${criteria.username} saved=$saved" }
+                }
+            }
     }
 }

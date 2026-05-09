@@ -1,8 +1,10 @@
 package org.raonpark.chessriend.game.adapter.out.client
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.ObjectMapper
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.reactive.asFlow
 import org.raonpark.chessriend.game.domain.*
 import org.raonpark.chessriend.game.port.out.ChessGameClient
@@ -19,6 +21,8 @@ import org.springframework.web.reactive.function.client.bodyToFlux
 import reactor.core.publisher.Mono
 import java.time.Instant
 import kotlin.time.Duration.Companion.seconds
+
+private val log = KotlinLogging.logger {}
 
 @Component
 @EnableConfigurationProperties(LichessConfig::class)
@@ -79,6 +83,7 @@ class LichessClient(
             .filter { it.isNotBlank() }
             .map { line -> parseGame(line) }
             .asFlow()
+            .onStart { log.debug { "lichess ndjson stream opened: username=${criteria.username}" } }
     }
 
     private fun parseGame(ndjsonLine: String): Game {
