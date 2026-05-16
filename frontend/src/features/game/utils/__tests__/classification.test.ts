@@ -154,8 +154,9 @@ describe('computeClassifications', () => {
     expect(result).toHaveLength(0)
   })
 
-  it('Bxf7+ 이탈리안 희생: 비숍이 폰을 잡고 킹에게 공격받으면 brilliant', () => {
+  it('Bxf7+: 비숍이 폰을 잡고 킹에게만 공격받으면 brilliant 아님 (체크라 잡히지 않음)', () => {
     // 1.e4 e5 2.Bc4 Nc6 3.Bxf7+ — 비숍이 f7에 놓여 킹(e8)에게만 공격받음
+    // 킹만 공격하는 경우는 실질적 위협이 아님
     const chess = new Chess()
     chess.move('e4')
     chess.move('e5')
@@ -171,7 +172,7 @@ describe('computeClassifications', () => {
       [testMove],
     )
 
-    expect(result[0].classification).toBe('brilliant')
+    expect(result[0].classification).toBeNull()
   })
 
   it('Nxe5: 나이트가 폰을 잡지만 같은 가치 나이트에게만 공격받으면 brilliant 아님', () => {

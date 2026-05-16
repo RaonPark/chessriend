@@ -23,11 +23,6 @@ export type PieceSymbol = keyof typeof PIECE_VALUES
  */
 const BRILLIANT_CP_TOLERANCE = 20
 
-/**
- * 킹이 공격자인 경우의 "교환 가치" — 킹은 잡혀도 잃지 않으므로 우리 기물은 순손실.
- * 가장 싼 공격자로 취급하기 위해 0 사용.
- */
-const KING_AS_ATTACKER_VALUE = 0
 
 /**
  * mate/cp 평가를 centipawn 단일 값으로 변환 (백 관점).
@@ -61,27 +56,34 @@ interface BrilliantContext {
   captured: PieceSymbol | null
   /**
    * 이동 후 기물이 잡힐 위치에 놓였는지 여부.
-   * 즉 목적지 square를 공격하는 상대 기물 중 가장 싼 것의 가치가 이동 기물보다 낮은 경우.
+   * 비-킹 상대 기물이 목적지를 공격하고, 아군 기물이 방어하지 않는 경우.
    */
   isAtRisk: boolean
+  /** 목적지를 공격하는 비-킹 상대 기물 중 가장 싼 것의 가치 (공격자 없으면 Infinity) */
+  cheapestAttacker: number
 }
 
 /**
  * Brilliant (!!): 기물을 희생에 놓았음에도 cp 손실이 거의 없는 수.
  *
- * 희생의 두 유형:
- * 1. **포획 희생**: 비싼 기물로 싼 기물을 잡았고 공격 기물이 잡힐 위치에 놓임
- *    (예: Bxf7+ 이탈리안 — 비숍 3으로 폰 1 잡고 킹 공격)
- * 2. **공짜 희생**: 일반 수로 기물을 공격받는 square에 놓음
- *    (예: Qg6 메이트 위협 — 퀸을 공짜로 놓았지만 안 잡으면 메이트)
+ * 희생의 세 유형:
+ * 1. **교환 희생**: 비싼 기물로 싼 기물을 잡았고 방어 안 되는 칸에 놓임
+ *    (예: Bxf7+ — 비숍 3으로 폰 1 잡고 방어 없이 노출)
+ * 2. **공짜 희생 (싼 기물 공격)**: 기물을 더 싼 상대 기물이 공격하는 방어 없는 칸에 놓음
+ *    (예: 퀸을 폰이 공격하는 칸에 놓고 잡으면 메이트)
+ * 3. **공짜 희생 (비싼 기물 공격)**: 기물을 더 비싼 상대 기물이 공격하는 방어 없는 칸에 놓음
+ *    (예: 비숍을 퀸 앞에 놓고 잡으면 백랭크 메이트 — attraction/decoy)
  *
- * 두 경우 모두 cpLoss < 20 이어야 (엔진이 손실을 판단 못 할 만큼 보상이 있어야) brilliant.
+ * 모든 경우 cpLoss < 20 이어야 (엔진이 손실을 판단 못 할 만큼 보상이 있어야) brilliant.
  */
-export function detectBrilliant({ cpLoss, piece, captured, isAtRisk }: BrilliantContext): boolean {
+export function detectBrilliant({ cpLoss, piece, captured, isAtRisk, cheapestAttacker }: BrilliantContext): boolean {
   if (cpLoss >= BRILLIANT_CP_TOLERANCE) return false
   if (!isAtRisk) return false
-  // 포획 수의 경우: 공격 기물이 포획 기물보다 비싸야 진짜 희생 (더 싼 기물이 비싼 걸 잡는 건 정상 포획)
+  // 포획 수의 경우: 공격 기물이 포획 기물보다 비싸야 진짜 희생
   if (captured !== null && PIECE_VALUES[piece] <= PIECE_VALUES[captured]) return false
+  // 되잡는 기물이 이동 기물과 동가 이상이면 단순 교환이지 희생이 아님
+  // (예: Nxe5를 Nc6이 되잡으면 나이트-나이트 동가 교환)
+  if (captured !== null && cheapestAttacker <= PIECE_VALUES[piece]) return false
   return true
 }
 
@@ -89,14 +91,16 @@ interface MoveContext {
   piece: PieceSymbol
   captured: PieceSymbol | null
   isAtRisk: boolean
+  cheapestAttacker: number
 }
 
 /**
  * FEN에서 SAN 수를 시뮬레이션하여 이동/포획 정보 및 희생 여부를 추출.
  *
- * 희생(isAtRisk) 판정: 이동 후 목적지 square를 공격하는 상대 기물 중 가장 싼 것이
- * 이동 기물보다 낮은 가치인 경우. 킹으로 재포획하는 경우는 우리 기물이
- * 순손실이므로 가장 낮은 가치(0)로 취급.
+ * 희생(isAtRisk) 판정:
+ * - 비-킹 상대 기물이 목적지를 공격하고
+ * - 아군 기물이 목적지를 방어하지 않는 경우
+ * 방어된 기물은 잡히더라도 되잡을 수 있으므로 공짜 희생이 아님.
  */
 function extractMoveContext(fenBefore: string, san: string): MoveContext | null {
   try {
@@ -111,25 +115,31 @@ function extractMoveContext(fenBefore: string, san: string): MoveContext | null 
     const pieceValue = PIECE_VALUES[piece]
 
     const enemyAttackerSquares = chess.attackers(move.to, opponentColor)
-    const isAtRisk = enemyAttackerSquares.length > 0
-      && cheapestAttackerValue(chess, enemyAttackerSquares) < pieceValue
+    // 킹만 공격하는 경우는 실질적 위협이 아님
+    const nonKingAttackers = enemyAttackerSquares.filter(sq => {
+      const p = chess.get(sq as Parameters<Chess['get']>[0])
+      return p != null && p.type !== 'k'
+    })
+    // 아군 기물이 방어하고 있으면 공짜 희생이 아님
+    const myColor = move.color
+    const defenders = chess.attackers(move.to, myColor)
+    const isDefended = defenders.length > 0
 
-    return { piece, captured, isAtRisk }
+    const isAtRisk = nonKingAttackers.length > 0 && !isDefended
+
+    const cheapestAttacker = nonKingAttackers.length > 0
+      ? Math.min(...nonKingAttackers.map(sq => {
+          const p = chess.get(sq as Parameters<Chess['get']>[0])
+          return p ? PIECE_VALUES[p.type as PieceSymbol] ?? Number.POSITIVE_INFINITY : Number.POSITIVE_INFINITY
+        }))
+      : Number.POSITIVE_INFINITY
+
+    return { piece, captured, isAtRisk, cheapestAttacker }
   } catch {
     return null
   }
 }
 
-function cheapestAttackerValue(chess: Chess, squares: string[]): number {
-  let cheapest = Number.POSITIVE_INFINITY
-  for (const sq of squares) {
-    const piece = chess.get(sq as Parameters<Chess['get']>[0])
-    if (!piece) continue
-    const value = piece.type === 'k' ? KING_AS_ATTACKER_VALUE : PIECE_VALUES[piece.type as PieceSymbol]
-    if (value < cheapest) cheapest = value
-  }
-  return cheapest
-}
 
 /**
  * 전체 게임의 포지션 평가 배열로부터 각 수의 분류를 계산.

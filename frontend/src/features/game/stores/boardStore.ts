@@ -208,6 +208,10 @@ export const useBoardStore = create<BoardState>((set, get) => ({
         currentFen: newFen,
       })
     } else {
+      // 분석 완료 전에는 변형선 분기 불가
+      const { analysis } = get()
+      if (!analysis) return false
+
       // mainline에서 분기 → 새 variation 시작
       set({
         isInVariation: true,

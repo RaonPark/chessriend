@@ -16,9 +16,24 @@ function renderPanel() {
   return renderWithProviders(<CommentPanel />)
 }
 
+const DUMMY_ANALYSIS = {
+  evaluations: [],
+  depth: 16,
+  analyzedAt: new Date().toISOString(),
+}
+
 describe('CommentPanel', () => {
   beforeEach(() => {
     useBoardStore.getState().loadMoves(SAMPLE_MOVES)
+    useBoardStore.getState().setAnalysis(DUMMY_ANALYSIS)
+  })
+
+  it('분석 전에는 안내 문구를 표시한다', () => {
+    useBoardStore.getState().goToMove(0)
+    useBoardStore.setState({ analysis: null, classificationByMove: {} })
+    renderPanel()
+
+    expect(screen.getByText('게임 분석 이후 메모를 작성할 수 있습니다.')).toBeInTheDocument()
   })
 
   it('초기 포지션(currentIndex=-1)에서는 렌더링하지 않는다', () => {
