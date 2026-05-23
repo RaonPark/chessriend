@@ -57,7 +57,10 @@ export function GameListItem({ game, selected, onToggleSelect }: GameListItemPro
   }
 
   function handleCheckbox(e: React.MouseEvent) {
-    e.preventDefault()
+    e.stopPropagation()
+  }
+
+  function handleCheckboxChange() {
     onToggleSelect?.()
   }
 
@@ -74,7 +77,7 @@ export function GameListItem({ game, selected, onToggleSelect }: GameListItemPro
               type="checkbox"
               checked={selected ?? false}
               onClick={handleCheckbox}
-              readOnly
+              onChange={handleCheckboxChange}
               className="h-4 w-4 shrink-0 rounded border-amber-300 accent-amber-700"
             />
           )}

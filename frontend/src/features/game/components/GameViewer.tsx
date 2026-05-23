@@ -15,11 +15,12 @@ interface GameViewerProps {
   annotations: AnnotationResponse
   ownerUsername: string
   whiteName: string
+  blackName: string
   onSaveAnnotations?: () => void
   isSaving?: boolean
 }
 
-export function GameViewer({ moves, annotations, ownerUsername, whiteName, onSaveAnnotations, isSaving }: GameViewerProps) {
+export function GameViewer({ moves, annotations, ownerUsername, whiteName, blackName, onSaveAnnotations, isSaving }: GameViewerProps) {
   const loadMoves = useBoardStore((s) => s.loadMoves)
   const loadAnnotations = useBoardStore((s) => s.loadAnnotations)
   const currentFen = useBoardStore((s) => s.currentFen)
@@ -144,6 +145,8 @@ export function GameViewer({ moves, annotations, ownerUsername, whiteName, onSav
               <AnalysisSummary
                 analysis={analysis}
                 moves={moves}
+                whiteName={whiteName}
+                blackName={blackName}
                 onReanalyze={handleStartAnalysis}
               />
             </div>

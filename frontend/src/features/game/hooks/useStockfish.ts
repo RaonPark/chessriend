@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 export interface EvalResult {
   cp: number | null     // centipawn (백 관점, 양수=백 유리)
-  mate: number | null   // mate in N (백 관점, 양수=백 메이트)
+  mate: number | null   // mate in N (백 관점, 양수=백 메이트). mate=0은 이미 메이트된 상태.
+  mateWinner: 'white' | 'black' | null   // mate=0일 때 승자. 부호가 사라져서 별도 필드로 보존.
   depth: number
 }
 
@@ -52,9 +53,15 @@ export function useStockfish(depth = 18) {
               const flip = isBlackTurn ? -1 : 1
 
               if (cpMatch) {
-                latestInfoRef.current = { cp: parseInt(cpMatch[1]) * flip, mate: null, depth: d }
+                latestInfoRef.current = { cp: parseInt(cpMatch[1]) * flip, mate: null, mateWinner: null, depth: d }
               } else if (mateMatch) {
-                latestInfoRef.current = { cp: null, mate: parseInt(mateMatch[1]) * flip, depth: d }
+                const m = parseInt(mateMatch[1])
+                // UCI에서 mate 0은 "side-to-move가 이미 메이트당함" → 0에는 부호가 없어 flip이 무의미하므로
+                // FEN의 차례를 보고 승자를 명시적으로 기록한다.
+                const mateWinner: 'white' | 'black' | null = m === 0
+                  ? (isBlackTurn ? 'white' : 'black')
+                  : null
+                latestInfoRef.current = { cp: null, mate: m * flip, mateWinner, depth: d }
               }
 
               // depth 진행 중에도 UI 업데이트 (최신 depth만)
