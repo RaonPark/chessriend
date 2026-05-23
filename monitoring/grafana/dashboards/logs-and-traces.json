@@ -18,17 +18,18 @@
         "type": "custom",
         "current": {
           "text": "All",
-          "value": ""
+          "value": "$__all"
         },
         "options": [
-          { "text": "All", "value": "", "selected": true },
+          { "text": "All", "value": "$__all", "selected": true },
           { "text": "ERROR", "value": "ERROR", "selected": false },
           { "text": "WARN", "value": "WARN", "selected": false },
           { "text": "INFO", "value": "INFO", "selected": false },
           { "text": "DEBUG", "value": "DEBUG", "selected": false }
         ],
         "query": "ERROR,WARN,INFO,DEBUG",
-        "includeAll": true
+        "includeAll": true,
+        "allValue": ".*"
       }
     ]
   },
@@ -181,7 +182,7 @@
       "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
-          "expr": "{application=\"chessriend\"} ${level:pipe}",
+          "expr": "{application=\"chessriend\", level=~\"${level:regex}\"}",
           "refId": "A"
         }
       ],

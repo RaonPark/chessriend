@@ -4,11 +4,15 @@ import io.r2dbc.postgresql.codec.Json
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.reactive.asFlow
-import kotlinx.coroutines.reactive.awaitFirstOrNull
 import kotlinx.coroutines.reactor.awaitSingle
+import org.jooq.DSLContext
+import org.jooq.JSONB
+import org.jooq.conf.ParamType
+import org.jooq.impl.DSL
 import tools.jackson.databind.ObjectMapper
 import org.raonpark.chessriend.game.domain.*
 import org.raonpark.chessriend.game.port.out.GameRepository
+import org.raonpark.chessriend.jooq.tables.references.GAMES
 import org.raonpark.chessriend.shared.id.SnowflakeIdGenerator
 import org.springframework.r2dbc.core.DatabaseClient
 import org.springframework.stereotype.Component
@@ -18,6 +22,7 @@ import kotlin.time.Duration.Companion.seconds
 class GamePersistenceAdapter(
     private val repository: R2dbcGameRepository,
     private val databaseClient: DatabaseClient,
+    private val dsl: DSLContext,
     private val snowflakeIdGenerator: SnowflakeIdGenerator,
     private val objectMapper: ObjectMapper,
 ) : GameRepository {
@@ -50,79 +55,79 @@ class GamePersistenceAdapter(
 
     override suspend fun updateAnnotations(id: Long, annotations: GameAnnotation) {
         val json = objectMapper.writeValueAsString(annotations)
-        databaseClient.sql("UPDATE games SET annotations = :annotations::jsonb WHERE id = :id")
-            .bind("annotations", json)
-            .bind("id", id)
-            .then()
-            .awaitFirstOrNull()
+        val query = dsl.update(GAMES)
+            .set(GAMES.ANNOTATIONS, JSONB.jsonb(json))
+            .where(GAMES.ID.eq(id))
+
+        executeUpdate(query)
     }
 
     override fun findAll(offset: Int, limit: Int, source: GameSource?, timeCategory: TimeCategory?): Flow<Game> {
-        val conditions = mutableListOf<String>()
-        val bindings = mutableMapOf<String, Any>()
+        var query = dsl.select(DSL.asterisk())
+            .from(GAMES)
+            .where(DSL.trueCondition())
 
-        if (source != null) {
-            conditions.add("source = :source")
-            bindings["source"] = source.name
-        }
-        if (timeCategory != null) {
-            conditions.add("time_category = :timeCategory")
-            bindings["timeCategory"] = timeCategory.name
-        }
+        source?.let { query = query.and(GAMES.SOURCE.eq(it.name)) }
+        timeCategory?.let { query = query.and(GAMES.TIME_CATEGORY.eq(it.name)) }
 
-        val whereClause = if (conditions.isEmpty()) "" else "WHERE ${conditions.joinToString(" AND ")}"
-        val sql = "SELECT * FROM games $whereClause ORDER BY played_at DESC LIMIT :limit OFFSET :offset"
+        val finalQuery = query
+            .orderBy(GAMES.PLAYED_AT.desc())
+            .limit(limit)
+            .offset(offset)
 
-        var spec = databaseClient.sql(sql)
-        bindings.forEach { (key, value) -> spec = spec.bind(key, value) }
-        spec = spec.bind("limit", limit).bind("offset", offset)
-
-        return spec.map { row, metadata ->
-            GameEntity(
-                id = row.get("id", java.lang.Long::class.java)!!.toLong(),
-                source = row.get("source", String::class.java)!!,
-                sourceGameId = row.get("source_game_id", String::class.java)!!,
-                ownerUsername = row.get("owner_username", String::class.java)!!,
-                whiteName = row.get("white_name", String::class.java)!!,
-                whiteRating = row.get("white_rating", java.lang.Integer::class.java)?.toInt(),
-                blackName = row.get("black_name", String::class.java)!!,
-                blackRating = row.get("black_rating", java.lang.Integer::class.java)?.toInt(),
-                result = row.get("result", String::class.java)!!,
-                initialTime = row.get("initial_time", java.lang.Long::class.java)!!.toLong(),
-                increment = row.get("increment", java.lang.Long::class.java)!!.toLong(),
-                timeCategory = row.get("time_category", String::class.java)!!,
-                openingEco = row.get("opening_eco", String::class.java),
-                openingName = row.get("opening_name", String::class.java),
-                moves = row.get("moves", Json::class.java)!!,
-                pgn = row.get("pgn", String::class.java)!!,
-                playedAt = row.get("played_at", java.time.Instant::class.java)!!,
-                importedAt = row.get("imported_at", java.time.Instant::class.java)!!,
-                annotations = row.get("annotations", Json::class.java) ?: Json.of("""{"moveComments":{},"variations":[]}"""),
-            ).also { it.isNewEntity = false }
-        }.all().asFlow().map { toDomain(it) }
+        return bindQuery(finalQuery)
+            .map { row, _ ->
+                GameEntity(
+                    id = row.get("id", Long::class.java)!!,
+                    source = row.get("source", String::class.java)!!,
+                    sourceGameId = row.get("source_game_id", String::class.java)!!,
+                    ownerUsername = row.get("owner_username", String::class.java)!!,
+                    whiteName = row.get("white_name", String::class.java)!!,
+                    whiteRating = row.get("white_rating", Int::class.java),
+                    blackName = row.get("black_name", String::class.java)!!,
+                    blackRating = row.get("black_rating", Int::class.java),
+                    result = row.get("result", String::class.java)!!,
+                    initialTime = row.get("initial_time", Long::class.java)!!,
+                    increment = row.get("increment", Long::class.java)!!,
+                    timeCategory = row.get("time_category", String::class.java)!!,
+                    openingEco = row.get("opening_eco", String::class.java),
+                    openingName = row.get("opening_name", String::class.java),
+                    moves = row.get("moves", Json::class.java)!!,
+                    pgn = row.get("pgn", String::class.java)!!,
+                    playedAt = row.get("played_at", java.time.Instant::class.java)!!,
+                    importedAt = row.get("imported_at", java.time.Instant::class.java)!!,
+                    annotations = row.get("annotations", Json::class.java) ?: Json.of("""{"moveComments":{},"variations":[]}"""),
+                ).also { it.isNewEntity = false }
+            }.all().asFlow().map { toDomain(it) }
     }
 
     override suspend fun count(source: GameSource?, timeCategory: TimeCategory?): Long {
-        val conditions = mutableListOf<String>()
-        val bindings = mutableMapOf<String, Any>()
+        var query = dsl.selectCount()
+            .from(GAMES)
+            .where(DSL.trueCondition())
 
-        if (source != null) {
-            conditions.add("source = :source")
-            bindings["source"] = source.name
-        }
-        if (timeCategory != null) {
-            conditions.add("time_category = :timeCategory")
-            bindings["timeCategory"] = timeCategory.name
-        }
+        source?.let { query = query.and(GAMES.SOURCE.eq(it.name)) }
+        timeCategory?.let { query = query.and(GAMES.TIME_CATEGORY.eq(it.name)) }
 
-        val whereClause = if (conditions.isEmpty()) "" else "WHERE ${conditions.joinToString(" AND ")}"
-        val sql = "SELECT COUNT(*) FROM games $whereClause"
-
-        var spec = databaseClient.sql(sql)
-        bindings.forEach { (key, value) -> spec = spec.bind(key, value) }
-
-        return spec.map { row, _ -> row.get(0, java.lang.Long::class.java)!!.toLong() }
+        return bindQuery(query)
+            .map { row, _ -> row.get(0, Long::class.java)!! }
             .one()
+            .awaitSingle()
+    }
+
+    private fun bindQuery(query: org.jooq.Query): DatabaseClient.GenericExecuteSpec {
+        val sql = query.getSQL(ParamType.NAMED)
+        var spec = databaseClient.sql(sql)
+        query.params.entries.forEachIndexed { index, (_, param) ->
+            spec = spec.bind(index, param.value!!)
+        }
+        return spec
+    }
+
+    private suspend fun executeUpdate(query: org.jooq.Query) {
+        bindQuery(query)
+            .fetch()
+            .rowsUpdated()
             .awaitSingle()
     }
 

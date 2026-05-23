@@ -12,6 +12,7 @@ export function CommentPanel() {
   const savedVariations = useBoardStore((s) => s.savedVariations)
   const setMoveComment = useBoardStore((s) => s.setMoveComment)
   const setVariationMoveComment = useBoardStore((s) => s.setVariationMoveComment)
+  const analysis = useBoardStore((s) => s.analysis)
 
   const [draft, setDraft] = useState('')
   const [isEditing, setIsEditing] = useState(false)
@@ -41,6 +42,14 @@ export function CommentPanel() {
     setDraft(savedComment)
     setIsEditing(false)
   }, [currentIndex, variationIndex, savedComment])
+
+  if (!analysis) {
+    return (
+      <div className="border-t border-amber-200 bg-amber-50/50 p-3 dark:border-gray-700 dark:bg-gray-800/50">
+        <p className="text-xs text-amber-400 dark:text-gray-500">게임 분석 이후 메모를 작성할 수 있습니다.</p>
+      </div>
+    )
+  }
 
   if (!canComment) return null
 

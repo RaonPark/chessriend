@@ -21,9 +21,16 @@ function getState() {
   return useBoardStore.getState()
 }
 
+const DUMMY_ANALYSIS: GameAnalysis = {
+  evaluations: [],
+  depth: 16,
+  analyzedAt: new Date().toISOString(),
+}
+
 describe('boardStore — Annotation', () => {
   beforeEach(() => {
     getState().loadMoves(SAMPLE_MOVES)
+    getState().setAnalysis(DUMMY_ANALYSIS)
   })
 
   describe('loadAnnotations', () => {
@@ -295,6 +302,8 @@ describe('boardStore — Annotation', () => {
     })
 
     it('analysis가 없으면 snapshot에 analysis가 없다', () => {
+      getState().clearAnalysis()
+      getState().markAnnotationsClean()
       const snapshot = getState().getAnnotationsSnapshot()
 
       expect(snapshot.analysis).toBeUndefined()

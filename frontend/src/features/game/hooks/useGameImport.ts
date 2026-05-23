@@ -13,6 +13,8 @@ interface ImportState {
 export function useGameImport() {
   const queryClient = useQueryClient()
   const eventSourceRef = useRef<EventSource | null>(null)
+  // close() 직후에도 큐에 남은 SSE 이벤트가 디스패치될 수 있음. 세대(generation)로 무효화한다.
+  const generationRef = useRef(0)
   const [state, setState] = useState<ImportState>({
     isImporting: false,
     importedGames: [],
@@ -20,8 +22,10 @@ export function useGameImport() {
   })
 
   const startImport = useCallback((params: ImportParams) => {
-    // 이전 연결 정리
+    // 이전 연결 정리 + 세대 갱신 → 이전 세션의 잔여 이벤트 무효화
     eventSourceRef.current?.close()
+    eventSourceRef.current = null
+    const myGen = ++generationRef.current
 
     setState({ isImporting: true, importedGames: [], error: null })
     let receivedCount = 0
@@ -30,7 +34,10 @@ export function useGameImport() {
     eventSourceRef.current = es
     let completed = false
 
+    const isStale = () => generationRef.current !== myGen
+
     es.onmessage = (event) => {
+      if (isStale()) return
       const game: GameResponse = JSON.parse(event.data)
       receivedCount++
       setState((prev) => ({
@@ -41,6 +48,7 @@ export function useGameImport() {
 
     // 서버에서 스트림 정상 완료 시 전송하는 이벤트
     es.addEventListener('complete', () => {
+      if (isStale()) return
       completed = true
       es.close()
       setState((prev) => ({
@@ -55,6 +63,7 @@ export function useGameImport() {
 
     es.onerror = () => {
       es.close()
+      if (isStale()) return
       if (completed) return
       if (receivedCount > 0) {
         setState((prev) => ({ ...prev, isImporting: false }))
@@ -70,7 +79,10 @@ export function useGameImport() {
   }, [queryClient])
 
   const cancelImport = useCallback(() => {
+    // 세대를 먼저 올려서 큐에 남은 onmessage/onerror가 더 이상 상태를 바꾸지 못하게 한다.
+    generationRef.current++
     eventSourceRef.current?.close()
+    eventSourceRef.current = null
     setState((prev) => ({ ...prev, isImporting: false }))
   }, [])
 

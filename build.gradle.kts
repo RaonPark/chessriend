@@ -1,8 +1,17 @@
+buildscript {
+    dependencies {
+        // Flyway 10+ split database support modules; required on plugin classpath
+        classpath("org.flywaydb:flyway-database-postgresql:11.16.0")
+    }
+}
+
 plugins {
     kotlin("jvm") version "2.3.20"
     kotlin("plugin.spring") version "2.3.20"
     id("org.springframework.boot") version "4.0.5"
     id("io.spring.dependency-management") version "1.1.7"
+    id("nu.studer.jooq") version "10.2.1"
+    id("org.flywaydb.flyway") version "11.16.0"
     jacoco
 }
 
@@ -36,12 +45,16 @@ dependencies {
     // ── Centralized Logging (Loki) ──
     implementation("com.github.loki4j:loki-logback-appender:1.6.0")
 
-    // ── Database (R2DBC + Flyway) ──
+    // ── Database (R2DBC + Flyway + jOOQ) ──
     implementation("org.springframework.boot:spring-boot-starter-data-r2dbc")
     implementation("org.postgresql:r2dbc-postgresql")
     implementation("org.springframework.boot:spring-boot-starter-flyway")
     implementation("org.flywaydb:flyway-database-postgresql")
     runtimeOnly("org.postgresql:postgresql")
+    implementation("org.jooq:jooq")
+    implementation("org.jooq:jooq-kotlin")
+    implementation("org.jooq:jooq-kotlin-coroutines")
+    jooqGenerator("org.postgresql:postgresql")
 
     // ── Environment ──
     implementation("me.paulschwarz:spring-dotenv:4.0.0")
@@ -83,6 +96,55 @@ kotlin {
     compilerOptions {
         freeCompilerArgs.addAll("-Xjsr305=strict")
     }
+}
+
+sourceSets["main"].java.srcDir("build/generated-src/jooq/main")
+
+flyway {
+    url = "jdbc:postgresql://localhost:5432/chessriend"
+    user = "chessriend"
+    password = "chessriend"
+    locations = arrayOf("filesystem:src/main/resources/db/migration")
+}
+
+jooq {
+    version.set("3.19.31")
+
+    configurations {
+        create("main") {
+            generateSchemaSourceOnCompilation.set(false)
+
+            jooqConfiguration.apply {
+                jdbc.apply {
+                    driver = "org.postgresql.Driver"
+                    url = "jdbc:postgresql://localhost:5432/chessriend"
+                    user = "chessriend"
+                    password = "chessriend"
+                }
+                generator.apply {
+                    name = "org.jooq.codegen.KotlinGenerator"
+                    database.apply {
+                        name = "org.jooq.meta.postgres.PostgresDatabase"
+                        inputSchema = "public"
+                        excludes = "flyway_schema_history"
+                    }
+                    generate.apply {
+                        isDeprecated = false
+                        isRecords = true
+                        isPojos = true
+                    }
+                    target.apply {
+                        packageName = "org.raonpark.chessriend.jooq"
+                        directory = "build/generated-src/jooq/main"
+                    }
+                }
+            }
+        }
+    }
+}
+
+tasks.named("generateJooq") {
+    mustRunAfter(tasks.named("flywayMigrate"))
 }
 
 tasks.withType<Test> {

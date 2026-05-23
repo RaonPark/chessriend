@@ -154,6 +154,7 @@ export function GameDetailPage() {
           annotations={game.annotations}
           ownerUsername={game.ownerUsername}
           whiteName={game.white.name}
+          blackName={game.black.name}
           onSaveAnnotations={handleSaveAnnotations}
           isSaving={annotationMutation.isPending}
         />

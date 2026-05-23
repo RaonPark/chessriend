@@ -49,32 +49,35 @@ describe('classifyMove', () => {
 
 describe('detectBrilliant', () => {
   it('포획 희생: 비싼 기물로 싼 기물 잡고 위험 위치 + cpLoss 작음 → brilliant', () => {
-    expect(detectBrilliant({ cpLoss: 0, piece: 'b', captured: 'p', isAtRisk: true })).toBe(true)
-    expect(detectBrilliant({ cpLoss: 15, piece: 'q', captured: 'p', isAtRisk: true })).toBe(true)
-    expect(detectBrilliant({ cpLoss: 10, piece: 'r', captured: 'n', isAtRisk: true })).toBe(true)
+    // 비숍이 폰 잡고 퀸이 공격 → 비숍 희생
+    expect(detectBrilliant({ cpLoss: 0, piece: 'b', captured: 'p', isAtRisk: true, cheapestAttacker: 9 })).toBe(true)
+    // 퀸이 폰 잡고 더 비싼 공격 기물 없음 (Infinity) — 동일 가치 이상 공격자 없는 가상 시나리오
+    expect(detectBrilliant({ cpLoss: 15, piece: 'q', captured: 'p', isAtRisk: true, cheapestAttacker: Number.POSITIVE_INFINITY })).toBe(true)
+    // 룩이 나이트 잡고 퀸이 공격 → 룩 희생
+    expect(detectBrilliant({ cpLoss: 10, piece: 'r', captured: 'n', isAtRisk: true, cheapestAttacker: 9 })).toBe(true)
   })
 
   it('공짜 희생(비-포획): 일반 수로 기물을 위험 위치에 놓음 + cpLoss 작음 → brilliant', () => {
-    expect(detectBrilliant({ cpLoss: 0, piece: 'q', captured: null, isAtRisk: true })).toBe(true)
-    expect(detectBrilliant({ cpLoss: 15, piece: 'r', captured: null, isAtRisk: true })).toBe(true)
+    expect(detectBrilliant({ cpLoss: 0, piece: 'q', captured: null, isAtRisk: true, cheapestAttacker: 1 })).toBe(true)
+    expect(detectBrilliant({ cpLoss: 15, piece: 'r', captured: null, isAtRisk: true, cheapestAttacker: 1 })).toBe(true)
   })
 
   it('isAtRisk=false 이면 brilliant 아님 (기물이 잡힐 위치가 아님)', () => {
-    expect(detectBrilliant({ cpLoss: 0, piece: 'q', captured: 'p', isAtRisk: false })).toBe(false)
-    expect(detectBrilliant({ cpLoss: 0, piece: 'q', captured: null, isAtRisk: false })).toBe(false)
-    expect(detectBrilliant({ cpLoss: 10, piece: 'r', captured: 'n', isAtRisk: false })).toBe(false)
+    expect(detectBrilliant({ cpLoss: 0, piece: 'q', captured: 'p', isAtRisk: false, cheapestAttacker: Number.POSITIVE_INFINITY })).toBe(false)
+    expect(detectBrilliant({ cpLoss: 0, piece: 'q', captured: null, isAtRisk: false, cheapestAttacker: Number.POSITIVE_INFINITY })).toBe(false)
+    expect(detectBrilliant({ cpLoss: 10, piece: 'r', captured: 'n', isAtRisk: false, cheapestAttacker: Number.POSITIVE_INFINITY })).toBe(false)
   })
 
   it('포획 수에서 같은 가치/더 싼 공격 기물이면 brilliant 아님', () => {
     // 나이트 3이 비숍 3 잡음 — 동가치 교환
-    expect(detectBrilliant({ cpLoss: 0, piece: 'n', captured: 'b', isAtRisk: true })).toBe(false)
+    expect(detectBrilliant({ cpLoss: 0, piece: 'n', captured: 'b', isAtRisk: true, cheapestAttacker: 9 })).toBe(false)
     // 폰 1이 퀸 9 잡음 — 정상 포획
-    expect(detectBrilliant({ cpLoss: 0, piece: 'p', captured: 'q', isAtRisk: true })).toBe(false)
+    expect(detectBrilliant({ cpLoss: 0, piece: 'p', captured: 'q', isAtRisk: true, cheapestAttacker: 9 })).toBe(false)
   })
 
   it('cpLoss가 tolerance(20) 이상이면 brilliant 아님', () => {
-    expect(detectBrilliant({ cpLoss: 20, piece: 'q', captured: 'p', isAtRisk: true })).toBe(false)
-    expect(detectBrilliant({ cpLoss: 50, piece: 'r', captured: null, isAtRisk: true })).toBe(false)
+    expect(detectBrilliant({ cpLoss: 20, piece: 'q', captured: 'p', isAtRisk: true, cheapestAttacker: Number.POSITIVE_INFINITY })).toBe(false)
+    expect(detectBrilliant({ cpLoss: 50, piece: 'r', captured: null, isAtRisk: true, cheapestAttacker: 1 })).toBe(false)
   })
 })
 
@@ -154,8 +157,9 @@ describe('computeClassifications', () => {
     expect(result).toHaveLength(0)
   })
 
-  it('Bxf7+ 이탈리안 희생: 비숍이 폰을 잡고 킹에게 공격받으면 brilliant', () => {
+  it('Bxf7+: 비숍이 폰을 잡고 킹에게만 공격받으면 brilliant 아님 (체크라 잡히지 않음)', () => {
     // 1.e4 e5 2.Bc4 Nc6 3.Bxf7+ — 비숍이 f7에 놓여 킹(e8)에게만 공격받음
+    // 킹만 공격하는 경우는 실질적 위협이 아님
     const chess = new Chess()
     chess.move('e4')
     chess.move('e5')
@@ -171,7 +175,7 @@ describe('computeClassifications', () => {
       [testMove],
     )
 
-    expect(result[0].classification).toBe('brilliant')
+    expect(result[0].classification).toBeNull()
   })
 
   it('Nxe5: 나이트가 폰을 잡지만 같은 가치 나이트에게만 공격받으면 brilliant 아님', () => {

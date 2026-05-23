@@ -15,6 +15,21 @@ jobs:
     name: Backend Test + Coverage
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: chessriend
+          POSTGRES_PASSWORD: chessriend
+          POSTGRES_DB: chessriend
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U chessriend"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     steps:
       - uses: actions/checkout@v4
 
@@ -26,6 +41,12 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+
+      - name: Apply Flyway migrations
+        run: ./gradlew flywayMigrate
+
+      - name: Generate jOOQ sources
+        run: ./gradlew generateJooq
 
       - name: Run tests
         run: ./gradlew test

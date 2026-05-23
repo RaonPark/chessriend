@@ -20,6 +20,7 @@ export function MoveList() {
   const saveCurrentVariation = useBoardStore((s) => s.saveCurrentVariation)
   const activeVariationIndex = useBoardStore((s) => s.activeVariationIndex)
   const classificationByMove = useBoardStore((s) => s.classificationByMove)
+  const analysis = useBoardStore((s) => s.analysis)
   const activeRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
@@ -102,8 +103,8 @@ export function MoveList() {
                   />
                 </div>
 
-                {/* 저장된 변형선 (분기 지점 아래) */}
-                {!isInVariation && pairSavedVariations.length > 0 && (
+                {/* 저장된 변형선 (분기 지점 아래) — 분석 완료 후에만 표시 */}
+                {analysis && !isInVariation && pairSavedVariations.length > 0 && (
                   <div className="border-y border-emerald-200 bg-emerald-50/50 px-2 py-1.5 dark:border-emerald-900 dark:bg-emerald-950/20">
                     {pairSavedVariations.map(({ variation, globalIndex }) => (
                       <SavedVariationLine
@@ -116,8 +117,8 @@ export function MoveList() {
                   </div>
                 )}
 
-                {/* 현재 분석 중인 변형선 (인라인) */}
-                {pairIdx === variationAfterPairIndex && isInVariation && variationMoves.length > 0 && (
+                {/* 현재 분석 중인 변형선 (인라인) — 분석 완료 후에만 표시 */}
+                {analysis && pairIdx === variationAfterPairIndex && isInVariation && variationMoves.length > 0 && (
                   <div className="border-y border-indigo-200 bg-indigo-50 px-2 py-2 dark:border-indigo-800 dark:bg-indigo-950/30">
                     <div className="mb-1.5 flex items-center justify-between">
                       <span className="text-[10px] font-medium text-indigo-500 dark:text-indigo-400">변형선</span>

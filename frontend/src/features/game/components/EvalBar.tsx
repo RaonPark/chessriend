@@ -10,6 +10,10 @@ function evalToWhitePercent(evaluation: EvalResult | null): number {
   if (!evaluation) return 50
 
   if (evaluation.mate !== null) {
+    // mate=0이면 부호로는 승자 판별 불가 → mateWinner 사용
+    if (evaluation.mate === 0 && evaluation.mateWinner) {
+      return evaluation.mateWinner === 'white' ? 100 : 0
+    }
     // mate: 양수=백 메이트 유리, 음수=흑 메이트 유리
     return evaluation.mate > 0 ? 100 : 0
   }
@@ -28,6 +32,10 @@ function formatEval(evaluation: EvalResult | null): string {
   if (!evaluation) return ''
 
   if (evaluation.mate !== null) {
+    // 이미 메이트 → 게임 결과로 표시
+    if (evaluation.mate === 0 && evaluation.mateWinner) {
+      return evaluation.mateWinner === 'white' ? '1-0' : '0-1'
+    }
     return `M${Math.abs(evaluation.mate)}`
   }
 
@@ -58,7 +66,8 @@ export function EvalBar({ evaluation, isEvaluating, orientation = 'white' }: Eva
 
   const isWhiteAdvantage = evaluation != null && (
     (evaluation.cp !== null && evaluation.cp > 0) ||
-    (evaluation.mate !== null && evaluation.mate > 0)
+    (evaluation.mate !== null && evaluation.mate > 0) ||
+    evaluation.mateWinner === 'white'
   )
 
   // 유리한 쪽 영역에 숫자 표시

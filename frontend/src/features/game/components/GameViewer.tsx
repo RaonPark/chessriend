@@ -15,11 +15,12 @@ interface GameViewerProps {
   annotations: AnnotationResponse
   ownerUsername: string
   whiteName: string
+  blackName: string
   onSaveAnnotations?: () => void
   isSaving?: boolean
 }
 
-export function GameViewer({ moves, annotations, ownerUsername, whiteName, onSaveAnnotations, isSaving }: GameViewerProps) {
+export function GameViewer({ moves, annotations, ownerUsername, whiteName, blackName, onSaveAnnotations, isSaving }: GameViewerProps) {
   const loadMoves = useBoardStore((s) => s.loadMoves)
   const loadAnnotations = useBoardStore((s) => s.loadAnnotations)
   const currentFen = useBoardStore((s) => s.currentFen)
@@ -86,13 +87,11 @@ export function GameViewer({ moves, annotations, ownerUsername, whiteName, onSav
     <div className="space-y-4">
       <div className="flex flex-col gap-4 md:flex-row">
         {/* Eval Bar + 체스보드 */}
-        <div className="flex gap-2">
-          <div className="hidden h-auto sm:block">
-            <div className="h-full">
-              <EvalBar evaluation={evaluation} isEvaluating={isEvaluating} orientation={orientation} />
-            </div>
+        <div className="flex gap-2 self-start">
+          <div className="hidden sm:block md:h-[420px] lg:h-[480px] xl:h-[560px]">
+            <EvalBar evaluation={evaluation} isEvaluating={isEvaluating} orientation={orientation} />
           </div>
-          <div className="w-full md:w-auto lg:w-[480px]">
+          <div className="w-full md:w-[420px] lg:w-[480px] xl:w-[560px]">
             <GameBoard orientation={orientation} />
           </div>
         </div>
@@ -146,6 +145,8 @@ export function GameViewer({ moves, annotations, ownerUsername, whiteName, onSav
               <AnalysisSummary
                 analysis={analysis}
                 moves={moves}
+                whiteName={whiteName}
+                blackName={blackName}
                 onReanalyze={handleStartAnalysis}
               />
             </div>
