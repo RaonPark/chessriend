@@ -96,11 +96,11 @@
 
 ---
 
-## 5. CI 실패 픽스 (PR #12)
+## 6. CI 실패 픽스 (PR #12)
 
 **What**: PR #12에서 프론트/백엔드 CI 둘 다 실패한 것 해소.
 
-### 5.1 프론트 — `BrilliantContext`에 `cheapestAttacker` 누락
+### 6.1 프론트 — `BrilliantContext`에 `cheapestAttacker` 누락
 
 **Why**: `detectBrilliant` 함수에 새 필드 `cheapestAttacker`가 추가됐는데, 기존 테스트들이 이를 전달하지 않아 TS2345 에러. 또 `extractMoveContext`에 안 쓰는 `const pieceValue` 변수가 남아 TS6133.
 
@@ -112,7 +112,7 @@
 - `frontend/src/features/game/utils/classification.ts`
 - `frontend/src/features/game/utils/__tests__/classification.test.ts`
 
-### 5.2 백엔드 — jOOQ 생성 클래스 부재
+### 6.2 백엔드 — jOOQ 생성 클래스 부재
 
 **Why**: CI에서 `org.raonpark.chessriend.jooq.tables.references.GAMES` 미해결. `build/`는 gitignore이고 jOOQ 설정이 `localhost:5432` 실DB를 요구하는데 CI 잡에는 Postgres가 없음. `generateSchemaSourceOnCompilation = false`라 자동 생성도 안 됨.
 
