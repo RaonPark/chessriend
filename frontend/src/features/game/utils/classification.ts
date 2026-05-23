@@ -112,7 +112,6 @@ function extractMoveContext(fenBefore: string, san: string): MoveContext | null 
 
     // chess.move() 이후 turn이 상대로 넘어감 → chess.turn()은 상대 색
     const opponentColor = chess.turn()
-    const pieceValue = PIECE_VALUES[piece]
 
     const enemyAttackerSquares = chess.attackers(move.to, opponentColor)
     // 킹만 공격하는 경우는 실질적 위협이 아님

@@ -1,9 +1,17 @@
+buildscript {
+    dependencies {
+        // Flyway 10+ split database support modules; required on plugin classpath
+        classpath("org.flywaydb:flyway-database-postgresql:11.16.0")
+    }
+}
+
 plugins {
     kotlin("jvm") version "2.3.20"
     kotlin("plugin.spring") version "2.3.20"
     id("org.springframework.boot") version "4.0.5"
     id("io.spring.dependency-management") version "1.1.7"
     id("nu.studer.jooq") version "10.2.1"
+    id("org.flywaydb.flyway") version "11.16.0"
     jacoco
 }
 
@@ -92,6 +100,13 @@ kotlin {
 
 sourceSets["main"].java.srcDir("build/generated-src/jooq/main")
 
+flyway {
+    url = "jdbc:postgresql://localhost:5432/chessriend"
+    user = "chessriend"
+    password = "chessriend"
+    locations = arrayOf("filesystem:src/main/resources/db/migration")
+}
+
 jooq {
     version.set("3.19.31")
 
@@ -126,6 +141,10 @@ jooq {
             }
         }
     }
+}
+
+tasks.named("generateJooq") {
+    mustRunAfter(tasks.named("flywayMigrate"))
 }
 
 tasks.withType<Test> {
