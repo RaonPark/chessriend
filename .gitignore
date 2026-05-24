@@ -58,3 +58,6 @@ frontend/dist/
 
 ### Playwright MCP ###
 .playwright-mcp/
+
+### Test screenshots ###
+docs/test-screenshots/
