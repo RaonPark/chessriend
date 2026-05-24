@@ -8,6 +8,9 @@ open class NotFoundException(message: String) : RuntimeException(message)
 class GameNotFoundException(gameId: Long) :
     NotFoundException("Game not found: $gameId")
 
+class GameAnalysisNotFoundException(gameId: Long) :
+    NotFoundException("Game analysis not found for game: $gameId")
+
 /**
  * 도메인 불변식 위반 (HTTP 409)
  */

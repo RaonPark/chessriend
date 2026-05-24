@@ -3,7 +3,6 @@ package org.raonpark.chessriend.game.domain
 data class GameAnnotation(
     val moveComments: Map<String, String> = emptyMap(),  // key: "{moveIndex}" (예: "5"), value: 메모
     val variations: List<Variation> = emptyList(),
-    val analysis: GameAnalysisData? = null,
 ) {
     companion object {
         fun empty() = GameAnnotation()
