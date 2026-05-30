@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '@/test/test-utils'
@@ -12,8 +12,8 @@ const SAMPLE_MOVES: MoveResponse[] = [
   { number: 2, color: 'WHITE', san: 'Nf3' },
 ]
 
-function renderPanel() {
-  return renderWithProviders(<CommentPanel />)
+function renderPanel(props?: { onPersist?: () => void; isPersisting?: boolean }) {
+  return renderWithProviders(<CommentPanel {...props} />)
 }
 
 const DUMMY_ANALYSIS = {
@@ -99,6 +99,29 @@ describe('CommentPanel', () => {
 
     const { container } = renderPanel()
     expect(container.innerHTML).toBe('')
+  })
+
+  it('저장 클릭 시 onPersist 콜백을 호출한다', async () => {
+    useBoardStore.getState().goToMove(0)
+    const onPersist = vi.fn()
+    renderPanel({ onPersist })
+
+    await userEvent.click(screen.getByText('메모 추가...'))
+    await userEvent.type(screen.getByRole('textbox'), '좋은 수')
+    await userEvent.click(screen.getByText('저장'))
+
+    expect(onPersist).toHaveBeenCalledTimes(1)
+    expect(useBoardStore.getState().moveComments['0']).toBe('좋은 수')
+  })
+
+  it('isPersisting=true일 때 저장 버튼이 비활성화되고 라벨이 바뀐다', async () => {
+    useBoardStore.getState().goToMove(0)
+    renderPanel({ isPersisting: true })
+
+    await userEvent.click(screen.getByText('메모 추가...'))
+
+    const saveBtn = screen.getByRole('button', { name: '저장 중...' })
+    expect(saveBtn).toBeDisabled()
   })
 
   it('textarea에 올바른 aria-label을 설정한다', async () => {

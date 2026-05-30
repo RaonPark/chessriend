@@ -3,7 +3,12 @@ import { useBoardStore } from '../stores/boardStore'
 import { CommentPanel } from './CommentPanel'
 import type { MoveClassification, VariationResponse } from '../types/game'
 
-export function MoveList() {
+interface MoveListProps {
+  onPersist?: () => void
+  isPersisting?: boolean
+}
+
+export function MoveList({ onPersist, isPersisting }: MoveListProps = {}) {
   const moves = useBoardStore((s) => s.mainlineMoves)
   const currentIndex = useBoardStore((s) => s.currentIndex)
   const goToMove = useBoardStore((s) => s.goToMove)
@@ -172,7 +177,7 @@ export function MoveList() {
       </div>
 
       {/* 메모 패널 (MoveList 하단) */}
-      <CommentPanel />
+      <CommentPanel onPersist={onPersist} isPersisting={isPersisting} />
     </div>
   )
 }
