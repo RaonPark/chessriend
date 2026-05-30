@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { deleteGame, deleteGames, deleteAllGames, updateAnnotations } from './gameApi'
+import { deleteGame, deleteGames, deleteAllGames, submitAnalysis, updateAnnotations } from './gameApi'
 import { gameKeys } from './queryKeys'
-import type { AnnotationRequest } from '../types/game'
+import type { AnnotationRequest, GameAnalysis } from '../types/game'
 
 export function useDeleteGame() {
   const queryClient = useQueryClient()
@@ -41,6 +41,17 @@ export function useUpdateAnnotations(gameId: string) {
 
   return useMutation({
     mutationFn: (annotations: AnnotationRequest) => updateAnnotations(gameId, annotations),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: gameKeys.detail(gameId) })
+    },
+  })
+}
+
+export function useSubmitAnalysis(gameId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (analysis: GameAnalysis) => submitAnalysis(gameId, analysis),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: gameKeys.detail(gameId) })
     },

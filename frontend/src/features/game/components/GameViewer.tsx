@@ -1,7 +1,8 @@
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useState } from 'react'
 import { useBoardStore } from '../stores/boardStore'
 import { useStockfish } from '../hooks/useStockfish'
 import { useBatchAnalysis } from '../hooks/useBatchAnalysis'
+import { useSubmitAnalysis } from '../api/mutations'
 import { GameBoard } from './GameBoard'
 import { MoveList } from './MoveList'
 import { BoardControls } from './BoardControls'
@@ -11,6 +12,7 @@ import { AnalysisSummary } from './AnalysisSummary'
 import type { AnnotationResponse, MoveResponse } from '../types/game'
 
 interface GameViewerProps {
+  gameId: string
   moves: MoveResponse[]
   annotations: AnnotationResponse
   ownerUsername: string
@@ -20,7 +22,9 @@ interface GameViewerProps {
   isSaving?: boolean
 }
 
-export function GameViewer({ moves, annotations, ownerUsername, whiteName, blackName, onSaveAnnotations, isSaving }: GameViewerProps) {
+type AnalysisSaveMessage = { kind: 'success' | 'error'; text: string }
+
+export function GameViewer({ gameId, moves, annotations, ownerUsername, whiteName, blackName, onSaveAnnotations, isSaving }: GameViewerProps) {
   const loadMoves = useBoardStore((s) => s.loadMoves)
   const loadAnnotations = useBoardStore((s) => s.loadAnnotations)
   const currentFen = useBoardStore((s) => s.currentFen)
@@ -36,13 +40,27 @@ export function GameViewer({ moves, annotations, ownerUsername, whiteName, black
 
   const { isReady, evaluation, isEvaluating, evaluate } = useStockfish(18)
   const batch = useBatchAnalysis()
+  const submitAnalysisMutation = useSubmitAnalysis(gameId)
+  const [analysisSaveMessage, setAnalysisSaveMessage] = useState<AnalysisSaveMessage | null>(null)
 
-  // 배치 분석 완료 시 스토어에 반영
+  // 배치 분석 완료 시 스토어 반영 + 백엔드 자동 저장
   useEffect(() => {
-    if (batch.analysis) {
-      setAnalysis(batch.analysis)
-    }
+    if (!batch.analysis) return
+    setAnalysis(batch.analysis)
+    submitAnalysisMutation.mutate(batch.analysis, {
+      onSuccess: () => setAnalysisSaveMessage({ kind: 'success', text: '분석이 저장되었습니다.' }),
+      onError: () => setAnalysisSaveMessage({ kind: 'error', text: '분석 저장에 실패했습니다. 다시 분석하면 재시도됩니다.' }),
+    })
+    // submitAnalysisMutation은 dep에 넣지 않는다 — mutate는 안정 참조이고, 매 렌더 새 객체로 트리거되어 중복 POST되는 것을 막는다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [batch.analysis, setAnalysis])
+
+  // 저장 메시지 3초 후 자동 해제
+  useEffect(() => {
+    if (!analysisSaveMessage) return
+    const t = setTimeout(() => setAnalysisSaveMessage(null), 3000)
+    return () => clearTimeout(t)
+  }, [analysisSaveMessage])
 
   const handleStartAnalysis = useCallback(() => {
     if (mainlineFens.length > 0) {
@@ -127,6 +145,20 @@ export function GameViewer({ moves, annotations, ownerUsername, whiteName, black
               )}
             </div>
           </div>
+
+          {/* 분석 저장 결과 인라인 배너 */}
+          {analysisSaveMessage && (
+            <div
+              role="status"
+              className={`mb-2 rounded-lg border px-3 py-2 text-xs ${
+                analysisSaveMessage.kind === 'success'
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200'
+                  : 'border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/60 dark:text-red-300'
+              }`}
+            >
+              {analysisSaveMessage.text}
+            </div>
+          )}
 
           {/* 배치 분석 진행률 */}
           {batch.isAnalyzing && (

@@ -67,7 +67,6 @@ export interface AnnotationResponse {
 export interface AnnotationRequest {
   moveComments: Record<string, string>
   variations: VariationResponse[]
-  analysis?: GameAnalysis
 }
 
 export interface GameDetailResponse {

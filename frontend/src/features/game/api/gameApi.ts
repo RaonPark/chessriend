@@ -1,6 +1,6 @@
 import { apiFetch, ApiError } from '@/shared/api/apiClient'
 import type { PagedResponse } from '@/shared/types/api'
-import type { AnnotationRequest, GameDetailResponse, GameFilter, GameResponse, ImportParams } from '../types/game'
+import type { AnnotationRequest, GameAnalysis, GameDetailResponse, GameFilter, GameResponse, ImportParams } from '../types/game'
 
 export async function fetchGames(filters: GameFilter = {}): Promise<PagedResponse<GameResponse>> {
   const params = new URLSearchParams()
@@ -49,6 +49,13 @@ export async function updateAnnotations(id: string, annotations: AnnotationReque
   await apiFetch(`/api/games/${id}/annotations`, {
     method: 'PUT',
     body: JSON.stringify(annotations),
+  })
+}
+
+export async function submitAnalysis(id: string, analysis: GameAnalysis): Promise<GameAnalysis> {
+  return apiFetch(`/api/games/${id}/analysis`, {
+    method: 'POST',
+    body: JSON.stringify(analysis),
   })
 }
 

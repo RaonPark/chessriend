@@ -254,22 +254,39 @@ describe('boardStore — Annotation', () => {
     }
 
     it('setAnalysis가 analysis와 classificationByMove를 설정한다', () => {
+      getState().markAnnotationsClean()
       getState().setAnalysis(sampleAnalysis)
 
       expect(getState().analysis).toBe(sampleAnalysis)
       expect(getState().classificationByMove[2]).toBe('mistake')
       expect(getState().classificationByMove[3]).toBe('blunder')
       expect(getState().classificationByMove[0]).toBeUndefined()
-      expect(getState().annotationsDirty).toBe(true)
+      // 분석 저장은 자동 POST 경로로 분리됨 — annotationsDirty를 흔들지 않는다.
+      expect(getState().annotationsDirty).toBe(false)
     })
 
     it('clearAnalysis가 analysis를 초기화한다', () => {
       getState().setAnalysis(sampleAnalysis)
+      getState().markAnnotationsClean()
       getState().clearAnalysis()
 
       expect(getState().analysis).toBeNull()
       expect(getState().classificationByMove).toEqual({})
+      expect(getState().annotationsDirty).toBe(false)
+    })
+
+    it('setAnalysis는 기존 annotationsDirty 값을 변경하지 않는다', () => {
+      // dirty=true 상태에서 setAnalysis 호출 → 그대로 true
+      getState().setMoveComment(0, '메모')
       expect(getState().annotationsDirty).toBe(true)
+      getState().setAnalysis(sampleAnalysis)
+      expect(getState().annotationsDirty).toBe(true)
+
+      // dirty=false 상태에서 setAnalysis 호출 → 그대로 false
+      getState().markAnnotationsClean()
+      expect(getState().annotationsDirty).toBe(false)
+      getState().setAnalysis(sampleAnalysis)
+      expect(getState().annotationsDirty).toBe(false)
     })
 
     it('loadAnnotations가 저장된 analysis를 복원한다', () => {
@@ -294,19 +311,12 @@ describe('boardStore — Annotation', () => {
       expect(getState().classificationByMove).toEqual({})
     })
 
-    it('getAnnotationsSnapshot에 analysis가 포함된다', () => {
+    it('getAnnotationsSnapshot에는 analysis가 포함되지 않는다', () => {
+      // 분석은 자동 POST 경로로 분리됨 — annotations 저장 payload에서 제외.
       getState().setAnalysis(sampleAnalysis)
       const snapshot = getState().getAnnotationsSnapshot()
 
-      expect(snapshot.analysis).toBe(sampleAnalysis)
-    })
-
-    it('analysis가 없으면 snapshot에 analysis가 없다', () => {
-      getState().clearAnalysis()
-      getState().markAnnotationsClean()
-      const snapshot = getState().getAnnotationsSnapshot()
-
-      expect(snapshot.analysis).toBeUndefined()
+      expect(snapshot).not.toHaveProperty('analysis')
     })
 
     it('loadMoves가 analysis를 초기화한다', () => {
