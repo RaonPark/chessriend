@@ -150,6 +150,7 @@ export function GameDetailPage() {
       {/* 체스보드 뷰어 */}
       {game.moves && game.moves.length > 0 && (
         <GameViewer
+          gameId={id!}
           moves={game.moves}
           annotations={game.annotations}
           ownerUsername={game.ownerUsername}

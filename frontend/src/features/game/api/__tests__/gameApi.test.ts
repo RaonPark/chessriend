@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { fetchGames, fetchGame, deleteGame, deleteGames, deleteAllGames, updateAnnotations, createImportEventSource } from '../gameApi'
+import { fetchGames, fetchGame, deleteGame, deleteGames, deleteAllGames, submitAnalysis, updateAnnotations, createImportEventSource } from '../gameApi'
 import { ApiError } from '@/shared/api/apiClient'
+import type { GameAnalysis } from '../../types/game'
 
 describe('fetchGames', () => {
   beforeEach(() => {
@@ -142,6 +143,42 @@ describe('updateAnnotations', () => {
     )
 
     await expect(updateAnnotations('999', { moveComments: {}, variations: [] })).rejects.toThrow(ApiError)
+  })
+})
+
+describe('submitAnalysis', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  const sampleAnalysis: GameAnalysis = {
+    evaluations: [
+      { moveIndex: 0, evalBefore: { cp: 20, mate: null }, evalAfter: { cp: 15, mate: null }, cpLoss: 5, classification: null },
+    ],
+    depth: 16,
+    analyzedAt: '2026-05-30T00:00:00.000Z',
+  }
+
+  it('POST /api/games/:id/analysis를 호출하며 analysis를 body로 전송한다', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(sampleAnalysis), { status: 200 }),
+    )
+
+    const result = await submitAnalysis('42', sampleAnalysis)
+    expect(result).toEqual(sampleAnalysis)
+
+    const [url, init] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0]
+    expect(url).toContain('/api/games/42/analysis')
+    expect(init.method).toBe('POST')
+    expect(JSON.parse(init.body)).toEqual(sampleAnalysis)
+  })
+
+  it('실패 시 ApiError를 던진다', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ message: 'Game not found' }), { status: 404 }),
+    )
+
+    await expect(submitAnalysis('999', sampleAnalysis)).rejects.toThrow(ApiError)
   })
 })
 

@@ -46,7 +46,7 @@ interface BoardState {
   enterSavedVariation: (variation: VariationResponse, index: number) => void
   setAnalysis: (analysis: GameAnalysis) => void
   clearAnalysis: () => void
-  getAnnotationsSnapshot: () => { moveComments: Record<string, string>; variations: VariationResponse[]; analysis?: GameAnalysis }
+  getAnnotationsSnapshot: () => { moveComments: Record<string, string>; variations: VariationResponse[] }
   markAnnotationsClean: () => void
 }
 
@@ -326,25 +326,26 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   },
 
   setAnalysis: (analysis) => {
+    // 분석은 메모/변형선과 라이프사이클이 분리됨 — annotationsDirty를 흔들지 않는다.
+    // 저장은 useSubmitAnalysis가 분석 완료 즉시 자동 POST로 처리.
     const classificationByMove: Record<number, MoveClassification> = {}
     for (const ev of analysis.evaluations) {
       if (ev.classification) {
         classificationByMove[ev.moveIndex] = ev.classification
       }
     }
-    set({ analysis, classificationByMove, annotationsDirty: true })
+    set({ analysis, classificationByMove })
   },
 
   clearAnalysis: () => {
-    set({ analysis: null, classificationByMove: {}, annotationsDirty: true })
+    set({ analysis: null, classificationByMove: {} })
   },
 
   getAnnotationsSnapshot: () => {
-    const { moveComments, savedVariations, analysis } = get()
+    const { moveComments, savedVariations } = get()
     return {
       moveComments: { ...moveComments },
       variations: [...savedVariations],
-      ...(analysis ? { analysis } : {}),
     }
   },
 
