@@ -1,7 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useBoardStore } from '../stores/boardStore'
 
-export function CommentPanel() {
+interface CommentPanelProps {
+  onPersist?: () => void
+  isPersisting?: boolean
+}
+
+export function CommentPanel({ onPersist, isPersisting }: CommentPanelProps = {}) {
   const currentIndex = useBoardStore((s) => s.currentIndex)
   const mainlineMoves = useBoardStore((s) => s.mainlineMoves)
   const isInVariation = useBoardStore((s) => s.isInVariation)
@@ -60,6 +65,7 @@ export function CommentPanel() {
       setMoveComment(currentIndex, draft)
     }
     setIsEditing(false)
+    onPersist?.()
   }
 
   function handleCancel() {
@@ -128,9 +134,10 @@ export function CommentPanel() {
               </button>
               <button
                 onClick={handleSave}
-                className="rounded bg-amber-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-600"
+                disabled={isPersisting}
+                className="rounded bg-amber-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-amber-700 disabled:opacity-50 dark:bg-amber-700 dark:hover:bg-amber-600"
               >
-                저장
+                {isPersisting ? '저장 중...' : '저장'}
               </button>
             </div>
           </div>

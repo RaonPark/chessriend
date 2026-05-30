@@ -202,7 +202,7 @@ export function GameViewer({ gameId, moves, annotations, ownerUsername, whiteNam
             </div>
           )}
 
-          <MoveList />
+          <MoveList onPersist={onSaveAnnotations} isPersisting={isSaving} />
         </div>
       </div>
 

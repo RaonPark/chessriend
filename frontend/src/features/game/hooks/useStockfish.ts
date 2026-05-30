@@ -72,11 +72,13 @@ export function useStockfish(depth = 18) {
           }
 
           if (line.startsWith('bestmove')) {
-            // 최종 결과 확정
+            // 최종 결과 확정 — latestInfoRef가 비어있으면 직전 evaluate()가 보낸 stop에 대한
+            // 응답으로 도착한 빈 bestmove. 이걸 처리하면 새로 시작한 search의 isEvaluating을
+            // 잘못 false로 떨어뜨려 EvalBar가 50:50 + 빈 숫자로 멈춰 보인다.
             if (latestInfoRef.current) {
               setEvaluation({ ...latestInfoRef.current })
+              setIsEvaluating(false)
             }
-            setIsEvaluating(false)
           }
         }
 

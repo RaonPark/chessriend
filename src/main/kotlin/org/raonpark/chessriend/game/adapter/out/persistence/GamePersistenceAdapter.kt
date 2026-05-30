@@ -119,7 +119,12 @@ class GamePersistenceAdapter(
         val sql = query.getSQL(ParamType.NAMED)
         var spec = databaseClient.sql(sql)
         query.params.entries.forEachIndexed { index, (_, param) ->
-            spec = spec.bind(index, param.value!!)
+            // R2DBC Postgres 코덱은 jOOQ의 JSONB 타입을 직접 인코딩하지 못함 → R2DBC의 Json 으로 변환
+            val value = when (val v = param.value!!) {
+                is JSONB -> Json.of(v.data())
+                else -> v
+            }
+            spec = spec.bind(index, value)
         }
         return spec
     }
