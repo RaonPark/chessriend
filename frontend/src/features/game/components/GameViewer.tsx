@@ -1,6 +1,6 @@
-import { useEffect, useCallback, useState } from 'react'
+import { useEffect, useCallback, useMemo, useState } from 'react'
 import { useBoardStore } from '../stores/boardStore'
-import { useStockfish } from '../hooks/useStockfish'
+import { useStockfish, type EvalResult } from '../hooks/useStockfish'
 import { useBatchAnalysis } from '../hooks/useBatchAnalysis'
 import { useSubmitAnalysis } from '../api/mutations'
 import { GameBoard } from './GameBoard'
@@ -28,6 +28,7 @@ export function GameViewer({ gameId, moves, annotations, ownerUsername, whiteNam
   const loadMoves = useBoardStore((s) => s.loadMoves)
   const loadAnnotations = useBoardStore((s) => s.loadAnnotations)
   const currentFen = useBoardStore((s) => s.currentFen)
+  const currentIndex = useBoardStore((s) => s.currentIndex)
   const isInVariation = useBoardStore((s) => s.isInVariation)
   const annotationsDirty = useBoardStore((s) => s.annotationsDirty)
 
@@ -42,6 +43,22 @@ export function GameViewer({ gameId, moves, annotations, ownerUsername, whiteNam
   const batch = useBatchAnalysis()
   const submitAnalysisMutation = useSubmitAnalysis(gameId)
   const [analysisSaveMessage, setAnalysisSaveMessage] = useState<AnalysisSaveMessage | null>(null)
+
+  // 메인라인의 이미 분석된 수는 저장된 evalAfter를 그대로 보여주고 라이브 Stockfish 호출을 건너뛴다.
+  // 시작 포지션(-1)과 변형선은 라이브 평가 유지 — 사용자가 즉석에서 둔 포지션도 EvalBar가 즉시 반응해야 함.
+  const cachedEvaluation = useMemo<EvalResult | null>(() => {
+    if (isInVariation || currentIndex < 0 || !analysis) return null
+    const ev = analysis.evaluations[currentIndex]
+    if (!ev) return null
+    const after = ev.evalAfter
+    // mate=0은 부호가 사라지므로 mainline index로 차례를 추정 (짝수 i: 백이 둠 → 흑 차례 → mate=0이면 백 승)
+    const mateWinner: 'white' | 'black' | null =
+      after.mate === 0 ? (currentIndex % 2 === 0 ? 'white' : 'black') : null
+    return { cp: after.cp, mate: after.mate, mateWinner, depth: analysis.depth }
+  }, [isInVariation, currentIndex, analysis])
+
+  const displayEvaluation = cachedEvaluation ?? evaluation
+  const displayIsEvaluating = cachedEvaluation ? false : isEvaluating
 
   // 배치 분석 완료 시 스토어 반영 + 백엔드 자동 저장
   useEffect(() => {
@@ -79,12 +96,13 @@ export function GameViewer({ gameId, moves, annotations, ownerUsername, whiteNam
     }
   }, [annotations, loadAnnotations, annotationsDirty])
 
-  // FEN이 바뀔 때마다 평가 요청
+  // FEN이 바뀔 때마다 평가 요청 — 단, 캐시된 메인라인 포지션이면 건너뜀
   useEffect(() => {
+    if (cachedEvaluation) return
     if (currentFen) {
       evaluate(currentFen)
     }
-  }, [currentFen, evaluate])
+  }, [currentFen, evaluate, cachedEvaluation])
 
   // Ctrl+S로 저장
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -107,7 +125,7 @@ export function GameViewer({ gameId, moves, annotations, ownerUsername, whiteNam
         {/* Eval Bar + 체스보드 */}
         <div className="flex gap-2 self-start">
           <div className="hidden sm:block md:h-[420px] lg:h-[480px] xl:h-[560px]">
-            <EvalBar evaluation={evaluation} isEvaluating={isEvaluating} orientation={orientation} />
+            <EvalBar evaluation={displayEvaluation} isEvaluating={displayIsEvaluating} orientation={orientation} />
           </div>
           <div className="w-full md:w-[420px] lg:w-[480px] xl:w-[560px]">
             <GameBoard orientation={orientation} />
@@ -118,7 +136,7 @@ export function GameViewer({ gameId, moves, annotations, ownerUsername, whiteNam
         <div className="flex-1">
           <div className="mb-2 flex items-center justify-between">
             <span className="text-xs text-amber-600 dark:text-amber-400">
-              {isReady ? (isEvaluating ? '분석 중...' : `Stockfish 18 · depth ${evaluation?.depth ?? '-'}`) : 'Stockfish 로딩 중...'}
+              {isReady ? (displayIsEvaluating ? '분석 중...' : `Stockfish · depth ${displayEvaluation?.depth ?? '-'}`) : 'Stockfish 로딩 중...'}
             </span>
             <div className="flex items-center gap-2">
               {!batch.isAnalyzing && !analysis && isReady && (

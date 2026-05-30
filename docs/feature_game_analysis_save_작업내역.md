@@ -34,6 +34,13 @@
 - `frontend/src/features/game/types/game.ts`
   - `AnnotationRequest`에서 `analysis?: GameAnalysis` 필드 제거 (백엔드가 drop하던 데드 바이트). `AnnotationResponse.analysis?`는 읽기 임베드용으로 유지.
 
+### EvalBar 캐시 재사용 (수 네비게이션 시 Stockfish 재실행 방지)
+- `frontend/src/features/game/components/GameViewer.tsx`
+  - 메인라인의 이미 분석된 수에 한해 `analysis.evaluations[currentIndex].evalAfter`를 EvalBar에 그대로 전달, 라이브 `useStockfish` 호출 건너뜀.
+  - 변형선(`isInVariation`)과 시작 포지션(`currentIndex < 0`)은 종전대로 라이브 평가 유지 — 사용자가 즉석에서 둔 포지션도 EvalBar가 즉시 반응해야 함.
+  - 캐시 분기에서는 "분석 중..." 표시도 뜨지 않음. 상태 텍스트는 `Stockfish · depth N` 통일(라이브 18 / 캐시 16 표기 차이 제거).
+  - mate=0의 부호 손실은 mainline index로 차례 추정해서 `mateWinner` 재구성.
+
 ### 테스트
 - `frontend/src/features/game/api/__tests__/gameApi.test.ts`
   - `submitAnalysis` 그룹 신설:
