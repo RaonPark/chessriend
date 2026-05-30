@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.onCompletion
 import org.raonpark.chessriend.game.domain.Color
 import org.raonpark.chessriend.game.domain.GameSource
 import org.raonpark.chessriend.game.domain.TimeCategory
+import org.raonpark.chessriend.game.port.`in`.GetGameAnalysisUseCase
 import org.raonpark.chessriend.game.port.`in`.GetGameUseCase
 import org.raonpark.chessriend.game.port.`in`.ImportGameUseCase
 import org.raonpark.chessriend.game.port.out.GameFetchCriteria
@@ -19,6 +20,7 @@ import java.time.Instant
 class GameController(
     private val importGameUseCase: ImportGameUseCase,
     private val getGameUseCase: GetGameUseCase,
+    private val getGameAnalysisUseCase: GetGameAnalysisUseCase,
 ) {
 
     @GetMapping
@@ -43,7 +45,8 @@ class GameController(
     @GetMapping("/{id}")
     suspend fun getGame(@PathVariable id: Long): GameDetailResponse {
         val game = getGameUseCase.getGame(id)
-        return GameDetailResponse.from(game)
+        val analysis = getGameAnalysisUseCase.findAnalysis(id)
+        return GameDetailResponse.from(game, analysis)
     }
 
     @PutMapping("/{id}/annotations")

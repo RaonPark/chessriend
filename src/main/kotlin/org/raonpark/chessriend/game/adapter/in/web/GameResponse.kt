@@ -81,7 +81,7 @@ data class GameDetailResponse(
     val playedAt: Instant,
 ) {
     companion object {
-        fun from(game: Game): GameDetailResponse = GameDetailResponse(
+        fun from(game: Game, analysis: GameAnalysisData? = null): GameDetailResponse = GameDetailResponse(
             id = game.id!!.toString(),
             source = game.source.name,
             sourceGameId = game.sourceGameId,
@@ -95,7 +95,7 @@ data class GameDetailResponse(
             ),
             opening = game.opening?.let { OpeningResponse(it.eco, it.name) },
             moves = game.moves.map { MoveResponse.from(it) },
-            annotations = AnnotationResponse.from(game.annotations),
+            annotations = AnnotationResponse.from(game.annotations, analysis),
             totalMoves = game.totalMoves,
             playedAt = game.playedAt,
         )
@@ -105,12 +105,12 @@ data class GameDetailResponse(
 data class AnnotationRequest(
     val moveComments: Map<String, String> = emptyMap(),
     val variations: List<VariationRequest> = emptyList(),
+    // 한 릴리즈 동안 프론트가 보내던 페이로드 호환을 위해 필드는 유지하되 silently drop
     val analysis: GameAnalysisRequest? = null,
 ) {
     fun toDomain(): GameAnnotation = GameAnnotation(
         moveComments = moveComments,
         variations = variations.map { it.toDomain() },
-        analysis = analysis?.toDomain(),
     )
 }
 
@@ -174,11 +174,12 @@ data class AnnotationResponse(
     val analysis: GameAnalysisResponse? = null,
 ) {
     companion object {
-        fun from(annotation: GameAnnotation): AnnotationResponse = AnnotationResponse(
-            moveComments = annotation.moveComments,
-            variations = annotation.variations.map { VariationResponse.from(it) },
-            analysis = annotation.analysis?.let { GameAnalysisResponse.from(it) },
-        )
+        fun from(annotation: GameAnnotation, analysis: GameAnalysisData? = null): AnnotationResponse =
+            AnnotationResponse(
+                moveComments = annotation.moveComments,
+                variations = annotation.variations.map { VariationResponse.from(it) },
+                analysis = analysis?.let { GameAnalysisResponse.from(it) },
+            )
     }
 }
 
