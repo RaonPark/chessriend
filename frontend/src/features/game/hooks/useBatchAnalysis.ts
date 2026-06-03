@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { EvalScore, GameAnalysis, MoveEvaluation, MoveResponse } from '../types/game'
 import { computeClassifications } from '../utils/classification'
+import { ANALYSIS_DEPTH } from '../constants'
 
 interface BatchAnalysisState {
   isAnalyzing: boolean
@@ -8,8 +9,6 @@ interface BatchAnalysisState {
   analysis: GameAnalysis | null
   error: string | null
 }
-
-const BATCH_DEPTH = 16
 
 export function useBatchAnalysis() {
   const engineRef = useRef<{ uci: (cmd: string) => void; listen: (line: string) => void } | null>(null)
@@ -77,7 +76,7 @@ export function useBatchAnalysis() {
       }
       engine.uci('ucinewgame')
       engine.uci(`position fen ${fen}`)
-      engine.uci(`go depth ${BATCH_DEPTH}`)
+      engine.uci(`go depth ${ANALYSIS_DEPTH}`)
     })
   }, [])
 
@@ -119,7 +118,7 @@ export function useBatchAnalysis() {
       const evaluations: MoveEvaluation[] = computeClassifications(fens, positionEvals, moves)
       const analysis: GameAnalysis = {
         evaluations,
-        depth: BATCH_DEPTH,
+        depth: ANALYSIS_DEPTH,
         analyzedAt: new Date().toISOString(),
       }
 
