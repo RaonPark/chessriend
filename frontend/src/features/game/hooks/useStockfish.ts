@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { ANALYSIS_DEPTH } from '../constants'
 
 export interface EvalResult {
   cp: number | null     // centipawn (백 관점, 양수=백 유리)
@@ -7,7 +8,7 @@ export interface EvalResult {
   depth: number
 }
 
-export function useStockfish(depth = 18) {
+export function useStockfish(depth = ANALYSIS_DEPTH) {
   const engineRef = useRef<{ uci: (cmd: string) => void; listen: (line: string) => void } | null>(null)
   const [isReady, setIsReady] = useState(false)
   const [evaluation, setEvaluation] = useState<EvalResult | null>(null)

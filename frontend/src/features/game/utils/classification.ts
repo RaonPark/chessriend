@@ -17,12 +17,12 @@ export const PIECE_VALUES = {
 
 export type PieceSymbol = keyof typeof PIECE_VALUES
 
-/**
- * "거의 비슷" 기준 — cpLoss가 이 값 미만이면 희생이 유효하다고 간주.
- * depth 16 엔진 노이즈(±10~15cp)를 약간 상회하는 보수적 값.
- */
-const BRILLIANT_CP_TOLERANCE = 20
+const KING_AS_ATTACKER_VALUE = 0
 
+/**
+ * "거의 비슷" 기준 — Win% 손실이 이 값 미만이면 희생이 유효하다고 간주.
+ */
+const BRILLIANT_WIN_TOLERANCE = 2
 
 /**
  * mate/cp 평가를 centipawn 단일 값으로 변환 (백 관점).
@@ -38,33 +38,38 @@ export function evalToCp(eval_: EvalScore): number {
 }
 
 /**
- * centipawn loss 기준으로 수를 분류.
- * Blunder: 200+cp, Mistake: 100-200cp, Inaccuracy: 50-100cp
+ * centipawn 평가를 기대 승률(0..100)로 변환.
  */
-export function classifyMove(cpLoss: number): MoveClassification | null {
-  if (cpLoss >= 200) return 'blunder'
-  if (cpLoss >= 100) return 'mistake'
-  if (cpLoss >= 50) return 'inaccuracy'
+function winPercent(cp: number): number {
+  return 100 / (1 + Math.exp(-0.00368208 * cp))
+}
+
+/**
+ * Win% loss 기준으로 수를 분류.
+ * Blunder: 30%p+, Mistake: 20-30%p, Inaccuracy: 10-20%p
+ */
+export function classifyMove(winLoss: number): MoveClassification | null {
+  if (winLoss >= 30) return 'blunder'
+  if (winLoss >= 20) return 'mistake'
+  if (winLoss >= 10) return 'inaccuracy'
   return null
 }
 
 interface BrilliantContext {
-  cpLoss: number
+  winLoss: number
   /** 이동한 기물 */
   piece: PieceSymbol
   /** 포획한 기물 (없으면 null — 일반 수) */
   captured: PieceSymbol | null
   /**
    * 이동 후 기물이 잡힐 위치에 놓였는지 여부.
-   * 비-킹 상대 기물이 목적지를 공격하고, 아군 기물이 방어하지 않는 경우.
+   * 상대 기물이 목적지를 공격하고, 아군 기물이 방어하지 않는 경우.
    */
   isAtRisk: boolean
-  /** 목적지를 공격하는 비-킹 상대 기물 중 가장 싼 것의 가치 (공격자 없으면 Infinity) */
-  cheapestAttacker: number
 }
 
 /**
- * Brilliant (!!): 기물을 희생에 놓았음에도 cp 손실이 거의 없는 수.
+ * Brilliant (!!): 기물을 희생에 놓았음에도 Win% 손실이 거의 없는 수.
  *
  * 희생의 세 유형:
  * 1. **교환 희생**: 비싼 기물로 싼 기물을 잡았고 방어 안 되는 칸에 놓임
@@ -74,16 +79,13 @@ interface BrilliantContext {
  * 3. **공짜 희생 (비싼 기물 공격)**: 기물을 더 비싼 상대 기물이 공격하는 방어 없는 칸에 놓음
  *    (예: 비숍을 퀸 앞에 놓고 잡으면 백랭크 메이트 — attraction/decoy)
  *
- * 모든 경우 cpLoss < 20 이어야 (엔진이 손실을 판단 못 할 만큼 보상이 있어야) brilliant.
+ * 모든 경우 Win% loss < 2%p 이어야 (엔진이 손실을 판단 못 할 만큼 보상이 있어야) brilliant.
  */
-export function detectBrilliant({ cpLoss, piece, captured, isAtRisk, cheapestAttacker }: BrilliantContext): boolean {
-  if (cpLoss >= BRILLIANT_CP_TOLERANCE) return false
+export function detectBrilliant({ winLoss, piece, captured, isAtRisk }: BrilliantContext): boolean {
+  if (winLoss >= BRILLIANT_WIN_TOLERANCE) return false
   if (!isAtRisk) return false
   // 포획 수의 경우: 공격 기물이 포획 기물보다 비싸야 진짜 희생
   if (captured !== null && PIECE_VALUES[piece] <= PIECE_VALUES[captured]) return false
-  // 되잡는 기물이 이동 기물과 동가 이상이면 단순 교환이지 희생이 아님
-  // (예: Nxe5를 Nc6이 되잡으면 나이트-나이트 동가 교환)
-  if (captured !== null && cheapestAttacker <= PIECE_VALUES[piece]) return false
   return true
 }
 
@@ -91,14 +93,13 @@ interface MoveContext {
   piece: PieceSymbol
   captured: PieceSymbol | null
   isAtRisk: boolean
-  cheapestAttacker: number
 }
 
 /**
  * FEN에서 SAN 수를 시뮬레이션하여 이동/포획 정보 및 희생 여부를 추출.
  *
  * 희생(isAtRisk) 판정:
- * - 비-킹 상대 기물이 목적지를 공격하고
+ * - 상대 기물이 목적지를 이동 기물보다 싼 가치로 공격하고
  * - 아군 기물이 목적지를 방어하지 않는 경우
  * 방어된 기물은 잡히더라도 되잡을 수 있으므로 공짜 희생이 아님.
  */
@@ -114,26 +115,23 @@ function extractMoveContext(fenBefore: string, san: string): MoveContext | null 
     const opponentColor = chess.turn()
 
     const enemyAttackerSquares = chess.attackers(move.to, opponentColor)
-    // 킹만 공격하는 경우는 실질적 위협이 아님
-    const nonKingAttackers = enemyAttackerSquares.filter(sq => {
-      const p = chess.get(sq as Parameters<Chess['get']>[0])
-      return p != null && p.type !== 'k'
-    })
     // 아군 기물이 방어하고 있으면 공짜 희생이 아님
     const myColor = move.color
     const defenders = chess.attackers(move.to, myColor)
     const isDefended = defenders.length > 0
 
-    const isAtRisk = nonKingAttackers.length > 0 && !isDefended
-
-    const cheapestAttacker = nonKingAttackers.length > 0
-      ? Math.min(...nonKingAttackers.map(sq => {
+    const cheapestAttacker = enemyAttackerSquares.length > 0
+      ? Math.min(...enemyAttackerSquares.map(sq => {
           const p = chess.get(sq as Parameters<Chess['get']>[0])
-          return p ? PIECE_VALUES[p.type as PieceSymbol] ?? Number.POSITIVE_INFINITY : Number.POSITIVE_INFINITY
+          return p?.type === 'k'
+            ? KING_AS_ATTACKER_VALUE
+            : PIECE_VALUES[p?.type as PieceSymbol] ?? Number.POSITIVE_INFINITY
         }))
       : Number.POSITIVE_INFINITY
 
-    return { piece, captured, isAtRisk, cheapestAttacker }
+    const isAtRisk = !isDefended && cheapestAttacker < PIECE_VALUES[piece]
+
+    return { piece, captured, isAtRisk }
   } catch {
     return null
   }
@@ -163,19 +161,22 @@ export function computeClassifications(
 
     const cpBefore = evalToCp(evalBefore)
     const cpAfter = evalToCp(evalAfter)
+    const winBefore = winPercent(cpBefore)
+    const winAfter = winPercent(cpAfter)
 
     // 백의 수: cpLoss = before - after (백 관점에서 점수가 떨어지면 손실)
     // 흑의 수: cpLoss = after - before (백 관점 점수가 올라가면 흑에게 손실)
     const isWhite = moves[i].color === 'WHITE'
     const cpLoss = Math.max(0, isWhite ? cpBefore - cpAfter : cpAfter - cpBefore)
+    const winLoss = Math.max(0, isWhite ? winBefore - winAfter : winAfter - winBefore)
 
-    const baseClassification = classifyMove(cpLoss)
+    const baseClassification = classifyMove(winLoss)
 
     // Brilliant는 실수 계열이 아닐 때만 승격 가능
     let classification: MoveClassification | null = baseClassification
     if (baseClassification === null) {
       const context = extractMoveContext(fenBefore, moves[i].san)
-      if (context && detectBrilliant({ cpLoss, ...context })) {
+      if (context && detectBrilliant({ winLoss, ...context })) {
         classification = 'brilliant'
       }
     }

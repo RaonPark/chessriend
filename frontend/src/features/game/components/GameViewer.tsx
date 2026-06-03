@@ -10,6 +10,7 @@ import { EvalBar } from './EvalBar'
 import { AnalysisProgress } from './AnalysisProgress'
 import { AnalysisSummary } from './AnalysisSummary'
 import type { AnnotationResponse, MoveResponse } from '../types/game'
+import { ANALYSIS_DEPTH } from '../constants'
 
 interface GameViewerProps {
   gameId: string
@@ -39,7 +40,7 @@ export function GameViewer({ gameId, moves, annotations, ownerUsername, whiteNam
   const isOwnerBlack = ownerUsername.toLowerCase() !== whiteName.toLowerCase()
   const orientation = isOwnerBlack ? 'black' : 'white'
 
-  const { isReady, evaluation, isEvaluating, evaluate } = useStockfish(18)
+  const { isReady, evaluation, isEvaluating, evaluate } = useStockfish(ANALYSIS_DEPTH)
   const batch = useBatchAnalysis()
   const submitAnalysisMutation = useSubmitAnalysis(gameId)
   const [analysisSaveMessage, setAnalysisSaveMessage] = useState<AnalysisSaveMessage | null>(null)
