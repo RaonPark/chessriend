@@ -5,6 +5,9 @@
       "mcp__playwright__browser_snapshot"
     ]
   },
+  "enabledMcpjsonServers": [
+    "postgres"
+  ],
   "hooks": {
     "PostToolUse": [
       {
@@ -43,5 +46,6 @@
         "/Users/raonpark/chessriend"
       ]
     }
-  }
+  },
+  "enableAllProjectMcpServers": true
 }
