@@ -1,5 +1,40 @@
 # master — 프로젝트 초기 설정
 
+## 2026-06-03: GameDetailPage 정렬 수정 + 플랫폼 라벨
+
+### What
+`frontend/src/features/game/components/GameDetailPage.tsx` 게임 정보 카드의 정렬과 플랫폼 표기 수정.
+
+1. **대국자 헤더 정렬**
+   - `flex items-center justify-center gap-10` → `grid grid-cols-[1fr_auto_1fr] items-start gap-4 sm:gap-10`로 교체.
+   - 각 플레이어 컬럼을 `text-center` → `flex flex-col items-center text-center`로 감쌈. `vs`는 `pt-3`로 King 사진 중앙 부근에 맞춤.
+2. **승리/패배 텍스트**: 기존 `text-center` 유지 (변경 없음).
+3. **메타 정보 + 대국 날짜**
+   - 별도 하단 줄로 분리돼 있던 대국 날짜를 메타 그리드 안의 라벨 셀("대국 날짜")로 통합. 기존 중앙정렬 `<p>` 제거.
+   - 그리드 열 수를 반응형으로: `grid-cols-2 sm:grid-cols-3 lg:grid-cols-5`.
+4. **플랫폼 표기**: `game.source` 원형 enum(`CHESS_COM`/`LICHESS`) 대신 표시명으로 매핑.
+   - 파일 상단에 `SOURCE_LABELS: Record<GameSource, string> = { CHESS_COM: 'Chess.com', LICHESS: 'lichess' }` 추가, `import type { GameSource } from '../types/game'` 추가.
+   - 플랫폼 셀 `{game.source}` → `{SOURCE_LABELS[game.source]}`.
+
+### Why
+- Safari에서 닉네임 길이가 다르면 `items-center` 탓에 두 King 사진이 서로 다른 높이로 어긋나고, raw inline `<svg>`(ChessKing은 className 미지원)가 `text-center`만으로는 가로 중앙정렬이 불안정했음.
+  - `grid-cols-[1fr_auto_1fr]`로 양쪽 컬럼 폭 동일·`vs` 가운데 고정, `items-start`로 King 사진을 같은 상단 높이 정렬, `flex flex-col items-center`로 inline SVG·닉네임·ELO 가로 중앙정렬. ChessKing 컴포넌트는 수정하지 않고 래퍼 flex로 해결.
+- 대국 날짜를 나머지 메타와 한 흐름으로 두자는 요구. 반응형 열 수로 충족: 넓은 화면(lg≥1024) 5열 한 줄 / 중간(sm 640~1024) 3열 → 윗줄 플랫폼·시간제한·오프닝, 아랫줄 총 수·대국 날짜(요청한 fallback) / 모바일 2열.
+- 플랫폼은 보기 좋은 표기(`Chess.com`, `lichess`) 요구. 중앙 매핑 유틸이 없어 `OUTCOME_LABELS` 패턴을 따라 같은 파일 상수로 추가.
+- 제약(표출 텍스트 유지) 준수: 텍스트 삭제 없음(날짜는 위치 이동 + "대국 날짜" 라벨 추가, 플랫폼은 표기만 변환).
+
+### Key modified files
+- `frontend/src/features/game/components/GameDetailPage.tsx`
+
+### 검증
+- `pnpm tsc --noEmit` 통과 (exit 0).
+- Playwright 동작 확인 (스크린샷 `docs/test-screenshots/`):
+  - `gamedetail-wide.png`(1280px): 메타 5개 한 줄, King 정렬·중앙정렬, 플랫폼 "Chess.com".
+  - `gamedetail-medium-820.png`(820px): 메타 3+2 줄바꿈.
+  - `gamedetail-mobile-390.png`(390px): 메타 2열.
+  - `gamedetail-longname.png`: 55자 긴 닉네임 주입 시에도 두 King top 동일(180/180), King 중앙 X = 닉네임 중앙 X(324/324).
+  - 콘솔 에러 0건.
+
 ## 2026-04-10: 프로젝트 init
 
 ### Backend 설정
