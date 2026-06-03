@@ -8,11 +8,10 @@ import { useGame } from '../api/queries'
 import { useDeleteGame, useUpdateAnnotations } from '../api/mutations'
 import { useBoardStore } from '../stores/boardStore'
 import { GameViewer } from './GameViewer'
-import type { GameSource } from '../types/game'
 
 type Outcome = 'win' | 'loss' | 'draw'
 
-const SOURCE_LABELS: Record<GameSource, string> = {
+const SOURCE_LABELS: Record<string, string> = {
   CHESS_COM: 'Chess.com',
   LICHESS: 'lichess',
 }
@@ -128,7 +127,7 @@ export function GameDetailPage() {
         <div className="mt-6 grid grid-cols-2 gap-4 border-t border-amber-100 pt-4 text-sm dark:border-gray-700 sm:grid-cols-3 lg:grid-cols-5">
           <div>
             <p className="text-amber-600 dark:text-amber-500">플랫폼</p>
-            <p className="font-medium text-gray-900 dark:text-gray-100">{SOURCE_LABELS[game.source]}</p>
+            <p className="font-medium text-gray-900 dark:text-gray-100">{SOURCE_LABELS[game.source] ?? game.source}</p>
           </div>
           <div>
             <p className="text-amber-600 dark:text-amber-500">시간 제한</p>
