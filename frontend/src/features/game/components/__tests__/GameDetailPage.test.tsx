@@ -41,7 +41,7 @@ describe('GameDetailPage', () => {
     expect(screen.getByText('Bob')).toBeInTheDocument()
     expect(screen.getByText('1500')).toBeInTheDocument()
     expect(screen.getByText('1400')).toBeInTheDocument()
-    expect(screen.getByText('LICHESS')).toBeInTheDocument()
+    expect(screen.getByText('lichess')).toBeInTheDocument()
     expect(screen.getByText(/Sicilian Defense/)).toBeInTheDocument()
     expect(screen.getByText(/35수/)).toBeInTheDocument()
   })

@@ -71,7 +71,7 @@ export interface AnnotationRequest {
 
 export interface GameDetailResponse {
   id: string
-  source: string
+  source: GameSource
   sourceGameId: string
   ownerUsername: string
   white: PlayerResponse
@@ -87,7 +87,7 @@ export interface GameDetailResponse {
 
 export interface GameResponse {
   id: string
-  source: string
+  source: GameSource
   sourceGameId: string
   ownerUsername: string
   white: PlayerResponse

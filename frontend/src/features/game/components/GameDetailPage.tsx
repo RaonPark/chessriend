@@ -8,8 +8,14 @@ import { useGame } from '../api/queries'
 import { useDeleteGame, useUpdateAnnotations } from '../api/mutations'
 import { useBoardStore } from '../stores/boardStore'
 import { GameViewer } from './GameViewer'
+import type { GameSource } from '../types/game'
 
 type Outcome = 'win' | 'loss' | 'draw'
+
+const SOURCE_LABELS: Record<GameSource, string> = {
+  CHESS_COM: 'Chess.com',
+  LICHESS: 'lichess',
+}
 
 function getOutcome(game: { ownerUsername: string; white: { name: string }; black: { name: string }; result: string }): Outcome {
   const owner = game.ownerUsername.toLowerCase()
@@ -89,16 +95,16 @@ export function GameDetailPage() {
 
       <div className="rounded-xl border border-amber-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
         {/* 대국자 정보 */}
-        <div className="flex items-center justify-center gap-10 text-lg">
-          <div className="text-center">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-4 text-lg sm:gap-10">
+          <div className="flex flex-col items-center text-center">
             <ChessKing color="white" size={56} />
             <p className="mt-2 font-semibold text-gray-900 dark:text-gray-100">{game.white.name}</p>
             {game.white.rating != null && (
               <p className="text-sm text-amber-700 dark:text-amber-400">{game.white.rating}</p>
             )}
           </div>
-          <span className="text-2xl font-light text-amber-400">vs</span>
-          <div className="text-center">
+          <span className="pt-16 text-2xl font-light text-amber-400">vs</span>
+          <div className="flex flex-col items-center text-center">
             <ChessKing color="black" size={56} />
             <p className="mt-2 font-semibold text-gray-900 dark:text-gray-100">{game.black.name}</p>
             {game.black.rating != null && (
@@ -119,10 +125,10 @@ export function GameDetailPage() {
         })()}
 
         {/* 메타 정보 */}
-        <div className="mt-6 grid grid-cols-2 gap-4 border-t border-amber-100 pt-4 text-sm dark:border-gray-700 md:grid-cols-4">
+        <div className="mt-6 grid grid-cols-2 gap-4 border-t border-amber-100 pt-4 text-sm dark:border-gray-700 sm:grid-cols-3 lg:grid-cols-5">
           <div>
             <p className="text-amber-600 dark:text-amber-500">플랫폼</p>
-            <p className="font-medium text-gray-900 dark:text-gray-100">{game.source}</p>
+            <p className="font-medium text-gray-900 dark:text-gray-100">{SOURCE_LABELS[game.source]}</p>
           </div>
           <div>
             <p className="text-amber-600 dark:text-amber-500">시간 제한</p>
@@ -140,11 +146,11 @@ export function GameDetailPage() {
             <p className="text-amber-600 dark:text-amber-500">총 수</p>
             <p className="font-medium text-gray-900 dark:text-gray-100">{game.totalMoves}수</p>
           </div>
+          <div>
+            <p className="text-amber-600 dark:text-amber-500">대국 날짜</p>
+            <p className="font-medium text-gray-900 dark:text-gray-100">{formatDate(game.playedAt)}</p>
+          </div>
         </div>
-
-        <p className="mt-4 text-center text-xs text-amber-500 dark:text-gray-500">
-          {formatDate(game.playedAt)}
-        </p>
       </div>
 
       {/* 체스보드 뷰어 */}
