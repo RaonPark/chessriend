@@ -27,6 +27,7 @@ java {
 
 repositories {
     mavenCentral()
+    maven { url = uri("https://jitpack.io") } // com.github.bhlangonijr:chesslib
 }
 
 dependencies {
@@ -75,6 +76,9 @@ dependencies {
 
     // ── API Documentation ──
     implementation("org.springdoc:springdoc-openapi-starter-webflux-ui:3.0.1")
+
+    // ── Chess (SAN→FEN 재구성 + 희생 판정용 공격자/방어자 계산) ──
+    implementation("com.github.bhlangonijr:chesslib:1.3.6")
 
     // ── Test ──
     testImplementation("org.springframework.boot:spring-boot-starter-test")
