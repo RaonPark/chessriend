@@ -197,7 +197,6 @@ export function GameViewer({ gameId, moves, annotations, ownerUsername, whiteNam
                 moves={moves}
                 whiteName={whiteName}
                 blackName={blackName}
-                onReanalyze={handleStartAnalysis}
               />
             </div>
           )}
