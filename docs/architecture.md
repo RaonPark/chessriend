@@ -111,7 +111,7 @@ eventSource.onerror = () => eventSource.close();
 
 **curl 테스트:**
 ```bash
-curl -N "http://localhost:8080/api/games/import?source=LICHESS&username=magnus&max=5"
+curl -N "http://localhost:8081/api/games/import?source=LICHESS&username=magnus&max=5"
 ```
 
 ## Frontend: Feature-based Structure

@@ -11,7 +11,7 @@
 모든 시나리오 실행 전 다음이 떠 있어야 함:
 
 - PostgreSQL: `docker compose up -d postgres`
-- Backend: `./gradlew bootRun` (http://localhost:8080)
+- Backend: `./gradlew bootRun` (http://localhost:8081)
 - Frontend: `cd frontend && pnpm dev` (http://localhost:5173)
 
 ---
