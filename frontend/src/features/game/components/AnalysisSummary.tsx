@@ -6,7 +6,6 @@ interface AnalysisSummaryProps {
   moves: MoveResponse[]
   whiteName: string
   blackName: string
-  onReanalyze: () => void
 }
 
 type Counts = Record<MoveClassification, number>
@@ -22,7 +21,7 @@ const BADGE_CONFIG = {
   inaccuracy: { label: 'Inaccuracy', dotClass: 'bg-yellow-500', textClass: 'text-yellow-700 dark:text-yellow-400' },
 } as const satisfies Record<MoveClassification, { label: string; dotClass: string; textClass: string }>
 
-export function AnalysisSummary({ analysis, moves, whiteName, blackName, onReanalyze }: AnalysisSummaryProps) {
+export function AnalysisSummary({ analysis, moves, whiteName, blackName }: AnalysisSummaryProps) {
   const whiteCounts = emptyCounts()
   const blackCounts = emptyCounts()
 
@@ -38,16 +37,10 @@ export function AnalysisSummary({ analysis, moves, whiteName, blackName, onReana
 
   return (
     <div className="rounded-lg border border-amber-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3">
         <span className="text-xs font-medium text-amber-700 dark:text-amber-400">
           분석 결과 (depth {analysis.depth})
         </span>
-        <button
-          onClick={onReanalyze}
-          className="rounded px-2 py-0.5 text-xs font-medium text-amber-600 transition hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-gray-700"
-        >
-          재분석
-        </button>
       </div>
 
       <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] items-center gap-x-3 gap-y-1.5 text-xs">
