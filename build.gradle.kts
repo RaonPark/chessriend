@@ -156,12 +156,22 @@ tasks.withType<Test> {
     finalizedBy(tasks.jacocoTestReport)
 }
 
+// jOOQ 코드 생성 산출물은 커버리지 집계에서 제외 (직접 작성한 코드가 아님)
+val jacocoExcludes = listOf(
+    "org/raonpark/chessriend/jooq/**",
+)
+
 tasks.jacocoTestReport {
     dependsOn(tasks.test)
     reports {
         xml.required = true
         html.required = true
     }
+    classDirectories.setFrom(
+        files(classDirectories.files.map { dir ->
+            fileTree(dir) { exclude(jacocoExcludes) }
+        })
+    )
 }
 
 tasks.withType<JavaExec> {
