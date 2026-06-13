@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { EvalScore, GameAnalysis, MoveEvaluation, MoveResponse } from '../types/game'
-import { computeClassifications } from '../utils/classification'
-import { ANALYSIS_DEPTH } from '../constants'
+import type { GameAnalysis } from '../types/game'
+import { createAnalysisRunEventSource } from '../api/gameApi'
 
 interface BatchAnalysisState {
   isAnalyzing: boolean
@@ -10,139 +9,73 @@ interface BatchAnalysisState {
   error: string | null
 }
 
+/**
+ * 게임 초기(배치) 분석. 브라우저 WASM 으로 직접 평가하지 않고 **백엔드 Stockfish** 를
+ * SSE 로 호출한다(진행률 progress / 결과 complete). 실시간 평가·변형선은 useStockfish 가 담당.
+ */
 export function useBatchAnalysis() {
-  const engineRef = useRef<{ uci: (cmd: string) => void; listen: (line: string) => void } | null>(null)
+  const eventSourceRef = useRef<EventSource | null>(null)
+  // close() 직후에도 큐에 남은 SSE 이벤트가 디스패치될 수 있어 세대(generation)로 무효화한다.
+  const generationRef = useRef(0)
   const [state, setState] = useState<BatchAnalysisState>({
     isAnalyzing: false,
     progress: { current: 0, total: 0 },
     analysis: null,
     error: null,
   })
-  const generationRef = useRef(0)
-  const resolveEvalRef = useRef<((eval_: EvalScore) => void) | null>(null)
 
-  // 엔진 초기화
-  const initEngine = useCallback(async (): Promise<{ uci: (cmd: string) => void; listen: (line: string) => void }> => {
-    if (engineRef.current) return engineRef.current
+  const startAnalysis = useCallback((gameId: string) => {
+    eventSourceRef.current?.close()
+    eventSourceRef.current = null
+    const myGen = ++generationRef.current
 
-    // @ts-expect-error dynamic import of WASM module
-    const { default: Stockfish } = await import('@lichess-org/stockfish-web/sf_18_smallnet.js')
-    const engine = await Stockfish()
+    setState({ isAnalyzing: true, progress: { current: 0, total: 0 }, analysis: null, error: null })
 
-    const nnueName = engine.getRecommendedNnue(0)
-    const nnueResponse = await fetch(`/${nnueName}`)
-    if (!nnueResponse.ok) throw new Error(`NNUE file not found: ${nnueName}`)
-    const nnueData = new Uint8Array(await nnueResponse.arrayBuffer())
-    engine.setNnueBuffer(nnueData, 0)
+    const es = createAnalysisRunEventSource(gameId)
+    eventSourceRef.current = es
+    let completed = false
+    const isStale = () => generationRef.current !== myGen
 
-    const latestInfoRef: { current: EvalScore | null } = { current: null }
-
-    engine.listen = (line: string) => {
-      if (line.startsWith('info') && line.includes(' score ')) {
-        const cpMatch = line.match(/\bscore cp (-?\d+)/)
-        const mateMatch = line.match(/\bscore mate (-?\d+)/)
-
-        if (cpMatch) {
-          latestInfoRef.current = { cp: parseInt(cpMatch[1]), mate: null }
-        } else if (mateMatch) {
-          latestInfoRef.current = { cp: null, mate: parseInt(mateMatch[1]) }
-        }
-      }
-
-      if (line.startsWith('bestmove') && resolveEvalRef.current) {
-        const eval_ = latestInfoRef.current ?? { cp: 0, mate: null }
-        latestInfoRef.current = null
-        resolveEvalRef.current(eval_)
-        resolveEvalRef.current = null
-      }
-    }
-
-    engine.uci('uci')
-    engine.uci('isready')
-    engineRef.current = engine
-    return engine
-  }, [])
-
-  // 단일 포지션 평가 (UCI side-to-move 관점 → 백 관점으로 변환)
-  const evaluatePosition = useCallback((engine: { uci: (cmd: string) => void }, fen: string): Promise<EvalScore> => {
-    return new Promise((resolve) => {
-      resolveEvalRef.current = (rawEval) => {
-        const isBlackTurn = fen.split(' ')[1] === 'b'
-        const flip = isBlackTurn ? -1 : 1
-        resolve({
-          cp: rawEval.cp !== null ? rawEval.cp * flip : null,
-          mate: rawEval.mate !== null ? rawEval.mate * flip : null,
-        })
-      }
-      engine.uci('ucinewgame')
-      engine.uci(`position fen ${fen}`)
-      engine.uci(`go depth ${ANALYSIS_DEPTH}`)
-    })
-  }, [])
-
-  const startAnalysis = useCallback(async (fens: string[], moves: MoveResponse[]) => {
-    // 이전 분석 무효화: generation 증가 + 엔진 stop으로 pending bestmove 해소
-    const gen = ++generationRef.current
-    resolveEvalRef.current = null
-    engineRef.current?.uci('stop')
-
-    setState({
-      isAnalyzing: true,
-      progress: { current: 0, total: fens.length },
-      analysis: null,
-      error: null,
+    es.addEventListener('progress', (event) => {
+      if (isStale()) return
+      const { current, total } = JSON.parse((event as MessageEvent).data) as { current: number; total: number }
+      setState((prev) => ({ ...prev, progress: { current, total } }))
     })
 
-    try {
-      const engine = await initEngine()
-      const positionEvals: EvalScore[] = []
-
-      for (let i = 0; i < fens.length; i++) {
-        if (gen !== generationRef.current) return
-
-        const eval_ = await evaluatePosition(engine, fens[i])
-
-        // bestmove가 도착했지만 이미 취소/재시작된 경우 무시
-        if (gen !== generationRef.current) return
-
-        positionEvals.push(eval_)
-
-        setState((prev) => ({
-          ...prev,
-          progress: { current: i + 1, total: fens.length },
-        }))
-      }
-
-      if (gen !== generationRef.current) return
-
-      const evaluations: MoveEvaluation[] = computeClassifications(fens, positionEvals, moves)
-      const analysis: GameAnalysis = {
-        evaluations,
-        depth: ANALYSIS_DEPTH,
-        analyzedAt: new Date().toISOString(),
-      }
-
-      setState({
+    es.addEventListener('complete', (event) => {
+      if (isStale()) return
+      completed = true
+      es.close()
+      if (eventSourceRef.current === es) eventSourceRef.current = null
+      const analysis: GameAnalysis = JSON.parse((event as MessageEvent).data)
+      setState((prev) => ({
+        ...prev,
         isAnalyzing: false,
-        progress: { current: fens.length, total: fens.length },
         analysis,
-        error: null,
-      })
-    } catch (err) {
-      if (gen === generationRef.current) {
-        setState((prev) => ({
-          ...prev,
-          isAnalyzing: false,
-          error: err instanceof Error ? err.message : 'Analysis failed',
-        }))
-      }
+        progress: prev.progress.total > 0
+          ? { current: prev.progress.total, total: prev.progress.total }
+          : prev.progress,
+      }))
+    })
+
+    es.onerror = () => {
+      es.close()
+      if (eventSourceRef.current === es) eventSourceRef.current = null
+      if (isStale()) return
+      if (completed) return
+      setState((prev) => ({
+        ...prev,
+        isAnalyzing: false,
+        error: '분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+      }))
     }
-  }, [initEngine, evaluatePosition])
+  }, [])
 
   const cancelAnalysis = useCallback(() => {
+    // 세대를 먼저 올려 큐에 남은 이벤트가 상태를 바꾸지 못하게 한다.
     generationRef.current++
-    resolveEvalRef.current = null
-    engineRef.current?.uci('stop')
+    eventSourceRef.current?.close()
+    eventSourceRef.current = null
     setState((prev) => ({ ...prev, isAnalyzing: false }))
   }, [])
 
@@ -150,8 +83,8 @@ export function useBatchAnalysis() {
   useEffect(() => {
     return () => {
       generationRef.current++
-      engineRef.current?.uci('quit')
-      engineRef.current = null
+      eventSourceRef.current?.close()
+      eventSourceRef.current = null
     }
   }, [])
 

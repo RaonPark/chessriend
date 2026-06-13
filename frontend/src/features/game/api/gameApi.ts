@@ -59,6 +59,15 @@ export async function submitAnalysis(id: string, analysis: GameAnalysis): Promis
   })
 }
 
+/**
+ * 백엔드 Stockfish 초기 분석 SSE.
+ * - event: progress  data: { current, total }
+ * - event: complete  data: GameAnalysisResponse
+ */
+export function createAnalysisRunEventSource(gameId: string): EventSource {
+  return new EventSource(`/api/games/${gameId}/analysis/run`)
+}
+
 export function createImportEventSource(params: ImportParams): EventSource {
   const query = new URLSearchParams()
   query.set('source', params.source)

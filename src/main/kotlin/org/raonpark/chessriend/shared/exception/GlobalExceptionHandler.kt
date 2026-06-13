@@ -53,6 +53,18 @@ class GlobalExceptionHandler {
         return buildResponse(HttpStatus.BAD_REQUEST, ex)
     }
 
+    @ExceptionHandler(EngineTimeoutException::class)
+    fun handleEngineTimeout(ex: EngineTimeoutException): ResponseEntity<ErrorResponse> {
+        log.warn { "Engine timeout: ${ex.message}" }
+        return buildResponse(HttpStatus.GATEWAY_TIMEOUT, ex)
+    }
+
+    @ExceptionHandler(EngineException::class)
+    fun handleEngineUnavailable(ex: EngineException): ResponseEntity<ErrorResponse> {
+        log.error(ex.cause) { "Engine error: ${ex.message}" }
+        return buildResponse(HttpStatus.SERVICE_UNAVAILABLE, ex)
+    }
+
     @ExceptionHandler(Exception::class)
     fun handleUnexpected(ex: Exception): ResponseEntity<ErrorResponse> {
         log.error(ex) { "Unexpected error" }

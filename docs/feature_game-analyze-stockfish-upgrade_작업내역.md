@@ -18,7 +18,7 @@
 
 ### Key files
 - `frontend/src/features/game/constants.ts` (신규): `export const ANALYSIS_DEPTH = 18`
-- `frontend/src/features/game/hooks/useBatchAnalysis.ts`: `BATCH_DEPTH=16` 제거 → `ANALYSIS_DEPTH` 사용 (`go depth`, 저장 `depth`)
+- `frontend/src/features/game/hooks/useBatchAnalysis.ts`: 기존 브라우저 배치 분석 제거. 백엔드 Stockfish SSE 호출로 대체.
 - `frontend/src/features/game/hooks/useStockfish.ts`: 기본 파라미터 `depth = ANALYSIS_DEPTH`
 - `frontend/src/features/game/components/GameViewer.tsx`: `useStockfish(ANALYSIS_DEPTH)`
 
@@ -63,4 +63,56 @@
 ## 범위 밖 / 후속
 - Win% 임계값 정밀 튜닝(다수 게임 표본).
 - decoy(비싼 기물만 공격) type 3 희생 검출.
-- **백엔드 Stockfish(최초 분석만 서버 수행) — 다음 플랜에서 진행.**
+
+---
+
+# 3. 백엔드 Stockfish 초기 분석 (A안: in-process 프로세스 풀)
+
+게임 "최초(배치) 분석"을 브라우저 WASM 에서 **백엔드 Stockfish** 로 이전. 실시간 평가/변형선은 브라우저 `useStockfish`(depth 18) 그대로 유지.
+
+설계 비교 후 A안(Kotlin in-process 프로세스 풀) 채택. 상용 SaaS 청사진(`docs/request/stockfish_backend_architecture.md`)의 Python 분리/Redis/큐/티어는 개인 앱엔 과설계라 제외하고 `docs/todo/stockfish-scalability-backlog.md` 로 분리.
+
+## 3-1. 엔진 (in-process UCI 프로세스 풀)
+
+### What / Why
+- `port/out/ChessEngine`: `suspend fun evaluate(fen, depth): EvalScore`(백 관점). 추후 사이드카/원격 교체 대비 포트로 추상화.
+- `adapter/out/engine/`:
+  - `UciStockfishProcess`: `ProcessBuilder` 로 stockfish 실행 → UCI 핸드셰이크(`uci`/`uciok`, `setoption Threads/Hash`, `isready`/`readyok`) → `position fen`+`go depth N` → `bestmove` 까지 마지막 `info score` 파싱. **백 관점 정규화**(흑 차례면 부호 반전, useStockfish.ts 와 동일). 모든 blocking I/O 는 `Dispatchers.IO`. 타임아웃 워치독이 `stop` 을 보내 best-so-far 반환을 유도하고, 취소 시 프로세스를 종료해 블로킹 readLine 을 해제한다.
+  - `StockfishEnginePool`: `Channel`(용량=poolSize) 로 프로세스 대여 — **채널 자체가 상호 배제**(한 프로세스 1탐색). **지연 초기화**라 stockfish 미설치 환경(테스트/CI)에서 앱 기동·컨텍스트 로드가 실패하지 않음. 대여 중 사망 시 반납 시점에 respawn. `DisposableBean` 로 종료 시 `quit`.
+  - `StockfishEngineAdapter`: `ChessEngine` 구현, 풀에 위임. `@EnableConfigurationProperties(ChessEngineProperties)`.
+  - `ChessEngineProperties`: `chess.engine.*`(path/depth/threads/hashMb/poolSize/perPositionTimeoutMs). depth=18 은 프론트 `ANALYSIS_DEPTH` 와 lockstep.
+- `UciParser`(순수 객체): `info score cp|mate` 정규식 + flip — 프로세스 spawn 없이 단위 테스트 가능.
+
+## 3-2. 분류 로직 Kotlin 도메인 포팅
+
+### What / Why
+프론트 `classification.ts` 를 Kotlin 도메인으로 1:1 포팅(백엔드가 분석 단일 진실원). 도메인은 외부 의존 zero 유지 — 체스 라이브러리는 어댑터에 격리.
+- `domain/analysis/MoveClassifier`(순수): `evalToCp`, `winPercent`(계수 −0.00368208), `classifyMove`(blunder≥30/mistake≥20/inaccuracy≥10 %p), `detectBrilliant`(tolerance<2, isAtRisk, 포획 시 piece>captured). 기물 가치(킹=0) 포함.
+- `domain/analysis/GameAnalyzer`(순수): `computeClassifications(positionEvals, moves, contexts)` — 백/흑 cpLoss·winLoss 부호 처리 동일, `cpLoss` 보존 저장, base==null 일 때만 brilliant 승격.
+- `domain/analysis/PieceKind`, `MoveContext`: 도메인 전용 값 객체(라이브러리 무관).
+- `port/out/ChessRules` + `adapter/out/chess/ChesslibAdapter`(**chesslib 1.3.6**, JitPack): SAN→FEN 재구성 + 희생 판정(`squareAttackedBy`/`bbToSquareList` 로 chess.js `attackers` 대응; 킹=0, isDefended 가드).
+
+## 3-3. 유스케이스 / SSE API
+
+### What / Why
+- `port/in/RunGameAnalysisUseCase`: `fun runAnalysis(gameId): Flow<AnalysisProgress>`(sealed: `Progress(current,total)` / `Completed(analysis)`).
+- `application/RunGameAnalysisService`: 게임 조회 → FEN 재구성(부분 재생 가능) → 포지션별 엔진 평가(`ensureActive()` + progress emit) → 희생 컨텍스트 + 분류 → **기존 `GameAnalysisRepository.save` 재사용** → complete emit.
+- `adapter/in/web/GameAnalysisController`: `GET /api/games/{gameId}/analysis/run`(`text/event-stream`) — 기존 import SSE 패턴 재사용. `progress`/`complete` 이벤트. 기존 `POST/GET .../analysis` 보존.
+- `shared/exception`: `EngineUnavailableException`(503), `EngineTimeoutException`(504) + 핸들러.
+
+## 3-4. 프론트엔드
+
+### What / Why
+- `api/gameApi.ts`: `createAnalysisRunEventSource(gameId)`(EventSource).
+- `hooks/useBatchAnalysis.ts`: WASM 구동 제거 → **SSE 소비**로 재작성. 반환 시그니처(isAnalyzing/progress/analysis/error/startAnalysis/cancelAnalysis) 유지, `startAnalysis(gameId)` 로 변경. import SSE 와 동일한 generation 무효화 패턴.
+- `components/GameViewer.tsx`: `handleStartAnalysis(gameId)`; auto-POST/`useSubmitAnalysis` 제거(백엔드가 run 중 저장) → complete 수신분을 `setAnalysis` + `invalidateQueries(detail)`. `classification.ts`/`useStockfish`(실시간)는 불변.
+
+## 3-5. 검증
+- 백엔드 단위(Kotest, 실제 엔진 불필요): `UciParserTest`(파싱+flip), `MoveClassifierTest`·`GameAnalyzerTest`(classification.test.ts 패리티), `ChesslibAdapterTest`(**Bxf7+ isAtRisk** — chess.js 동등성 게이트), `RunGameAnalysisServiceTest`(MockK 진행률/저장/GameNotFound). 모두 통과.
+- `GameAnalysisControllerTest`(@SpringBootTest): 새 빈 와이어링 + 풀 지연 초기화 확인, 통과.
+- 프론트: `pnpm test`(15 files, 145 tests) + `pnpm build` 통과.
+- **(예정) E2E**: stockfish 설치 후 게임 `284447503368060928` 백엔드 재분석 → 11.Bxf7+ Brilliant @ depth18, 진행바 동작 확인.
+
+## 후속 / 범위 밖
+- 포지션 병렬 평가, 큐/잡 영속화, Redis 캐시, 엔진 사이드카, 사용량 제한/티어, MultiPV, GPL 검토, Docker 배포 → `docs/todo/stockfish-scalability-backlog.md`.
+- 평가 패리티: 네이티브 stockfish ≠ 브라우저 WASM 가능성 → E2E(Bxf7+)가 게이트.

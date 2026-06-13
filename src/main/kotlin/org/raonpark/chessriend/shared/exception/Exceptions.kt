@@ -44,3 +44,21 @@ class ExternalApiUserNotFoundException(source: String, username: String) :
  */
 class UnsupportedGameSourceException(source: String) :
     RuntimeException("Unsupported game source: $source")
+
+/**
+ * 체스 엔진(Stockfish) 일반 오류
+ */
+open class EngineException(message: String, cause: Throwable? = null) :
+    RuntimeException(message, cause)
+
+/**
+ * 엔진을 사용할 수 없음 — 미설치/프로세스 사망 등 (HTTP 503)
+ */
+class EngineUnavailableException(message: String, cause: Throwable? = null) :
+    EngineException(message, cause)
+
+/**
+ * 포지션 분석이 제한 시간을 초과 (HTTP 504)
+ */
+class EngineTimeoutException(message: String) :
+    EngineException(message)

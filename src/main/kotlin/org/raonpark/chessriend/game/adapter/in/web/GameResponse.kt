@@ -232,6 +232,12 @@ data class VariationResponse(
     }
 }
 
+/** 백엔드 분석 SSE 진행률 이벤트 페이로드. */
+data class AnalysisProgressEvent(
+    val current: Int,
+    val total: Int,
+)
+
 data class PagedGameResponse(
     val content: List<GameResponse>,
     val page: Int,

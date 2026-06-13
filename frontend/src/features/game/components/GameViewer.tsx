@@ -1,8 +1,9 @@
 import { useEffect, useCallback, useMemo, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useBoardStore } from '../stores/boardStore'
 import { useStockfish, type EvalResult } from '../hooks/useStockfish'
 import { useBatchAnalysis } from '../hooks/useBatchAnalysis'
-import { useSubmitAnalysis } from '../api/mutations'
+import { gameKeys } from '../api/queryKeys'
 import { GameBoard } from './GameBoard'
 import { MoveList } from './MoveList'
 import { BoardControls } from './BoardControls'
@@ -33,7 +34,6 @@ export function GameViewer({ gameId, moves, annotations, ownerUsername, whiteNam
   const isInVariation = useBoardStore((s) => s.isInVariation)
   const annotationsDirty = useBoardStore((s) => s.annotationsDirty)
 
-  const mainlineFens = useBoardStore((s) => s.mainlineFens)
   const analysis = useBoardStore((s) => s.analysis)
   const setAnalysis = useBoardStore((s) => s.setAnalysis)
 
@@ -42,7 +42,7 @@ export function GameViewer({ gameId, moves, annotations, ownerUsername, whiteNam
 
   const { isReady, evaluation, isEvaluating, evaluate } = useStockfish(ANALYSIS_DEPTH)
   const batch = useBatchAnalysis()
-  const submitAnalysisMutation = useSubmitAnalysis(gameId)
+  const queryClient = useQueryClient()
   const [analysisSaveMessage, setAnalysisSaveMessage] = useState<AnalysisSaveMessage | null>(null)
 
   // 메인라인의 이미 분석된 수는 저장된 evalAfter를 그대로 보여주고 라이브 Stockfish 호출을 건너뛴다.
@@ -61,17 +61,19 @@ export function GameViewer({ gameId, moves, annotations, ownerUsername, whiteNam
   const displayEvaluation = cachedEvaluation ?? evaluation
   const displayIsEvaluating = cachedEvaluation ? false : isEvaluating
 
-  // 배치 분석 완료 시 스토어 반영 + 백엔드 자동 저장
+  // 백엔드 분석 완료(SSE complete) 시 스토어 반영 + 상세 캐시 무효화.
+  // 저장은 백엔드가 분석 도중 수행하므로 프론트는 결과만 반영한다.
   useEffect(() => {
     if (!batch.analysis) return
     setAnalysis(batch.analysis)
-    submitAnalysisMutation.mutate(batch.analysis, {
-      onSuccess: () => setAnalysisSaveMessage({ kind: 'success', text: '분석이 저장되었습니다.' }),
-      onError: () => setAnalysisSaveMessage({ kind: 'error', text: '분석 저장에 실패했습니다. 다시 분석하면 재시도됩니다.' }),
-    })
-    // submitAnalysisMutation은 dep에 넣지 않는다 — mutate는 안정 참조이고, 매 렌더 새 객체로 트리거되어 중복 POST되는 것을 막는다.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [batch.analysis, setAnalysis])
+    queryClient.invalidateQueries({ queryKey: gameKeys.detail(gameId) })
+    setAnalysisSaveMessage({ kind: 'success', text: '분석이 저장되었습니다.' })
+  }, [batch.analysis, setAnalysis, queryClient, gameId])
+
+  // 분석 오류 배너
+  useEffect(() => {
+    if (batch.error) setAnalysisSaveMessage({ kind: 'error', text: batch.error })
+  }, [batch.error])
 
   // 저장 메시지 3초 후 자동 해제
   useEffect(() => {
@@ -81,10 +83,8 @@ export function GameViewer({ gameId, moves, annotations, ownerUsername, whiteNam
   }, [analysisSaveMessage])
 
   const handleStartAnalysis = useCallback(() => {
-    if (mainlineFens.length > 0) {
-      batch.startAnalysis(mainlineFens, moves)
-    }
-  }, [mainlineFens, moves, batch.startAnalysis])
+    batch.startAnalysis(gameId)
+  }, [gameId, batch.startAnalysis])
 
   useEffect(() => {
     loadMoves(moves)

@@ -27,6 +27,7 @@ java {
 
 repositories {
     mavenCentral()
+    maven { url = uri("https://jitpack.io") } // com.github.bhlangonijr:chesslib
 }
 
 dependencies {
@@ -75,6 +76,9 @@ dependencies {
 
     // ── API Documentation ──
     implementation("org.springdoc:springdoc-openapi-starter-webflux-ui:3.0.1")
+
+    // ── Chess (SAN→FEN 재구성 + 희생 판정용 공격자/방어자 계산) ──
+    implementation("com.github.bhlangonijr:chesslib:1.3.6")
 
     // ── Test ──
     testImplementation("org.springframework.boot:spring-boot-starter-test")
@@ -152,12 +156,22 @@ tasks.withType<Test> {
     finalizedBy(tasks.jacocoTestReport)
 }
 
+// jOOQ 코드 생성 산출물은 커버리지 집계에서 제외 (직접 작성한 코드가 아님)
+val jacocoExcludes = listOf(
+    "org/raonpark/chessriend/jooq/**",
+)
+
 tasks.jacocoTestReport {
     dependsOn(tasks.test)
     reports {
         xml.required = true
         html.required = true
     }
+    classDirectories.setFrom(
+        files(classDirectories.files.map { dir ->
+            fileTree(dir) { exclude(jacocoExcludes) }
+        })
+    )
 }
 
 tasks.withType<JavaExec> {

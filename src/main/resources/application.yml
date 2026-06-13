@@ -23,6 +23,18 @@ chesscom:
     base-url: https://api.chess.com
     user-agent: Chessriend/1.0
 
+# 백엔드 초기(배치) 분석용 Stockfish 엔진.
+# 실시간 평가/변형선은 브라우저 WASM이 담당하므로 여기서 다루지 않는다.
+# depth 는 프론트 constants.ts ANALYSIS_DEPTH(18)와 lockstep 으로 유지한다.
+chess:
+  engine:
+    path: ${CHESS_ENGINE_PATH:/opt/homebrew/bin/stockfish}
+    depth: ${CHESS_ENGINE_DEPTH:18}
+    threads: ${CHESS_ENGINE_THREADS:1}
+    hash-mb: ${CHESS_ENGINE_HASH_MB:128}
+    pool-size: ${CHESS_ENGINE_POOL_SIZE:2}
+    per-position-timeout-ms: ${CHESS_ENGINE_TIMEOUT_MS:15000}
+
 server:
   port: 8081
 
