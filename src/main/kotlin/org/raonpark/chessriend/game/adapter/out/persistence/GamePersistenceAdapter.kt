@@ -83,9 +83,10 @@ class GamePersistenceAdapter(
                     sourceGameId = row.get("source_game_id", String::class.java)!!,
                     ownerUsername = row.get("owner_username", String::class.java)!!,
                     whiteName = row.get("white_name", String::class.java)!!,
-                    whiteRating = row.get("white_rating", Int::class.java),
+                    // 박싱 타입으로 조회 — rating 이 NULL 인 게임(FEN 생성·익명 등)에서 primitive int NPE 방지
+                    whiteRating = row.get("white_rating", Int::class.javaObjectType),
                     blackName = row.get("black_name", String::class.java)!!,
-                    blackRating = row.get("black_rating", Int::class.java),
+                    blackRating = row.get("black_rating", Int::class.javaObjectType),
                     result = row.get("result", String::class.java)!!,
                     initialTime = row.get("initial_time", Long::class.java)!!,
                     increment = row.get("increment", Long::class.java)!!,

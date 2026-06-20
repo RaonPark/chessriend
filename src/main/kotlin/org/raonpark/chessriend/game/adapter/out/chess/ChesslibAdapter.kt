@@ -4,9 +4,15 @@ import com.github.bhlangonijr.chesslib.Bitboard
 import com.github.bhlangonijr.chesslib.Board
 import com.github.bhlangonijr.chesslib.Piece
 import com.github.bhlangonijr.chesslib.PieceType
+import com.github.bhlangonijr.chesslib.game.GameResult as ChesslibGameResult
 import com.github.bhlangonijr.chesslib.move.MoveList
+import com.github.bhlangonijr.chesslib.pgn.GameLoader
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CancellationException
+import org.raonpark.chessriend.game.domain.Color
+import org.raonpark.chessriend.game.domain.Move
+import org.raonpark.chessriend.game.domain.ParsedPgn
+import org.raonpark.chessriend.game.domain.Variation
 import org.raonpark.chessriend.game.domain.analysis.MoveClassifier
 import org.raonpark.chessriend.game.domain.analysis.MoveContext
 import org.raonpark.chessriend.game.domain.analysis.PieceKind
@@ -24,6 +30,113 @@ private val log = KotlinLogging.logger {}
  */
 @Component
 class ChesslibAdapter : ChessRules {
+
+    override fun parsePgn(pgn: String): ParsedPgn {
+        // [SetUp]/[FEN] 태그 = 비표준 시작 포지션 → v1 미지원 신호
+        val hasSetup = Regex("""\[\s*(SetUp|FEN)\s+"[^"]*"\s*]""", RegexOption.IGNORE_CASE)
+            .containsMatchIn(pgn)
+
+        val game = try {
+            GameLoader.loadNextGame(pgn.split("\n").iterator())
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            throw IllegalArgumentException("PGN을 해석할 수 없습니다.")
+        } ?: throw IllegalArgumentException("PGN을 해석할 수 없습니다.")
+
+        try {
+            game.loadMoveText()
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            throw IllegalArgumentException("PGN 기보를 해석할 수 없습니다: ${e.message}")
+        }
+
+        val sans = try {
+            game.halfMoves?.toSanArray()?.toList().orEmpty()
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            throw IllegalArgumentException("PGN 수순을 해석할 수 없습니다.")
+        }
+        if (sans.isEmpty()) throw IllegalArgumentException("PGN에 수가 없습니다.")
+
+        val fens = reconstructFens(sans)
+        val moves = sans.mapIndexed { i, san ->
+            Move(
+                number = i / 2 + 1,
+                color = if (i % 2 == 0) Color.WHITE else Color.BLACK,
+                san = san,
+                fen = fens.getOrElse(i + 1) { "" },
+                timeSpent = null,
+                comment = null,
+            )
+        }
+
+        // chesslib는 코멘트/변형선을 전역 ply 카운터로 키잉한다(변형선 수도 셈).
+        // 메인라인 emit 후 해당 카운터에 분기하는 변형선을 재귀로 소비하여, 각 메인라인 수의 전역 카운터를 복원한다.
+        val variationsByKey: Map<Int, List<MoveList>> = game.variations ?: emptyMap()
+        val mainlineCounters = IntArray(sans.size)
+        var counter = 0
+        fun walk(lineSans: List<String>, isMainline: Boolean) {
+            lineSans.forEachIndexed { idx, _ ->
+                counter++
+                val c = counter
+                if (isMainline) mainlineCounters[idx] = c
+                variationsByKey[c]?.forEach { v ->
+                    val vs = runCatching { v.toSanArray()?.toList().orEmpty() }.getOrDefault(emptyList())
+                    walk(vs, false)
+                }
+            }
+        }
+        walk(sans, true)
+        val counterToMainlineIndex = mainlineCounters.withIndex().associate { (i, c) -> c to i }
+
+        // 메인라인 코멘트만 매핑 (key = 0-based ply 인덱스 문자열). [%clk ...] 등 엔진 주석은 제거.
+        val rawComments: Map<Int, String> = game.comments ?: emptyMap()
+        val moveComments = LinkedHashMap<String, String>()
+        moves.indices.forEach { i ->
+            val raw = rawComments[mainlineCounters[i]] ?: return@forEach
+            val cleaned = cleanComment(raw)
+            if (cleaned.isNotEmpty()) moveComments[i.toString()] = cleaned
+        }
+
+        // 최상위(parent == -1) 변형선만 1단계로 매핑. 중첩(parent != -1)은 생략.
+        val variations = mutableListOf<Variation>()
+        variationsByKey.forEach { (key, list) ->
+            list.forEach { ml ->
+                if (ml.parent != -1) return@forEach
+                val mainlineIndex = counterToMainlineIndex[key] ?: return@forEach
+                val vsans = runCatching { ml.toSanArray()?.toList().orEmpty() }.getOrDefault(emptyList())
+                if (vsans.isEmpty()) return@forEach
+                variations += Variation(startMoveIndex = mainlineIndex - 1, moves = vsans)
+            }
+        }
+
+        return ParsedPgn(
+            whiteName = game.whitePlayer?.name?.takeIf { it.isNotBlank() },
+            whiteRating = game.whitePlayer?.elo?.takeIf { it > 0 },
+            blackName = game.blackPlayer?.name?.takeIf { it.isNotBlank() },
+            blackRating = game.blackPlayer?.elo?.takeIf { it > 0 },
+            result = game.result.toPgnResult(),
+            timeControl = Regex("""\[TimeControl\s+"([^"]*)"\s*]""").find(pgn)
+                ?.groupValues?.get(1)?.takeIf { it.isNotBlank() && it != "-" },
+            eco = game.eco?.takeIf { it.isNotBlank() },
+            openingName = game.opening?.takeIf { it.isNotBlank() },
+            date = game.date?.takeIf { it.isNotBlank() && !it.startsWith("?") },
+            moves = moves,
+            moveComments = moveComments,
+            variations = variations,
+            hasSetup = hasSetup,
+        )
+    }
+
+    private fun cleanComment(raw: String): String =
+        raw.replace(Regex("""\[%[^]]*]"""), "").trim()
+
+    private fun ChesslibGameResult?.toPgnResult(): String = when (this) {
+        ChesslibGameResult.WHITE_WON -> "1-0"
+        ChesslibGameResult.BLACK_WON -> "0-1"
+        ChesslibGameResult.DRAW -> "1/2-1/2"
+        else -> "*"
+    }
 
     override fun reconstructFens(sans: List<String>): List<String> {
         val board = Board()

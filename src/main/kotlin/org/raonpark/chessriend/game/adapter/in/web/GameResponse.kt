@@ -1,6 +1,7 @@
 package org.raonpark.chessriend.game.adapter.`in`.web
 
 import org.raonpark.chessriend.game.domain.*
+import org.raonpark.chessriend.game.port.`in`.CreateGameFromPgnCommand
 import java.time.Instant
 
 data class GameResponse(
@@ -100,6 +101,17 @@ data class GameDetailResponse(
             playedAt = game.playedAt,
         )
     }
+}
+
+/** PGN 문자열로 게임을 생성하는 요청. */
+data class CreateGameFromPgnRequest(
+    val pgn: String,
+    val ownerUsername: String = "",
+) {
+    fun toCommand(): CreateGameFromPgnCommand = CreateGameFromPgnCommand(
+        pgn = pgn,
+        ownerUsername = ownerUsername,
+    )
 }
 
 data class AnnotationRequest(

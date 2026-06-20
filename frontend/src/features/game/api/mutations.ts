@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { deleteGame, deleteGames, deleteAllGames, submitAnalysis, updateAnnotations } from './gameApi'
+import { createGameFromPgn, deleteGame, deleteGames, deleteAllGames, submitAnalysis, updateAnnotations } from './gameApi'
 import { gameKeys } from './queryKeys'
-import type { AnnotationRequest, GameAnalysis } from '../types/game'
+import type { AnnotationRequest, CreateGameFromPgnRequest, GameAnalysis } from '../types/game'
 
 export function useDeleteGame() {
   const queryClient = useQueryClient()
@@ -30,6 +30,17 @@ export function useDeleteAllGames() {
 
   return useMutation({
     mutationFn: () => deleteAllGames(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: gameKeys.lists() })
+    },
+  })
+}
+
+export function useCreateGameFromPgn() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (req: CreateGameFromPgnRequest) => createGameFromPgn(req),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: gameKeys.lists() })
     },

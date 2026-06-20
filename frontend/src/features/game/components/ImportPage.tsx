@@ -5,7 +5,10 @@ import { Dropdown } from '@/shared/components/Dropdown'
 import { useConfirm } from '@/shared/hooks/useConfirm'
 import { useGameImport } from '../hooks/useGameImport'
 import { GameListItem } from './GameListItem'
+import { PgnImportForm } from './PgnImportForm'
 import type { GameSource } from '../types/game'
+
+type ImportMode = 'ONLINE' | 'PGN'
 
 const PLATFORMS: { value: GameSource; name: string; description: string; placeholder: string; help: string }[] = [
   {
@@ -39,6 +42,7 @@ const MAX_OPTIONS = [
 ]
 
 export function ImportPage() {
+  const [mode, setMode] = useState<ImportMode>('ONLINE')
   const [source, setSource] = useState<GameSource>('LICHESS')
   const [username, setUsername] = useState('')
   const [max, setMax] = useState(50)
@@ -96,6 +100,30 @@ export function ImportPage() {
         <span className="text-3xl">&#9823;</span> 게임 가져오기
       </h1>
 
+      {/* 모드 탭: 온라인 임포트 vs PGN 붙여넣기 */}
+      <div className="flex gap-2 border-b border-amber-200 dark:border-gray-700">
+        {([
+          { value: 'ONLINE', label: '온라인에서 가져오기' },
+          { value: 'PGN', label: 'PGN으로 가져오기' },
+        ] as const).map((tab) => (
+          <button
+            key={tab.value}
+            type="button"
+            onClick={() => setMode(tab.value)}
+            className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition ${
+              mode === tab.value
+                ? 'border-amber-600 text-amber-900 dark:border-amber-500 dark:text-amber-100'
+                : 'border-transparent text-gray-500 hover:text-amber-700 dark:text-gray-400 dark:hover:text-amber-300'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {mode === 'PGN' && <PgnImportForm />}
+
+      {mode === 'ONLINE' && (
       <form onSubmit={handleSubmit} className="space-y-6 rounded-xl border border-amber-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
         {/* 플랫폼 카드 선택 */}
         <div>
@@ -259,6 +287,7 @@ export function ImportPage() {
           )}
         </div>
       </form>
+      )}
 
       {/* 진행 상태 */}
       {(isImporting || importedGames.length > 0) && (

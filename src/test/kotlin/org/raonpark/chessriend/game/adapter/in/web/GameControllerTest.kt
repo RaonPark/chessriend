@@ -93,6 +93,33 @@ class GameControllerTest {
     }
 
     @Test
+    fun `PGN으로 게임을 생성한다`() {
+        val pgn = "[Event \"Casual\"]\n[White \"Alice\"]\n[Black \"Bob\"]\n[Result \"1-0\"]\n\n1. e4 e5 2. Nf3 Nc6 1-0"
+        webTestClient.post()
+            .uri("/api/games/from-pgn")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(mapOf("pgn" to pgn))
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.source").isEqualTo("PGN")
+            .jsonPath("$.white.name").isEqualTo("Alice")
+            .jsonPath("$.black.name").isEqualTo("Bob")
+            .jsonPath("$.result").isEqualTo("1-0")
+            .jsonPath("$.totalMoves").isEqualTo(4)
+    }
+
+    @Test
+    fun `유효하지 않은 PGN은 400을 반환한다`() {
+        webTestClient.post()
+            .uri("/api/games/from-pgn")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(mapOf("pgn" to "this is not a pgn"))
+            .exchange()
+            .expectStatus().isBadRequest
+    }
+
+    @Test
     fun `lichess 게임을 SSE 스트리밍으로 반환한다`() {
         val response = webTestClient.get()
             .uri("/api/games/import?source=LICHESS&username=testuser&max=1")

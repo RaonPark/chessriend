@@ -7,28 +7,17 @@ import { useConfirm } from '@/shared/hooks/useConfirm'
 import { useGame } from '../api/queries'
 import { useDeleteGame, useUpdateAnnotations } from '../api/mutations'
 import { useBoardStore } from '../stores/boardStore'
+import { getOwnerOutcome, getResultLabel, type OwnerOutcome } from '../utils/outcome'
 import { GameViewer } from './GameViewer'
 import type { GameSource } from '../types/game'
-
-type Outcome = 'win' | 'loss' | 'draw'
 
 const SOURCE_LABELS: Record<GameSource, string> = {
   CHESS_COM: 'Chess.com',
   LICHESS: 'lichess',
+  PGN: 'PGN',
 }
 
-function getOutcome(game: { ownerUsername: string; white: { name: string }; black: { name: string }; result: string }): Outcome {
-  const owner = game.ownerUsername.toLowerCase()
-  const isWhite = game.white.name.toLowerCase() === owner
-  const isBlack = game.black.name.toLowerCase() === owner
-
-  if (game.result === '1/2-1/2') return 'draw'
-  if (game.result === '1-0') return isWhite ? 'win' : isBlack ? 'loss' : 'draw'
-  if (game.result === '0-1') return isBlack ? 'win' : isWhite ? 'loss' : 'draw'
-  return 'draw'
-}
-
-const OUTCOME_LABELS: Record<Outcome, { text: string; className: string }> = {
+const OUTCOME_LABELS: Record<OwnerOutcome, { text: string; className: string }> = {
   win: { text: '승리', className: 'text-green-600 dark:text-green-400' },
   loss: { text: '패배', className: 'text-red-600 dark:text-red-400' },
   draw: { text: '무승부', className: 'text-gray-600 dark:text-gray-400' },
@@ -115,11 +104,19 @@ export function GameDetailPage() {
 
         {/* 결과 */}
         {(() => {
-          const outcome = getOutcome(game)
-          const label = OUTCOME_LABELS[outcome]
+          const outcome = getOwnerOutcome(game)
+          if (outcome) {
+            const label = OUTCOME_LABELS[outcome]
+            return (
+              <p className={`mt-4 text-center text-lg font-semibold ${label.className}`}>
+                {label.text} ({game.result})
+              </p>
+            )
+          }
+          // 소유자 없는 게임(PGN 등) → 중립 결과 라벨
           return (
-            <p className={`mt-4 text-center text-lg font-semibold ${label.className}`}>
-              {label.text} ({game.result})
+            <p className="mt-4 text-center text-lg font-semibold text-gray-600 dark:text-gray-400">
+              {getResultLabel(game.result)} ({game.result})
             </p>
           )
         })()}
