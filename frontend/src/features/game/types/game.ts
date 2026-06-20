@@ -1,4 +1,4 @@
-export type GameSource = 'LICHESS' | 'CHESS_COM'
+export type GameSource = 'LICHESS' | 'CHESS_COM' | 'PGN'
 
 export type TimeCategory =
   | 'ULTRABULLET'
@@ -114,4 +114,9 @@ export interface ImportParams {
   until?: string
   timeCategory?: TimeCategory
   rated?: boolean
+}
+
+/** PGN 문자열로 게임 생성 요청. */
+export interface CreateGameFromPgnRequest {
+  pgn: string
 }

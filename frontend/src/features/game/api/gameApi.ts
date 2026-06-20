@@ -1,6 +1,6 @@
 import { apiFetch, ApiError } from '@/shared/api/apiClient'
 import type { PagedResponse } from '@/shared/types/api'
-import type { AnnotationRequest, GameAnalysis, GameDetailResponse, GameFilter, GameResponse, ImportParams } from '../types/game'
+import type { AnnotationRequest, CreateGameFromPgnRequest, GameAnalysis, GameDetailResponse, GameFilter, GameResponse, ImportParams } from '../types/game'
 
 export async function fetchGames(filters: GameFilter = {}): Promise<PagedResponse<GameResponse>> {
   const params = new URLSearchParams()
@@ -15,6 +15,13 @@ export async function fetchGames(filters: GameFilter = {}): Promise<PagedRespons
 
 export async function fetchGame(id: string): Promise<GameDetailResponse> {
   return apiFetch(`/api/games/${id}`)
+}
+
+export async function createGameFromPgn(req: CreateGameFromPgnRequest): Promise<GameResponse> {
+  return apiFetch('/api/games/from-pgn', {
+    method: 'POST',
+    body: JSON.stringify(req),
+  })
 }
 
 export async function deleteGame(id: string): Promise<void> {

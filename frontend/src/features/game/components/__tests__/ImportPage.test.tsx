@@ -65,4 +65,15 @@ describe('ImportPage', () => {
     renderWithProviders(<ImportPage />)
     expect(screen.getByText(/게임 목록/)).toBeInTheDocument()
   })
+
+  it('PGN 탭을 클릭하면 PGN 입력 폼을 표시한다', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ImportPage />)
+
+    await user.click(screen.getByText('PGN으로 가져오기'))
+
+    expect(screen.getByLabelText('PGN 기보')).toBeInTheDocument()
+    // 온라인 폼은 더 이상 보이지 않는다
+    expect(screen.queryByPlaceholderText('lichess.org 닉네임')).not.toBeInTheDocument()
+  })
 })

@@ -3,6 +3,7 @@ import { ChessKing } from '@/shared/components/ChessKing'
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog'
 import { useConfirm } from '@/shared/hooks/useConfirm'
 import { useDeleteGame } from '../api/mutations'
+import { getOwnerOutcome, getResultLabel, type OwnerOutcome } from '../utils/outcome'
 import type { GameResponse } from '../types/game'
 
 interface GameListItemProps {
@@ -11,23 +12,21 @@ interface GameListItemProps {
   onToggleSelect?: () => void
 }
 
-type Outcome = 'win' | 'loss' | 'draw'
-
-function getOutcome(game: GameResponse): Outcome {
-  const owner = game.ownerUsername.toLowerCase()
-  const isWhite = game.white.name.toLowerCase() === owner
-  const isBlack = game.black.name.toLowerCase() === owner
-
-  if (game.result === '1/2-1/2') return 'draw'
-  if (game.result === '1-0') return isWhite ? 'win' : isBlack ? 'loss' : 'draw'
-  if (game.result === '0-1') return isBlack ? 'win' : isWhite ? 'loss' : 'draw'
-  return 'draw'
-}
-
-const OUTCOME_STYLES: Record<Outcome, { text: string; className: string; border: string }> = {
+const OUTCOME_STYLES: Record<OwnerOutcome, { text: string; className: string; border: string }> = {
   win: { text: '승리', className: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200', border: 'border-l-green-500' },
   loss: { text: '패배', className: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200', border: 'border-l-red-500' },
   draw: { text: '무승부', className: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200', border: 'border-l-amber-500' },
+}
+
+// 소유자 없는 게임(PGN 등): 승/패 대신 중립 결과 라벨 + amber 스타일.
+function resolveStyle(game: GameResponse): { text: string; className: string; border: string } {
+  const outcome = getOwnerOutcome(game)
+  if (outcome) return OUTCOME_STYLES[outcome]
+  return {
+    text: getResultLabel(game.result),
+    className: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
+    border: 'border-l-amber-500',
+  }
 }
 
 function formatDate(iso: string) {
@@ -39,8 +38,7 @@ function formatDate(iso: string) {
 }
 
 export function GameListItem({ game, selected, onToggleSelect }: GameListItemProps) {
-  const outcome = getOutcome(game)
-  const style = OUTCOME_STYLES[outcome]
+  const style = resolveStyle(game)
   const deleteMutation = useDeleteGame()
   const { confirm, dialogProps } = useConfirm()
 

@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.onCompletion
 import org.raonpark.chessriend.game.domain.Color
 import org.raonpark.chessriend.game.domain.GameSource
 import org.raonpark.chessriend.game.domain.TimeCategory
+import org.raonpark.chessriend.game.port.`in`.CreateGameFromPgnUseCase
 import org.raonpark.chessriend.game.port.`in`.GetGameAnalysisUseCase
 import org.raonpark.chessriend.game.port.`in`.GetGameUseCase
 import org.raonpark.chessriend.game.port.`in`.ImportGameUseCase
@@ -19,6 +20,7 @@ import java.time.Instant
 @RequestMapping("/api/games")
 class GameController(
     private val importGameUseCase: ImportGameUseCase,
+    private val createGameFromPgnUseCase: CreateGameFromPgnUseCase,
     private val getGameUseCase: GetGameUseCase,
     private val getGameAnalysisUseCase: GetGameAnalysisUseCase,
 ) {
@@ -71,6 +73,10 @@ class GameController(
     suspend fun deleteAllGames() {
         getGameUseCase.deleteAllGames()
     }
+
+    @PostMapping("/from-pgn")
+    suspend fun createGameFromPgn(@RequestBody request: CreateGameFromPgnRequest): GameResponse =
+        GameResponse.from(createGameFromPgnUseCase.createFromPgn(request.toCommand()))
 
     @GetMapping("/import", produces = [MediaType.TEXT_EVENT_STREAM_VALUE])
     fun importGames(

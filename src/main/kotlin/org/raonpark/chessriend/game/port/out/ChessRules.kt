@@ -1,12 +1,20 @@
 package org.raonpark.chessriend.game.port.out
 
+import org.raonpark.chessriend.game.domain.ParsedPgn
 import org.raonpark.chessriend.game.domain.analysis.MoveContext
 
 /**
- * 체스 규칙 처리 포트 — SAN 재생을 통한 FEN 재구성 + 희생 판정.
+ * 체스 규칙 처리 포트 — SAN 재생을 통한 FEN 재구성 + 희생 판정 + PGN 파싱.
  * 도메인을 체스 라이브러리(chesslib)로부터 격리한다. 구현은 adapter/out/chess.
  */
 interface ChessRules {
+
+    /**
+     * 표준 시작 포지션 PGN 문자열을 파싱하여 [ParsedPgn] 로 변환한다.
+     * 메인라인 수순 + 코멘트 + 1단계 변형선 + 태그(플레이어/결과/시간/오프닝)를 추출한다.
+     * 해석 불가한 PGN 이면 [IllegalArgumentException].
+     */
+    fun parsePgn(pgn: String): ParsedPgn
     /**
      * 시작 포지션부터 SAN 수열을 재생하여 각 포지션 FEN 목록을 반환.
      * 정상 재생 시 반환 길이 = sans.size + 1 (index 0 = 시작 포지션, index i+1 = sans[i] 적용 후).

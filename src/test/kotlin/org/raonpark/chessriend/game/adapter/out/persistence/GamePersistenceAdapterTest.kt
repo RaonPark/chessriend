@@ -163,6 +163,23 @@ class GamePersistenceAdapterTest {
             val bulletResult = adapter.findAll(0, 100, null, TimeCategory.BULLET).toList()
             assertTrue(bulletResult.isEmpty())
         }
+
+        @Test
+        fun `rating이 null인 게임도 목록 조회된다`() = runTest {
+            // rating NULL 컬럼을 primitive int 로 디코딩하면 NPE → 박싱 타입으로 조회해야 함
+            val saved = adapter.save(
+                createGame("findall-null-rating").copy(
+                    players = Players(Player("Anon", null), Player("Anon2", null)),
+                ),
+            )
+
+            val result = adapter.findAll(0, 100, null, null).toList()
+
+            val found = result.find { it.id == saved.id }
+            assertNotNull(found)
+            assertNull(found!!.players.white.rating)
+            assertNull(found.players.black.rating)
+        }
     }
 
     @Nested

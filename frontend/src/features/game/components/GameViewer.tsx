@@ -37,8 +37,8 @@ export function GameViewer({ gameId, moves, annotations, ownerUsername, whiteNam
   const analysis = useBoardStore((s) => s.analysis)
   const setAnalysis = useBoardStore((s) => s.setAnalysis)
 
-  const isOwnerBlack = ownerUsername.toLowerCase() !== whiteName.toLowerCase()
-  const orientation = isOwnerBlack ? 'black' : 'white'
+  // owner가 흑 플레이어일 때만 흑 시점. owner가 없거나(PGN 등) 백이면 백 시점 고정.
+  const orientation = ownerUsername && ownerUsername.toLowerCase() === blackName.toLowerCase() ? 'black' : 'white'
 
   const { isReady, evaluation, isEvaluating, evaluate } = useStockfish(ANALYSIS_DEPTH)
   const batch = useBatchAnalysis()
