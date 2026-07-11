@@ -41,10 +41,17 @@ fun getGame(id: Long): ResponseEntity<GameDetailResponse>
 
 | Exception | HTTP Status |
 |-----------|-------------|
-| `XxxNotFoundException` | 404 |
-| `XxxConflictException` | 409 |
-| `IllegalArgumentException` | 400 |
+| `NotFoundException` (↳ `GameNotFoundException`, `GameAnalysisNotFoundException`) | 404 |
+| `ExternalApiUserNotFoundException` | 404 |
+| `IllegalArgumentException`, `UnsupportedGameSourceException` | 400 |
+| `ConflictException` | 409 |
+| `ExternalApiRateLimitException` | 429 |
+| `ExternalApiException` | 502 |
+| `EngineException` (↳ `EngineUnavailableException`) | 503 |
+| `EngineTimeoutException` | 504 |
 | `Exception` (catch-all) | 500 |
+
+> 매핑 정의: `shared/exception/GlobalExceptionHandler.kt`. 예외 추가 시 핸들러도 함께 추가(없으면 catch-all 500).
 
 ```kotlin
 // ❌ NEVER
@@ -70,6 +77,7 @@ data class AnnotationRequest(...) {
 
 ## Jackson
 
+- Import: **`tools.jackson.databind.ObjectMapper`** (Jackson 3.x / `tools.jackson` 패키지 — `jackson-module-kotlin`). `com.fasterxml.jackson`(2.x) 아님
 - `objectMapper.readValue(json, T::class.java)` for typed deserialization
 - `JsonNode` only for flexible external API responses
 - NO manual casting: `as Map<String, Any?>`

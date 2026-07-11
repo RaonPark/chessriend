@@ -1,5 +1,44 @@
 # master — 프로젝트 초기 설정
 
+## 2026-06-20: README 최신화 (루트 + 패키지별)
+
+### What
+- **루트 `README.md`** 전면 작성(기존 2줄 → 전체 문서): 기능, 기술 스택, 헥사고날 아키텍처 개요, jOOQ+R2DBC 데이터 접근, 실행/빌드/테스트, 환경설정·포트, REST API 요약, AI Assisted Development(CLAUDE 규칙·훅·스킬·MCP), 문서 최신화 정책, 패키지 README 링크.
+- **`frontend/README.md`** 교체: Vite 기본 템플릿 → 실제 구조(라우팅, React Query/Zustand 상태관리, API·SSE, 커스텀 훅, 컴포넌트, 타입/유틸, Tailwind v4, 테스트, 주의사항).
+- **백엔드 레이어별 README 5종 신규**:
+  - `game/domain/README.md`, `game/application/README.md`, `game/port/README.md`, `game/adapter/README.md`(in/web·persistence·client·engine·chess 통합), `shared/README.md`.
+- **`.claude/hooks/readme-check.sh` 신규(비활성)**: 도메인/포트/어댑터/프론트 소스 편집 시 해당 README 누락·노후를 경고만 하는 PostToolUse 훅. 새 의존성 없음, 편집 비차단(exit 2 권고). 활성화 방법은 루트 README에 안내.
+
+### Why
+- 루트 README가 2줄에 불과하고 `frontend/README.md`가 Vite 기본 템플릿이라 신규 개발자 온보딩이 어려웠음.
+- 백엔드는 `game` 단일 컨텍스트 + `shared` 구조라, 패키지 README는 **레이어별 5개** 단위가 상세도/유지보수 균형에 가장 적합(사용자 확인).
+- 문서 자동 최신화는 강제 실패 대신 **경고 기반**으로 시작하라는 원칙에 따라 훅은 작성·제안만 하고 자동 연결은 하지 않음(사용자 확인).
+
+### 검증
+- 서브에이전트(개괄/백엔드/데이터접근/프론트/Claude·인프라) 분석 후 메인에서 컨트롤러·persistence·settings.local.json·vite.config·docker-compose·CI를 직접 재확인. 정정: 훅 6종→**7종**, import 응답 `x-ndjson`→**`text/event-stream`**.
+- `readme-check.sh`: bash -n 통과, 정상/누락/무관/빈입력 케이스 동작 확인.
+
+### 확인 필요
+- `docs/architecture.md`가 현재 코드와 일부 드리프트(존재하지 않는 `Position.kt`, `analysis/`·`review/` 프론트 폴더 언급, 실제는 `features/game` 단일). 별도 갱신 권장.
+
+## 2026-06-20: .claude/rules 코드베이스 대조·갱신
+
+### What
+서브에이전트로 7개 규칙 파일을 실제 코드와 대조, 사실관계가 어긋난 곳만 메인에서 직접 검증 후 갱신:
+- **spring.md**: Jackson import를 `tools.jackson.databind.ObjectMapper`(Jackson 3.x)로 명시(기존엔 암묵적 `com.fasterxml` 2.x). 예외 매핑표를 실제 `GlobalExceptionHandler`에 맞게 확장(429/502/503/504 + 외부 API·엔진 예외 추가).
+- **database.md**: 생성 경로 `build/generated-src/jooq/` → `.../main/`(+ 생성 패키지·테이블 import 예). DSL 예시를 실제 패턴(`DSL.asterisk()` + `DSL.trueCondition()` + `?.let` 동적 WHERE)으로 교체. 실행 예시를 `query.params` 순회 바인딩 + **jOOQ `JSONB`→R2DBC `Json.of` 변환**(런타임 함정)으로 정정.
+- **ui.md**: `useConfirm()` import 경로 `@/shared/components/ConfirmDialog` → **`@/shared/hooks/useConfirm`**(실제 위치). 분류 색상표에 **Brilliant=cyan** 추가(실제 `MoveList`/`AnalysisSummary`가 cyan-500 사용).
+- **docs.md**: 작업내역 파일명 규칙 예시를 실제 관례(`{type}_{name}_작업내역.md`, `/`→`_`)로 정정.
+- **frontend/README.md**: 앞서 잘못 적은 "Brilliant=amber/gold" → **cyan** 정정.
+
+### Why
+규칙은 규범이므로 "코드가 규칙 위반"이 아니라 **규칙 안의 사실적 참조가 코드와 불일치**하는 것만 outdated로 보고 수정. kotlin.md / react.md / playwright.md는 검증 결과 정확하여 변경 없음.
+
+### 검증 (거짓 양성 차단)
+- 서브에이전트가 제안한 playwright.md `source=PGN` 추가는 **반영 안 함**: `ImportGameService`가 `source`에 맞는 `ChessGameClient`를 못 찾으면 `UnsupportedGameSourceException`을 던지고, PGN 클라이언트는 없음 → `/import?source=PGN`은 실패(PGN은 `/from-pgn` 전용). 따라서 `LICHESS|CHESS_COM`만 맞음.
+- Brilliant 색상은 서브에이전트 보고가 엇갈려(cyan vs gold) `MoveList.tsx`/`AnalysisSummary.tsx`를 직접 grep → cyan 확정.
+- `GlobalExceptionHandler.kt` 전체를 읽어 9개 핸들러 매핑 확인.
+
 ## 2026-06-03: GameDetailPage 정렬 수정 + 플랫폼 라벨
 
 ### What

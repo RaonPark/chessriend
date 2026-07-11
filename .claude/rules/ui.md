@@ -17,7 +17,7 @@ paths:
 | Instead of | Use |
 |------------|-----|
 | `<select>` | `<Dropdown>` from `@/shared/components/Dropdown` |
-| `confirm()` / `alert()` | `<ConfirmDialog>` + `useConfirm()` from `@/shared/components/ConfirmDialog` |
+| `confirm()` / `alert()` | `<ConfirmDialog>` from `@/shared/components/ConfirmDialog` + `useConfirm()` from `@/shared/hooks/useConfirm` |
 | Loading state | `<LoadingSpinner>` from `@/shared/components/LoadingSpinner` |
 | Error state | `<ErrorMessage>` from `@/shared/components/ErrorMessage` |
 | Chess piece icon | `<ChessKing>` from `@/shared/components/ChessKing` |
@@ -38,6 +38,7 @@ See `frontend/DESIGN_SYSTEM.md` for full specification:
 | Analysis (variations) | indigo |
 | Saved (saved variations) | emerald |
 | Error / Danger | red |
+| Classification: Brilliant | cyan |
 | Classification: Blunder | red |
 | Classification: Mistake | orange |
 | Classification: Inaccuracy | yellow |
