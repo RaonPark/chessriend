@@ -56,17 +56,30 @@ export interface VariationResponse {
   moves: string[]
   comment: string
   moveComments: Record<string, string>
+  moveArrows?: MoveArrows
 }
+
+/** 보드 위 화살표 (react-chessboard Arrow와 같은 모양) */
+export interface BoardArrow {
+  startSquare: string
+  endSquare: string
+  color: string
+}
+
+/** key: 수 인덱스 (-1 = 시작/분기 포지션), value: 그 수 이후 포지션의 화살표 */
+export type MoveArrows = Record<string, BoardArrow[]>
 
 export interface AnnotationResponse {
   moveComments: Record<string, string>
   variations: VariationResponse[]
   analysis?: GameAnalysis
+  moveArrows?: MoveArrows
 }
 
 export interface AnnotationRequest {
   moveComments: Record<string, string>
   variations: VariationResponse[]
+  moveArrows: MoveArrows
 }
 
 export interface GameDetailResponse {

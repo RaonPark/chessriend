@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useBoardStore } from '../stores/boardStore'
 
 interface CommentPanelProps {
@@ -19,8 +19,8 @@ export function CommentPanel({ onPersist, isPersisting }: CommentPanelProps = {}
   const setVariationMoveComment = useBoardStore((s) => s.setVariationMoveComment)
   const analysis = useBoardStore((s) => s.analysis)
 
-  const [draft, setDraft] = useState('')
-  const [isEditing, setIsEditing] = useState(false)
+  // 편집 상태는 편집을 시작한 포지션 키와 묶어서 보관 → 수가 바뀌면 자동으로 편집 종료
+  const [editing, setEditing] = useState<{ key: string; draft: string } | null>(null)
 
   // 현재 수의 메모와 라벨 결정
   const isInSavedVariation = isInVariation && activeVariationIndex >= 0
@@ -42,15 +42,14 @@ export function CommentPanel({ onPersist, isPersisting }: CommentPanelProps = {}
     canComment = true
   }
 
-  // 수가 바뀔 때 draft 동기화
-  useEffect(() => {
-    setDraft(savedComment)
-    setIsEditing(false)
-  }, [currentIndex, variationIndex, savedComment])
+  const positionKey = `${isInVariation ? `v${activeVariationIndex}:${variationIndex}` : currentIndex}`
+  const isEditing = editing?.key === positionKey
+  const draft = isEditing ? editing.draft : savedComment
+  const setDraft = (text: string) => setEditing({ key: positionKey, draft: text })
 
   if (!analysis) {
     return (
-      <div className="border-t border-amber-200 bg-amber-50/50 p-3 dark:border-gray-700 dark:bg-gray-800/50">
+      <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3 dark:border-gray-700 dark:bg-gray-800/50">
         <p className="text-xs text-amber-400 dark:text-gray-500">게임 분석 이후 메모를 작성할 수 있습니다.</p>
       </div>
     )
@@ -64,13 +63,12 @@ export function CommentPanel({ onPersist, isPersisting }: CommentPanelProps = {}
     } else {
       setMoveComment(currentIndex, draft)
     }
-    setIsEditing(false)
+    setEditing(null)
     onPersist?.()
   }
 
   function handleCancel() {
-    setDraft(savedComment)
-    setIsEditing(false)
+    setEditing(null)
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -99,7 +97,7 @@ export function CommentPanel({ onPersist, isPersisting }: CommentPanelProps = {}
     : 'text-amber-500 dark:text-gray-500'
 
   return (
-    <div className={`border-t ${borderColor} ${bgColor} p-3`}>
+    <div className={`rounded-xl border ${borderColor} ${bgColor} p-3`}>
       <div className="mb-1.5 flex items-center gap-2">
         <span className={`text-xs font-medium ${labelColor}`}>
           {moveLabel}
@@ -144,8 +142,11 @@ export function CommentPanel({ onPersist, isPersisting }: CommentPanelProps = {}
         </div>
       ) : (
         <button
-          onClick={() => setIsEditing(true)}
-          className="w-full rounded-lg border border-dashed border-amber-300 px-3 py-2 text-left text-sm text-amber-400 transition hover:border-amber-400 hover:bg-white dark:border-gray-600 dark:text-gray-500 dark:hover:border-gray-500 dark:hover:bg-gray-900"
+          onClick={() => setDraft(savedComment)}
+          className={`w-full whitespace-pre-wrap rounded-lg border border-dashed border-amber-300 px-3 py-2 text-left text-sm transition hover:border-amber-400 hover:bg-white dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-900 ${
+            // 저장된 메모는 선명하게, 빈 상태 안내 문구만 흐리게
+            savedComment ? 'text-gray-900 dark:text-white' : 'text-amber-400 dark:text-gray-500'
+          }`}
         >
           {savedComment || '메모 추가...'}
         </button>

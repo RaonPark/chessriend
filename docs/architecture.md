@@ -123,7 +123,8 @@ frontend/src/
 ├── features/           # 기능 단위 폴더
 │   ├── game/           # 게임 목록, 가져오기
 │   ├── analysis/       # 엔진 분석 결과 표시
-│   └── review/         # 리뷰 보드, 메모 작성
+│   ├── review/         # 리뷰 보드, 메모 작성
+│   └── settings/       # 브라우저별 사용자 설정 (localStorage, 예: 엔진 최선수 화살표)
 ├── shared/             # 공유 컴포넌트, 훅, 유틸
 │   ├── components/     # Button, Modal 등 공통 UI
 │   ├── hooks/          # useApi, useChess 등 공통 훅

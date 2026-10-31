@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { useBoardStore } from '../boardStore'
+import { useBoardStore, selectCurrentArrows } from '../boardStore'
 import type { AnnotationResponse, GameAnalysis, MoveResponse, VariationResponse } from '../../types/game'
 
 const SAMPLE_MOVES: MoveResponse[] = [
@@ -347,5 +347,94 @@ describe('boardStore — Annotation', () => {
       expect(getState().savedVariations[0].startMoveIndex).toBe(0)
       expect(getState().savedVariations[1].startMoveIndex).toBe(0)
     })
+  })
+})
+
+describe('boardStore — 화살표', () => {
+  const E2E4 = { startSquare: 'e2', endSquare: 'e4', color: '#ffaa00' }
+  const G1F3 = { startSquare: 'g1', endSquare: 'f3', color: '#4caf50' }
+
+  beforeEach(() => {
+    getState().loadMoves(SAMPLE_MOVES)
+    getState().setAnalysis(DUMMY_ANALYSIS)
+  })
+
+  it('분석 전에는 화살표를 그릴 수 없다', () => {
+    getState().clearAnalysis()
+    getState().toggleArrow(E2E4)
+    expect(selectCurrentArrows(getState())).toEqual([])
+    expect(getState().annotationsDirty).toBe(false)
+  })
+
+  it('메인라인 포지션별로 저장되고 dirty가 된다', () => {
+    getState().goToMove(1)
+    getState().toggleArrow(G1F3)
+
+    expect(getState().moveArrows).toEqual({ '1': [G1F3] })
+    expect(selectCurrentArrows(getState())).toEqual([G1F3])
+    expect(getState().annotationsDirty).toBe(true)
+
+    getState().goToMove(2)
+    expect(selectCurrentArrows(getState())).toEqual([])
+  })
+
+  it('시작 포지션(-1)에도 그릴 수 있다', () => {
+    getState().toggleArrow(E2E4)
+    expect(getState().moveArrows).toEqual({ '-1': [E2E4] })
+  })
+
+  it('같은 화살표를 같은 색으로 다시 그리면 지워지고, 다른 색이면 색이 바뀐다', () => {
+    getState().toggleArrow(E2E4)
+    getState().toggleArrow({ ...E2E4, color: '#f44336' })
+    expect(getState().moveArrows['-1']).toEqual([{ ...E2E4, color: '#f44336' }])
+
+    getState().toggleArrow({ ...E2E4, color: '#f44336' })
+    expect(getState().moveArrows).toEqual({})
+  })
+
+  it('clearCurrentArrows는 현재 포지션 화살표만 지운다', () => {
+    getState().toggleArrow(E2E4)
+    getState().goToMove(1)
+    getState().toggleArrow(G1F3)
+
+    getState().clearCurrentArrows()
+
+    expect(getState().moveArrows).toEqual({ '-1': [E2E4] })
+  })
+
+  it('저장된 변형선 안에서는 그 변형선의 moveArrows에 저장', () => {
+    getState().loadAnnotations({ ...SAMPLE_ANNOTATIONS, analysis: DUMMY_ANALYSIS })
+    getState().enterSavedVariation(SAMPLE_ANNOTATIONS.variations[0], 0)
+    getState().goToVariationMove(0)
+    getState().toggleArrow(G1F3)
+
+    expect(getState().savedVariations[0].moveArrows).toEqual({ '0': [G1F3] })
+    expect(getState().moveArrows).toEqual({})
+    expect(getState().annotationsDirty).toBe(true)
+  })
+
+  it('저장 전 변형선의 화살표는 변형선 저장 시 함께 저장된다', () => {
+    getState().makeMove('e2', 'e4') // 시작 포지션에서 분기
+    getState().toggleArrow(G1F3)
+    expect(selectCurrentArrows(getState())).toEqual([G1F3])
+
+    getState().saveCurrentVariation()
+
+    expect(getState().savedVariations[0].moveArrows).toEqual({ '0': [G1F3] })
+  })
+
+  it('변형선을 나가면 저장 전 화살표는 버려진다', () => {
+    getState().makeMove('e2', 'e4')
+    getState().toggleArrow(G1F3)
+    getState().exitVariation()
+    getState().makeMove('d2', 'd4')
+
+    expect(selectCurrentArrows(getState())).toEqual([])
+  })
+
+  it('loadAnnotations / getAnnotationsSnapshot에 moveArrows 포함', () => {
+    getState().loadAnnotations({ ...SAMPLE_ANNOTATIONS, moveArrows: { '0': [E2E4] } })
+    expect(getState().moveArrows).toEqual({ '0': [E2E4] })
+    expect(getState().getAnnotationsSnapshot().moveArrows).toEqual({ '0': [E2E4] })
   })
 })

@@ -9,6 +9,7 @@ import { useDeleteGame, useUpdateAnnotations } from '../api/mutations'
 import { useBoardStore } from '../stores/boardStore'
 import { getOwnerOutcome, getResultLabel, type OwnerOutcome } from '../utils/outcome'
 import { GameViewer } from './GameViewer'
+import { AnalysisSummary } from './AnalysisSummary'
 import type { GameSource } from '../types/game'
 
 const SOURCE_LABELS: Record<GameSource, string> = {
@@ -41,6 +42,7 @@ export function GameDetailPage() {
   const annotationMutation = useUpdateAnnotations(id!)
   const getAnnotationsSnapshot = useBoardStore((s) => s.getAnnotationsSnapshot)
   const markAnnotationsClean = useBoardStore((s) => s.markAnnotationsClean)
+  const analysis = useBoardStore((s) => s.analysis)
   const { confirm, dialogProps } = useConfirm()
 
   function handleSaveAnnotations() {
@@ -83,43 +85,59 @@ export function GameDetailPage() {
       </div>
 
       <div className="rounded-xl border border-amber-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-        {/* 대국자 정보 */}
-        <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-4 text-lg sm:gap-10">
-          <div className="flex flex-col items-center text-center">
-            <ChessKing color="white" size={56} />
-            <p className="mt-2 font-semibold text-gray-900 dark:text-gray-100">{game.white.name}</p>
-            {game.white.rating != null && (
-              <p className="text-sm text-amber-700 dark:text-amber-400">{game.white.rating}</p>
-            )}
-          </div>
-          <span className="pt-16 text-2xl font-light text-amber-400">vs</span>
-          <div className="flex flex-col items-center text-center">
-            <ChessKing color="black" size={56} />
-            <p className="mt-2 font-semibold text-gray-900 dark:text-gray-100">{game.black.name}</p>
-            {game.black.rating != null && (
-              <p className="text-sm text-amber-700 dark:text-amber-400">{game.black.rating}</p>
-            )}
-          </div>
-        </div>
+        <div className="flex flex-col gap-6 md:flex-row md:items-center">
+          <div className="flex-1">
+            {/* 대국자 정보 */}
+            <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-4 text-lg sm:gap-10">
+              <div className="flex flex-col items-center text-center">
+                <ChessKing color="white" size={56} />
+                <p className="mt-2 font-semibold text-gray-900 dark:text-gray-100">{game.white.name}</p>
+                {game.white.rating != null && (
+                  <p className="text-sm text-amber-700 dark:text-amber-400">{game.white.rating}</p>
+                )}
+              </div>
+              <span className="pt-16 text-2xl font-light text-amber-400">vs</span>
+              <div className="flex flex-col items-center text-center">
+                <ChessKing color="black" size={56} />
+                <p className="mt-2 font-semibold text-gray-900 dark:text-gray-100">{game.black.name}</p>
+                {game.black.rating != null && (
+                  <p className="text-sm text-amber-700 dark:text-amber-400">{game.black.rating}</p>
+                )}
+              </div>
+            </div>
 
-        {/* 결과 */}
-        {(() => {
-          const outcome = getOwnerOutcome(game)
-          if (outcome) {
-            const label = OUTCOME_LABELS[outcome]
-            return (
-              <p className={`mt-4 text-center text-lg font-semibold ${label.className}`}>
-                {label.text} ({game.result})
-              </p>
-            )
-          }
-          // 소유자 없는 게임(PGN 등) → 중립 결과 라벨
-          return (
-            <p className="mt-4 text-center text-lg font-semibold text-gray-600 dark:text-gray-400">
-              {getResultLabel(game.result)} ({game.result})
-            </p>
-          )
-        })()}
+            {/* 결과 */}
+            {(() => {
+              const outcome = getOwnerOutcome(game)
+              if (outcome) {
+                const label = OUTCOME_LABELS[outcome]
+                return (
+                  <p className={`mt-4 text-center text-lg font-semibold ${label.className}`}>
+                    {label.text} ({game.result})
+                  </p>
+                )
+              }
+              // 소유자 없는 게임(PGN 등) → 중립 결과 라벨
+              return (
+                <p className="mt-4 text-center text-lg font-semibold text-gray-600 dark:text-gray-400">
+                  {getResultLabel(game.result)} ({game.result})
+                </p>
+              )
+            })()}
+          </div>
+
+          {/* 분석 결과 요약 (분석 완료 후) */}
+          {analysis && game.moves && (
+            <div className="md:w-72 md:shrink-0">
+              <AnalysisSummary
+                analysis={analysis}
+                moves={game.moves}
+                whiteName={game.white.name}
+                blackName={game.black.name}
+              />
+            </div>
+          )}
+        </div>
 
         {/* 메타 정보 */}
         <div className="mt-6 grid grid-cols-2 gap-4 border-t border-amber-100 pt-4 text-sm dark:border-gray-700 sm:grid-cols-3 lg:grid-cols-5">
@@ -157,7 +175,6 @@ export function GameDetailPage() {
           moves={game.moves}
           annotations={game.annotations}
           ownerUsername={game.ownerUsername}
-          whiteName={game.white.name}
           blackName={game.black.name}
           onSaveAnnotations={handleSaveAnnotations}
           isSaving={annotationMutation.isPending}

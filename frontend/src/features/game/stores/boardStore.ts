@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { Chess } from 'chess.js'
-import type { AnnotationResponse, GameAnalysis, MoveClassification, MoveResponse, VariationResponse } from '../types/game'
+import type { AnnotationResponse, BoardArrow, GameAnalysis, MoveArrows, MoveClassification, MoveResponse, VariationResponse } from '../types/game'
 
 interface BoardState {
   // 원래 기보 (mainline)
@@ -24,6 +24,10 @@ interface BoardState {
   annotationsDirty: boolean    // 변경 사항 유무
   activeVariationIndex: number // 현재 진입한 저장된 변형선의 인덱스 (-1 = 새 변형선/메인라인)
 
+  // 화살표 (포지션별)
+  moveArrows: MoveArrows           // 메인라인: key = currentIndex
+  draftVariationArrows: MoveArrows // 아직 저장 안 된 변형선: key = variationIndex (변형선 저장 시 함께 저장)
+
   // Game analysis (Blunder/Mistake/Inaccuracy 분류)
   analysis: GameAnalysis | null
   classificationByMove: Record<number, MoveClassification>
@@ -46,8 +50,47 @@ interface BoardState {
   enterSavedVariation: (variation: VariationResponse, index: number) => void
   setAnalysis: (analysis: GameAnalysis) => void
   clearAnalysis: () => void
-  getAnnotationsSnapshot: () => { moveComments: Record<string, string>; variations: VariationResponse[] }
+  toggleArrow: (arrow: BoardArrow) => void
+  clearCurrentArrows: () => void
+  getAnnotationsSnapshot: () => { moveComments: Record<string, string>; variations: VariationResponse[]; moveArrows: MoveArrows }
   markAnnotationsClean: () => void
+}
+
+type ArrowTarget = 'mainline' | 'savedVariation' | 'draftVariation'
+
+/** 현재 포지션의 화살표가 어디에 저장되는지 + 키 */
+function arrowLocation(s: BoardState): { target: ArrowTarget; key: string } {
+  if (!s.isInVariation) return { target: 'mainline', key: String(s.currentIndex) }
+  const key = String(s.variationIndex)
+  return s.activeVariationIndex >= 0 ? { target: 'savedVariation', key } : { target: 'draftVariation', key }
+}
+
+function arrowMapAt(s: BoardState, target: ArrowTarget): MoveArrows {
+  if (target === 'mainline') return s.moveArrows
+  if (target === 'draftVariation') return s.draftVariationArrows
+  return s.savedVariations[s.activeVariationIndex]?.moveArrows ?? {}
+}
+
+/** 현재 포지션에 그려진 화살표 */
+export function selectCurrentArrows(s: BoardState): BoardArrow[] {
+  const { target, key } = arrowLocation(s)
+  return arrowMapAt(s, target)[key] ?? EMPTY_ARROWS
+}
+
+const EMPTY_ARROWS: BoardArrow[] = []
+
+/** 현재 포지션 화살표를 갱신한 state patch (빈 목록이면 키 삭제) */
+function withCurrentArrows(s: BoardState, arrows: BoardArrow[]): Partial<BoardState> {
+  const { target, key } = arrowLocation(s)
+  const updated = { ...arrowMapAt(s, target) }
+  if (arrows.length > 0) updated[key] = arrows
+  else delete updated[key]
+
+  if (target === 'mainline') return { moveArrows: updated, annotationsDirty: true }
+  if (target === 'draftVariation') return { draftVariationArrows: updated }
+  const variations = [...s.savedVariations]
+  variations[s.activeVariationIndex] = { ...variations[s.activeVariationIndex], moveArrows: updated }
+  return { savedVariations: variations, annotationsDirty: true }
 }
 
 function computeFens(moves: MoveResponse[]): string[] {
@@ -78,6 +121,9 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   annotationsDirty: false,
   activeVariationIndex: -1,
 
+  moveArrows: {},
+  draftVariationArrows: {},
+
   analysis: null,
   classificationByMove: {},
 
@@ -97,6 +143,8 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       savedVariations: [],
       annotationsDirty: false,
       activeVariationIndex: -1,
+      moveArrows: {},
+      draftVariationArrows: {},
       analysis: null,
       classificationByMove: {},
     })
@@ -114,6 +162,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     set({
       moveComments: { ...annotations.moveComments },
       savedVariations: [...annotations.variations],
+      moveArrows: { ...(annotations.moveArrows ?? {}) },
       analysis: annotations.analysis ?? null,
       classificationByMove,
       annotationsDirty: false,
@@ -174,6 +223,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
           variationIndex: -1,
           variationStartIndex: -1,
           activeVariationIndex: -1,
+          draftVariationArrows: {},
           currentIndex: variationStartIndex,
           currentFen: mainlineFens[variationStartIndex + 1],
         })
@@ -201,7 +251,12 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       // 이미 variation 중 → variation에 수 추가
       const trimmedMoves = variationMoves.slice(0, variationIndex + 1)
       const trimmedFens = variationFens.slice(0, variationIndex + 2)
+      // 잘려 나간 수들의 임시 화살표도 버림
+      const draftVariationArrows = Object.fromEntries(
+        Object.entries(get().draftVariationArrows).filter(([k]) => Number(k) < trimmedMoves.length),
+      )
       set({
+        draftVariationArrows,
         variationMoves: [...trimmedMoves, result.san],
         variationFens: [...trimmedFens, newFen],
         variationIndex: trimmedMoves.length,
@@ -219,6 +274,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
         variationMoves: [result.san],
         variationFens: [currentFen, newFen],
         variationIndex: 0,
+        draftVariationArrows: {},
         currentFen: newFen,
       })
     }
@@ -236,6 +292,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       variationIndex: -1,
       variationStartIndex: -1,
       activeVariationIndex: -1,
+      draftVariationArrows: {},
       currentIndex: returnIndex,
       currentFen: mainlineFens[returnIndex + 1],
     })
@@ -275,13 +332,14 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   },
 
   saveCurrentVariation: (comment = '') => {
-    const { isInVariation, variationStartIndex, variationMoves, savedVariations } = get()
+    const { isInVariation, variationStartIndex, variationMoves, savedVariations, draftVariationArrows } = get()
     if (!isInVariation || variationMoves.length === 0) return
     const newVariation: VariationResponse = {
       startMoveIndex: variationStartIndex,
       moves: [...variationMoves],
       comment,
       moveComments: {},
+      moveArrows: { ...draftVariationArrows },
     }
     set({
       savedVariations: [...savedVariations, newVariation],
@@ -341,11 +399,30 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     set({ analysis: null, classificationByMove: {} })
   },
 
+  toggleArrow: (arrow) => {
+    const state = get()
+    // 메모·변형선과 같은 규칙: 분석 완료 후에만 편집 가능
+    if (!state.analysis) return
+    const current = selectCurrentArrows(state)
+    const existing = current.find((a) => a.startSquare === arrow.startSquare && a.endSquare === arrow.endSquare)
+    const others = current.filter((a) => a !== existing)
+    // 같은 색으로 다시 그리면 삭제, 다른 색이면 색 교체 (lichess 방식)
+    const next = existing?.color === arrow.color ? others : [...others, arrow]
+    set(withCurrentArrows(state, next))
+  },
+
+  clearCurrentArrows: () => {
+    const state = get()
+    if (selectCurrentArrows(state).length === 0) return
+    set(withCurrentArrows(state, []))
+  },
+
   getAnnotationsSnapshot: () => {
-    const { moveComments, savedVariations } = get()
+    const { moveComments, savedVariations, moveArrows } = get()
     return {
       moveComments: { ...moveComments },
       variations: [...savedVariations],
+      moveArrows: { ...moveArrows },
     }
   },
 
