@@ -22,6 +22,8 @@ data class GameResponse(
     val analysisSummary: AnalysisSummaryResponse? = null,
     /** 이 게임이 들어 있는 폴더들 (목록의 폴더 태그) */
     val folders: List<FolderTagResponse> = emptyList(),
+    val nickname: String? = null,
+    val memo: String? = null,
 ) {
     companion object {
         fun from(
@@ -45,11 +47,21 @@ data class GameResponse(
             playedAt = game.playedAt,
             analysisSummary = analysisSummary?.let { AnalysisSummaryResponse.from(it) },
             folders = folders.map { FolderTagResponse(it.id!!.toString(), it.name) },
+            nickname = game.note.nickname,
+            memo = game.note.memo,
         )
     }
 }
 
 data class FolderTagResponse(val id: String, val name: String)
+
+data class GameNoteRequest(val nickname: String? = null, val memo: String? = null)
+
+data class GameNoteResponse(val nickname: String?, val memo: String?) {
+    companion object {
+        fun from(note: GameNote): GameNoteResponse = GameNoteResponse(note.nickname, note.memo)
+    }
+}
 
 data class AnalysisSummaryResponse(
     val depth: Int,
@@ -128,6 +140,8 @@ data class GameDetailResponse(
     val annotations: AnnotationResponse,
     val totalMoves: Int,
     val playedAt: Instant,
+    val nickname: String? = null,
+    val memo: String? = null,
 ) {
     companion object {
         fun from(game: Game, analysis: GameAnalysisData? = null): GameDetailResponse = GameDetailResponse(
@@ -147,6 +161,8 @@ data class GameDetailResponse(
             annotations = AnnotationResponse.from(game.annotations, analysis),
             totalMoves = game.totalMoves,
             playedAt = game.playedAt,
+            nickname = game.note.nickname,
+            memo = game.note.memo,
         )
     }
 }

@@ -1,6 +1,6 @@
 import { apiFetch, ApiError } from '@/shared/api/apiClient'
 import type { PagedResponse } from '@/shared/types/api'
-import type { AnnotationRequest, CreateGameFromPgnRequest, GameAnalysis, GameDetailResponse, GameFilter, GameResponse, ImportParams, OpeningCount } from '../types/game'
+import type { AnnotationRequest, CreateGameFromPgnRequest, GameAnalysis, GameDetailResponse, GameFilter, GameNote, GameResponse, ImportParams, OpeningCount } from '../types/game'
 
 export async function fetchGames(filters: GameFilter = {}): Promise<PagedResponse<GameResponse>> {
   const params = new URLSearchParams()
@@ -95,4 +95,9 @@ export function createImportEventSource(params: ImportParams): EventSource {
 /** LNB "오프닝별": 오프닝 이름별 게임 수 (많은 순) */
 export async function fetchOpeningCounts(): Promise<OpeningCount[]> {
   return apiFetch('/api/games/openings')
+}
+
+/** 게임 애칭·메모 저장 (둘 다 보냄 — 빈 값은 지움). 정리된 값을 돌려줌 */
+export async function updateGameNote(id: string, note: GameNote): Promise<GameNote> {
+  return apiFetch(`/api/games/${id}/note`, { method: 'PUT', body: JSON.stringify(note) })
 }

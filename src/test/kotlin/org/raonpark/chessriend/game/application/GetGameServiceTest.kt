@@ -115,4 +115,18 @@ class GetGameServiceTest : DescribeSpec({
             service.getOpeningCounts() shouldBe counts
         }
     }
+
+    describe("updateNote") {
+        it("게임이 없으면 GameNotFoundException") {
+            coEvery { gameRepository.findById(999L) } returns null
+            shouldThrow<GameNotFoundException> { service.updateNote(999L, "애칭", null) }
+        }
+
+        it("정리된 애칭·메모를 저장하고 돌려준다") {
+            coEvery { gameRepository.findById(1L) } returns createGame(1L, "note")
+            coEvery { gameRepository.updateNote(1L, GameNote("역전승", "퀸 희생 복기")) } returns Unit
+
+            service.updateNote(1L, " 역전승 ", "퀸 희생 복기") shouldBe GameNote("역전승", "퀸 희생 복기")
+        }
+    }
 })

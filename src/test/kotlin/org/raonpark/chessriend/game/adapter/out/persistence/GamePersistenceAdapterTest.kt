@@ -304,4 +304,22 @@ class GamePersistenceAdapterTest {
             assertEquals(1L, adapter.count(criteria))
         }
     }
+
+    @Nested
+    inner class Note {
+        @Test
+        fun `새 게임은 애칭·메모가 없고, 저장한 애칭·메모는 단건·목록 조회에 모두 나온다`() = runTest {
+            val saved = adapter.save(createGame("note-${java.util.UUID.randomUUID()}"))
+            assertEquals(GameNote.EMPTY, saved.note)
+
+            adapter.updateNote(saved.id!!, GameNote("에버그린", "퀸 희생으로 메이트"))
+
+            assertEquals(GameNote("에버그린", "퀸 희생으로 메이트"), adapter.findById(saved.id!!)?.note)
+            val listed = adapter.findAll(0, 1000, GameSearchCriteria()).toList().single { it.id == saved.id }
+            assertEquals("에버그린", listed.note.nickname)
+
+            adapter.updateNote(saved.id!!, GameNote.EMPTY)
+            assertEquals(GameNote.EMPTY, adapter.findById(saved.id!!)?.note)
+        }
+    }
 }

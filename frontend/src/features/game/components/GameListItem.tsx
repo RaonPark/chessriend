@@ -98,6 +98,19 @@ export function GameListItem({ game, selected, onToggleSelect }: GameListItemPro
             />
           )}
           <div className="text-left">
+            {(game.nickname || game.memo) && (
+              <p className="mb-0.5 flex items-center gap-2">
+                {game.nickname && <span className="font-bold text-amber-900 dark:text-amber-200">{game.nickname}</span>}
+                {game.memo && (
+                  <span
+                    title={game.memo}
+                    className="rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-gray-700 dark:text-amber-300"
+                  >
+                    ✎ 메모
+                  </span>
+                )}
+              </p>
+            )}
             <p className="flex items-center gap-1.5 font-medium text-gray-900 dark:text-gray-100">
               <ChessKing color="white" size={22} />
               {game.white.name}

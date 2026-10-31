@@ -3,6 +3,7 @@ package org.raonpark.chessriend.game.port.out
 import kotlinx.coroutines.flow.Flow
 import org.raonpark.chessriend.game.domain.Game
 import org.raonpark.chessriend.game.domain.GameAnnotation
+import org.raonpark.chessriend.game.domain.GameNote
 import org.raonpark.chessriend.game.domain.GameSearchCriteria
 import org.raonpark.chessriend.game.domain.OpeningCount
 
@@ -18,4 +19,5 @@ interface GameRepository {
     suspend fun deleteByIds(ids: List<Long>)
     suspend fun deleteAll()
     suspend fun updateAnnotations(id: Long, annotations: GameAnnotation)
+    suspend fun updateNote(id: Long, note: GameNote)
 }

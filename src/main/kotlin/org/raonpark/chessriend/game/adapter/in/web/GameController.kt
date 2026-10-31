@@ -77,6 +77,11 @@ class GameController(
         return GameDetailResponse.from(game, analysis)
     }
 
+    /** 게임 애칭·메모 저장 (빈 값은 지움). 정리된 값을 돌려줌 */
+    @PutMapping("/{id}/note")
+    suspend fun updateNote(@PathVariable id: Long, @RequestBody request: GameNoteRequest): GameNoteResponse =
+        GameNoteResponse.from(getGameUseCase.updateNote(id, request.nickname, request.memo))
+
     @PutMapping("/{id}/annotations")
     suspend fun updateAnnotations(
         @PathVariable id: Long,

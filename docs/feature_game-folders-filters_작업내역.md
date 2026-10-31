@@ -254,3 +254,33 @@
 ### Key files
 - `frontend/.../utils/moveSymbols.ts` (신규), `MoveList.tsx`, `PlayerBar.tsx`
 - 테스트: `moveSymbols.test.ts`, `MoveList.test.tsx`(+1), `PlayerBar.test.tsx`(수정)
+
+## 11. 게임 애칭·게임 메모
+
+### What
+- 게임 자체에 붙이는 **애칭(최대 50자)**과 **게임 메모(최대 2000자)**. 수별 메모(annotations)와는 별개
+- 백엔드
+  - **V8** `games.nickname VARCHAR(50)`, `games.memo TEXT` (nullable)
+  - 도메인 `GameNote.of`: trim, 빈 값 → null, 길이 초과 → 400. `Game.note`
+  - `PUT /api/games/{id}/note` `{nickname, memo}` → 정리된 값 반환 (없는 게임 404)
+  - 목록·상세 응답에 `nickname`, `memo`
+  - **`bindQuery`가 null 값을 `bindNull(index, type)`으로 바인딩**하도록 수정
+    - 이전 `param.value!!`는 값 지우기(`SET nickname = NULL`)에서 NPE
+    - 규칙 문서 `.claude/rules/database.md`도 갱신
+- 프론트
+  - 상세 화면 맨 위 `GameNicknameHeader`
+    - 애칭이 있으면 제목 + ✎, 없으면 "+ 게임 이름 붙이기"
+    - Enter 저장 / Esc 취소, 한글 조합 중 Enter 무시
+  - "경기 정보" 탭 `GameMemoSection`: 보기 ↔ 수정, Ctrl+Enter 저장
+  - 목록 줄: 애칭(굵게) + 메모 표시(✎ 메모, 마우스를 올리면 내용)
+  - 애칭·메모를 한 번에 저장하는 API라 한쪽만 수정해도 다른 쪽 기존 값을 함께 보냄
+  - 입력칸은 비제어 (리렌더로 한글 조합이 깨지지 않게)
+
+### Key files
+- `db/migration/V8__add_game_note.sql`, `game/domain/GameNote.kt`(신규), `Game.kt`
+- `GameEntity.kt`, `GamePersistenceAdapter.kt`(`updateNote`, `bindQuery`)
+- `GameRepository.kt`, `GetGameUseCase.kt`, `GetGameService.kt`, `GameController.kt`, `GameResponse.kt`
+- `frontend/.../components/GameNote.tsx`(신규), `GameDetailPage.tsx`, `GameInfoPanel.tsx`, `GameListItem.tsx`, `api/*`, `types/game.ts`
+- 테스트
+  - `GameNoteTest`(2), `GetGameServiceTest`(+2), `GamePersistenceAdapterTest.Note`(1), `GameControllerTest`(+1)
+  - `GameNote.test.tsx`(5), `GameListItem.test.tsx`(+1)

@@ -82,6 +82,17 @@ class GameControllerTest {
     }
 
     @Test
+    fun `게임 애칭·메모를 저장하면 정리된 값을 돌려준다`() {
+        webTestClient.put().uri("/api/games/1/note")
+            .bodyValue(mapOf("nickname" to " 에버그린 ", "memo" to "퀸 희생"))
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.nickname").isEqualTo("에버그린")
+            .jsonPath("$.memo").isEqualTo("퀸 희생")
+    }
+
+    @Test
     fun `ID로 게임을 조회한다`() {
         webTestClient.get()
             .uri("/api/games/1")
@@ -191,6 +202,7 @@ class GameControllerTest {
                 totalPages = 1,
             )
             coEvery { mock.getGame(1L) } returns testGame
+            coEvery { mock.updateNote(1L, " 에버그린 ", "퀸 희생") } returns GameNote("에버그린", "퀸 희생")
             coEvery { mock.getOpeningCounts() } returns listOf(
                 OpeningCount("Sicilian Defense", 14),
                 OpeningCount("Ruy Lopez", 9),

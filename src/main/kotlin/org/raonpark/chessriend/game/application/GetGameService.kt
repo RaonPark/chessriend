@@ -3,6 +3,7 @@ package org.raonpark.chessriend.game.application
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.flow.toList
 import org.raonpark.chessriend.game.domain.GameAnnotation
+import org.raonpark.chessriend.game.domain.GameNote
 import org.raonpark.chessriend.game.domain.Game
 import org.raonpark.chessriend.game.domain.GameSearchCriteria
 import org.raonpark.chessriend.game.domain.OpeningCount
@@ -36,6 +37,13 @@ class GetGameService(
     override suspend fun deleteAllGames() {
         gameRepository.deleteAll()
         log.warn { "all games deleted" }
+    }
+
+    override suspend fun updateNote(id: Long, nickname: String?, memo: String?): GameNote {
+        val note = GameNote.of(nickname, memo)
+        gameRepository.findById(id) ?: throw GameNotFoundException(id)
+        gameRepository.updateNote(id, note)
+        return note
     }
 
     override suspend fun updateAnnotations(id: Long, annotations: GameAnnotation) {

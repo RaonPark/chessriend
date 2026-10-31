@@ -171,4 +171,12 @@ describe('GameListItem', () => {
       await waitFor(() => expect(removed).toEqual(['g1']))
     })
   })
+
+  describe('애칭·메모', () => {
+    it('애칭이 있으면 굵게 보여주고, 메모가 있으면 메모 표시(미리보기)를 붙인다', () => {
+      renderWithProviders(<GameListItem game={createGameResponse({ nickname: '에버그린', memo: '퀸 희생으로 메이트' })} />)
+      expect(screen.getByText('에버그린')).toBeInTheDocument()
+      expect(screen.getByTitle('퀸 희생으로 메이트')).toHaveTextContent('메모')
+    })
+  })
 })

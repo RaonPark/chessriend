@@ -28,6 +28,8 @@ data class GameEntity(
     val playedAt: Instant,
     val importedAt: Instant,
     val annotations: Json,
+    val nickname: String? = null,
+    val memo: String? = null,
 ) : Persistable<Long> {
     @Transient
     var isNewEntity: Boolean = true

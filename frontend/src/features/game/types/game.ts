@@ -97,6 +97,8 @@ export interface GameDetailResponse {
   annotations: AnnotationResponse
   totalMoves: number
   playedAt: string
+  nickname?: string | null
+  memo?: string | null
 }
 
 /** 목록용 분석 요약 (백엔드 GameAnalysisSummary) */
@@ -131,6 +133,15 @@ export interface GameResponse {
   analysisSummary?: AnalysisSummaryResponse | null
   /** 이 게임이 들어 있는 폴더들 */
   folders?: FolderTag[]
+  /** 게임 애칭 */
+  nickname?: string | null
+  /** 게임 전체 메모 (수별 메모와 별개) */
+  memo?: string | null
+}
+
+export interface GameNote {
+  nickname: string | null
+  memo: string | null
 }
 
 export interface FolderTag {
