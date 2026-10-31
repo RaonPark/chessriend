@@ -143,6 +143,29 @@ describe('boardStore — Annotation', () => {
       expect(getState().activeVariationIndex).toBe(0)
     })
 
+    it('진입하면 분기 포지션이 아니라 변형선의 첫 수로 바로 간다 (메모·화살표가 한 번에 보이도록)', () => {
+      getState().loadAnnotations(SAMPLE_ANNOTATIONS)
+      getState().enterSavedVariation(getState().savedVariations[0], 0)
+
+      expect(getState().variationIndex).toBe(0)
+      expect(getState().currentFen).toBe(getState().variationFens[1])
+    })
+
+    it('특정 수를 지정하면 그 수로 바로 간다', () => {
+      getState().loadAnnotations(SAMPLE_ANNOTATIONS)
+      getState().enterSavedVariation(getState().savedVariations[0], 0, 1)
+
+      expect(getState().variationIndex).toBe(1)
+      expect(getState().currentFen).toBe(getState().variationFens[2])
+    })
+
+    it('범위를 벗어난 수 인덱스는 마지막 수로 보정한다', () => {
+      getState().loadAnnotations(SAMPLE_ANNOTATIONS)
+      getState().enterSavedVariation(getState().savedVariations[0], 0, 99)
+
+      expect(getState().variationIndex).toBe(1)
+    })
+
     it('유효하지 않은 수가 있으면 유효한 부분까지만 로드한다', () => {
       const badVariation: VariationResponse = {
         startMoveIndex: 0,

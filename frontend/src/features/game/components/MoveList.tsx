@@ -121,7 +121,7 @@ export function MoveList() {
                       <SavedVariationLine
                         key={globalIndex}
                         variation={variation}
-                        onEnter={() => enterSavedVariation(variation, globalIndex)}
+                        onEnter={(moveIndex) => enterSavedVariation(variation, globalIndex, moveIndex)}
                         onDelete={() => deleteSavedVariation(globalIndex)}
                         onContextMenu={(e) =>
                           openMenu(e, [
@@ -254,26 +254,31 @@ function MoveCell({ move, isActive, isBranchPoint, hasComment, classification, g
 
 function SavedVariationLine({ variation, onEnter, onDelete, onContextMenu }: {
   variation: VariationResponse
-  onEnter: () => void
+  onEnter: (moveIndex: number) => void
   onDelete: () => void
   onContextMenu: (e: React.MouseEvent) => void
 }) {
   return (
     <div className="group flex items-center gap-1 py-0.5" onContextMenu={onContextMenu}>
-      <button
-        onClick={onEnter}
-        className="flex flex-wrap gap-0.5 text-xs text-emerald-700 hover:text-emerald-900 dark:text-emerald-400 dark:hover:text-emerald-300"
-        title="변형선 보기"
-      >
-        {variation.moves.map((san, i) => (
-          <span key={i} className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 hover:bg-emerald-100 dark:hover:bg-emerald-900/30">
-            {formatNumberedMove(variationMovePly(variation.startMoveIndex, i), san)}
-            {variation.moveComments?.[String(i)] && (
-              <span className="text-[10px] text-emerald-500" title="메모 있음">&#9998;</span>
-            )}
-          </span>
-        ))}
-      </button>
+      {/* 수마다 버튼: 누른 수로 바로 진입 (보드·메모·화살표가 한 번에 바뀜) */}
+      <div title="변형선 보기" className="flex flex-wrap gap-0.5 text-xs text-emerald-700 dark:text-emerald-400">
+        {variation.moves.map((san, i) => {
+          const label = formatNumberedMove(variationMovePly(variation.startMoveIndex, i), san)
+          const hasMemo = Boolean(variation.moveComments?.[String(i)])
+          return (
+            <button
+              key={i}
+              type="button"
+              onClick={() => onEnter(i)}
+              aria-label={hasMemo ? `${label} (메모 있음)` : label}
+              className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 hover:bg-emerald-100 hover:text-emerald-900 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-300"
+            >
+              {label}
+              {hasMemo && <span className="text-[10px] text-emerald-500">&#9998;</span>}
+            </button>
+          )
+        })}
+      </div>
       {variation.comment && (
         <span className="ml-1 text-[10px] text-emerald-500 dark:text-emerald-600">{variation.comment}</span>
       )}

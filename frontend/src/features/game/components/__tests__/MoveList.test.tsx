@@ -9,7 +9,7 @@ const MOVES = [
   { number: 1, color: 'BLACK' as const, san: 'e5' },
   { number: 2, color: 'WHITE' as const, san: 'Nf3' },
 ]
-const VARIATION = { startMoveIndex: 0, moves: ['d5'], comment: '', moveComments: {} }
+const VARIATION = { startMoveIndex: 0, moves: ['d5', 'exd5'], comment: '', moveComments: {} }
 const ANALYSIS = { evaluations: [], depth: 18, analyzedAt: '' }
 
 describe('MoveList — 변형선 우클릭 삭제', () => {
@@ -48,5 +48,16 @@ describe('MoveList — 변형선 우클릭 삭제', () => {
 
     expect(useBoardStore.getState().savedVariations).toHaveLength(0)
     expect(useBoardStore.getState().isInVariation).toBe(false)
+  })
+
+  it('저장된 변형선 줄에서 특정 수를 누르면 그 수로 바로 진입한다', async () => {
+    render(<MoveList />)
+
+    await userEvent.click(screen.getByRole('button', { name: '2.exd5' }))
+
+    const state = useBoardStore.getState()
+    expect(state.isInVariation).toBe(true)
+    expect(state.activeVariationIndex).toBe(0)
+    expect(state.variationIndex).toBe(1)
   })
 })

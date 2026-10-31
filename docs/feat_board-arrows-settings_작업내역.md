@@ -230,3 +230,21 @@
 - `shared/components/ContextMenu.tsx` (신규)
 - `features/game/components/MoveList.tsx`, `features/game/stores/boardStore.ts`
 - 테스트: `ContextMenu.test.tsx`(3개), `MoveList.test.tsx`(3개), `boardStore.test.ts`(+2)
+
+## 14. fix: 변형선을 누르면 한 번 떴다가 바뀌던 문제
+
+### 원인
+- `enterSavedVariation`이 변형선의 **분기 포지션**(`variationIndex: -1`)으로 진입했음
+  - 보드는 첫 수를 두기 전 상태로 남아 있음
+  - 메모 패널은 -1에서 아무것도 표시하지 않아 카드가 사라지고, 수 목록이 위로 튐
+  - 사용자가 첫 수를 다시 눌러야 그제서야 보드·메모·화살표가 바뀜 → "떴다가 바뀌는" 느낌
+- 저장된 변형선 줄 전체가 버튼 하나라서, `2.exd5`를 눌러도 분기 포지션으로 진입했음
+
+### What
+- `enterSavedVariation(variation, index, moveIndex = 0)`: 분기 포지션 대신 **첫 수(또는 지정한 수)로 바로 진입** (범위 밖은 마지막 수로 보정)
+- 저장된 변형선 줄을 **수마다 버튼**으로 → 누른 수로 바로 진입 (메모가 있으면 aria-label에 "메모 있음")
+- 테스트 환경: jsdom에 없는 `scrollIntoView` 스텁 추가 (`src/test/setup.ts`)
+
+### Key files
+- `features/game/stores/boardStore.ts`, `features/game/components/MoveList.tsx`, `src/test/setup.ts`
+- 테스트: `boardStore.test.ts`(+3), `MoveList.test.tsx`(+1)

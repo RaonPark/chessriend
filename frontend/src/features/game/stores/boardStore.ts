@@ -48,7 +48,8 @@ interface BoardState {
   saveCurrentVariation: (comment?: string) => void
   deleteSavedVariation: (index: number) => void
   deleteCurrentVariation: () => void
-  enterSavedVariation: (variation: VariationResponse, index: number) => void
+  /** moveIndex: 진입할 변형선 내 수 (기본 0 = 첫 수). 분기 포지션(-1)이 아니라 수로 바로 가야 메모·화살표가 함께 보인다 */
+  enterSavedVariation: (variation: VariationResponse, index: number, moveIndex?: number) => void
   setAnalysis: (analysis: GameAnalysis) => void
   clearAnalysis: () => void
   toggleArrow: (arrow: BoardArrow) => void
@@ -412,7 +413,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     get().exitVariation()
   },
 
-  enterSavedVariation: (variation, index) => {
+  enterSavedVariation: (variation, index, moveIndex = 0) => {
     const { mainlineFens } = get()
     const startFen = mainlineFens[variation.startMoveIndex + 1]
     const chess = new Chess(startFen)
@@ -428,14 +429,15 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       fens.push(chess.fen())
     }
     if (validMoves.length === 0) return
+    const target = Math.max(0, Math.min(moveIndex, validMoves.length - 1))
     set({
       isInVariation: true,
       variationStartIndex: variation.startMoveIndex,
       variationMoves: validMoves,
       variationFens: fens,
-      variationIndex: -1,
+      variationIndex: target,
       currentIndex: variation.startMoveIndex,
-      currentFen: startFen,
+      currentFen: fens[target + 1],
       activeVariationIndex: index,
     })
   },
