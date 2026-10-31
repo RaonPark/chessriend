@@ -9,6 +9,14 @@ interface BatchAnalysisState {
   error: string | null
 }
 
+/** 분석 결과를 받는 쪽이 effect 없이 바로 반응할 수 있도록 이벤트 시점에 호출되는 콜백 */
+export interface BatchAnalysisCallbacks {
+  onComplete?: (analysis: GameAnalysis) => void
+  onError?: (message: string) => void
+}
+
+const ANALYSIS_ERROR_MESSAGE = '분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
+
 /**
  * 게임 초기(배치) 분석. 브라우저 WASM 으로 직접 평가하지 않고 **백엔드 Stockfish** 를
  * SSE 로 호출한다(진행률 progress / 결과 complete). 실시간 평가·변형선은 useStockfish 가 담당.
@@ -24,7 +32,7 @@ export function useBatchAnalysis() {
     error: null,
   })
 
-  const startAnalysis = useCallback((gameId: string) => {
+  const startAnalysis = useCallback((gameId: string, callbacks: BatchAnalysisCallbacks = {}) => {
     eventSourceRef.current?.close()
     eventSourceRef.current = null
     const myGen = ++generationRef.current
@@ -56,6 +64,7 @@ export function useBatchAnalysis() {
           ? { current: prev.progress.total, total: prev.progress.total }
           : prev.progress,
       }))
+      callbacks.onComplete?.(analysis)
     })
 
     es.onerror = () => {
@@ -66,8 +75,9 @@ export function useBatchAnalysis() {
       setState((prev) => ({
         ...prev,
         isAnalyzing: false,
-        error: '분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+        error: ANALYSIS_ERROR_MESSAGE,
       }))
+      callbacks.onError?.(ANALYSIS_ERROR_MESSAGE)
     }
   }, [])
 
@@ -81,8 +91,10 @@ export function useBatchAnalysis() {
 
   // cleanup on unmount
   useEffect(() => {
+    // ref 객체 자체를 잡아 둔다 (DOM ref가 아니라 세대 카운터라 cleanup 시점 값이 맞다)
+    const generation = generationRef
     return () => {
-      generationRef.current++
+      generation.current++
       eventSourceRef.current?.close()
       eventSourceRef.current = null
     }
