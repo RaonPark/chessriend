@@ -127,6 +127,7 @@ describe('updateAnnotations', () => {
     const annotations = {
       moveComments: { '0': '좋은 수' },
       variations: [{ startMoveIndex: 1, moves: ['d6'], comment: '', moveComments: {} }],
+      moveArrows: { '0': [{ startSquare: 'g1', endSquare: 'f3', color: '#ffaa00' }] },
     }
 
     await updateAnnotations('42', annotations)
@@ -142,7 +143,7 @@ describe('updateAnnotations', () => {
       new Response(JSON.stringify({ message: 'Game not found' }), { status: 404 }),
     )
 
-    await expect(updateAnnotations('999', { moveComments: {}, variations: [] })).rejects.toThrow(ApiError)
+    await expect(updateAnnotations('999', { moveComments: {}, variations: [], moveArrows: {} })).rejects.toThrow(ApiError)
   })
 })
 

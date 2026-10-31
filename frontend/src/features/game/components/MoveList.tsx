@@ -1,14 +1,9 @@
 import { useEffect, useRef } from 'react'
-import { useBoardStore } from '../stores/boardStore'
-import { CommentPanel } from './CommentPanel'
+import { useBoardStore, selectHasUnsavedVariationMoves } from '../stores/boardStore'
 import type { MoveClassification, VariationResponse } from '../types/game'
+import { formatNumberedMove, variationMovePly } from '../utils/moveNumber'
 
-interface MoveListProps {
-  onPersist?: () => void
-  isPersisting?: boolean
-}
-
-export function MoveList({ onPersist, isPersisting }: MoveListProps = {}) {
+export function MoveList() {
   const moves = useBoardStore((s) => s.mainlineMoves)
   const currentIndex = useBoardStore((s) => s.currentIndex)
   const goToMove = useBoardStore((s) => s.goToMove)
@@ -24,6 +19,7 @@ export function MoveList({ onPersist, isPersisting }: MoveListProps = {}) {
   const deleteSavedVariation = useBoardStore((s) => s.deleteSavedVariation)
   const saveCurrentVariation = useBoardStore((s) => s.saveCurrentVariation)
   const activeVariationIndex = useBoardStore((s) => s.activeVariationIndex)
+  const hasUnsavedVariationMoves = useBoardStore(selectHasUnsavedVariationMoves)
   const classificationByMove = useBoardStore((s) => s.classificationByMove)
   const analysis = useBoardStore((s) => s.analysis)
   const activeRef = useRef<HTMLButtonElement>(null)
@@ -128,7 +124,7 @@ export function MoveList({ onPersist, isPersisting }: MoveListProps = {}) {
                     <div className="mb-1.5 flex items-center justify-between">
                       <span className="text-[10px] font-medium text-indigo-500 dark:text-indigo-400">변형선</span>
                       <div className="flex gap-1">
-                        {activeVariationIndex < 0 && (
+                        {hasUnsavedVariationMoves && (
                           <button
                             onClick={() => saveCurrentVariation()}
                             className="rounded px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 hover:bg-emerald-100 dark:text-emerald-400 dark:hover:bg-emerald-900/30"
@@ -160,7 +156,7 @@ export function MoveList({ onPersist, isPersisting }: MoveListProps = {}) {
                                 : 'text-indigo-700 hover:bg-indigo-100 dark:text-indigo-300 dark:hover:bg-indigo-900/30'
                             }`}
                           >
-                            <span>{san}</span>
+                            <span>{formatNumberedMove(variationMovePly(variationStartIndex, i), san)}</span>
                             {hasVarComment && (
                               <span className="text-[10px] text-indigo-400 dark:text-indigo-500" title="메모 있음">&#9998;</span>
                             )}
@@ -175,9 +171,6 @@ export function MoveList({ onPersist, isPersisting }: MoveListProps = {}) {
           })}
         </div>
       </div>
-
-      {/* 메모 패널 (MoveList 하단) */}
-      <CommentPanel onPersist={onPersist} isPersisting={isPersisting} />
     </div>
   )
 }
@@ -249,7 +242,7 @@ function SavedVariationLine({ variation, onEnter, onDelete }: {
       >
         {variation.moves.map((san, i) => (
           <span key={i} className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 hover:bg-emerald-100 dark:hover:bg-emerald-900/30">
-            {san}
+            {formatNumberedMove(variationMovePly(variation.startMoveIndex, i), san)}
             {variation.moveComments?.[String(i)] && (
               <span className="text-[10px] text-emerald-500" title="메모 있음">&#9998;</span>
             )}

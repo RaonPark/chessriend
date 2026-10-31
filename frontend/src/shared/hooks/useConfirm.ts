@@ -33,15 +33,17 @@ export function useConfirm() {
     [],
   )
 
+  const { resolve } = state
+
   const handleConfirm = useCallback(() => {
-    state.resolve?.(true)
+    resolve?.(true)
     setState((prev) => ({ ...prev, open: false, resolve: null }))
-  }, [state.resolve])
+  }, [resolve])
 
   const handleCancel = useCallback(() => {
-    state.resolve?.(false)
+    resolve?.(false)
     setState((prev) => ({ ...prev, open: false, resolve: null }))
-  }, [state.resolve])
+  }, [resolve])
 
   return {
     confirm,

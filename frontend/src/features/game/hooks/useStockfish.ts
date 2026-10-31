@@ -6,6 +6,7 @@ export interface EvalResult {
   mate: number | null   // mate in N (백 관점, 양수=백 메이트). mate=0은 이미 메이트된 상태.
   mateWinner: 'white' | 'black' | null   // mate=0일 때 승자. 부호가 사라져서 별도 필드로 보존.
   depth: number
+  bestMove: string | null  // 엔진 최선수 (UCI, 예: "e2e4", "e7e8q"). 캐시된 평가에는 없음.
 }
 
 export function useStockfish(depth = ANALYSIS_DEPTH) {
@@ -52,9 +53,11 @@ export function useStockfish(depth = ANALYSIS_DEPTH) {
               const fen = currentFenRef.current
               const isBlackTurn = fen.split(' ')[1] === 'b'
               const flip = isBlackTurn ? -1 : 1
+              // pv의 첫 수가 현재 최선수
+              const bestMove = line.match(/\bpv (\S+)/)?.[1] ?? null
 
               if (cpMatch) {
-                latestInfoRef.current = { cp: parseInt(cpMatch[1]) * flip, mate: null, mateWinner: null, depth: d }
+                latestInfoRef.current = { cp: parseInt(cpMatch[1]) * flip, mate: null, mateWinner: null, depth: d, bestMove }
               } else if (mateMatch) {
                 const m = parseInt(mateMatch[1])
                 // UCI에서 mate 0은 "side-to-move가 이미 메이트당함" → 0에는 부호가 없어 flip이 무의미하므로
@@ -62,7 +65,7 @@ export function useStockfish(depth = ANALYSIS_DEPTH) {
                 const mateWinner: 'white' | 'black' | null = m === 0
                   ? (isBlackTurn ? 'white' : 'black')
                   : null
-                latestInfoRef.current = { cp: null, mate: m * flip, mateWinner, depth: d }
+                latestInfoRef.current = { cp: null, mate: m * flip, mateWinner, depth: d, bestMove }
               }
 
               // depth 진행 중에도 UI 업데이트 (최신 depth만)

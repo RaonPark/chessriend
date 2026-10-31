@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation } from 'react-router-dom'
 const NAV_ITEMS = [
   { to: '/games', label: '내 게임' },
   { to: '/import', label: '가져오기' },
+  { to: '/settings', label: '설정' },
 ]
 
 export function Layout() {

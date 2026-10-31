@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { useBoardStore } from '../boardStore'
+import { useBoardStore, selectCurrentArrows, selectHasUnsavedVariationMoves } from '../boardStore'
 import type { AnnotationResponse, GameAnalysis, MoveResponse, VariationResponse } from '../../types/game'
 
 const SAMPLE_MOVES: MoveResponse[] = [
@@ -102,6 +102,18 @@ describe('boardStore — Annotation', () => {
       expect(getState().savedVariations[0].comment).toBe('Philidor')
       expect(getState().savedVariations[0].moveComments).toEqual({})
       expect(getState().annotationsDirty).toBe(true)
+    })
+
+    it('저장 후에는 방금 저장한 변형선 안에 있게 된다 (중복 저장 방지)', () => {
+      getState().goToMove(0)
+      getState().makeMove('d7', 'd6', undefined)
+
+      getState().saveCurrentVariation()
+      expect(getState().activeVariationIndex).toBe(0)
+
+      // 이미 저장된 변형선이므로 다시 저장해도 늘어나지 않음
+      getState().saveCurrentVariation()
+      expect(getState().savedVariations).toHaveLength(1)
     })
   })
 
@@ -347,5 +359,165 @@ describe('boardStore — Annotation', () => {
       expect(getState().savedVariations[0].startMoveIndex).toBe(0)
       expect(getState().savedVariations[1].startMoveIndex).toBe(0)
     })
+  })
+})
+
+describe('boardStore — 화살표', () => {
+  const E2E4 = { startSquare: 'e2', endSquare: 'e4', color: '#ffaa00' }
+  const G1F3 = { startSquare: 'g1', endSquare: 'f3', color: '#4caf50' }
+
+  beforeEach(() => {
+    getState().loadMoves(SAMPLE_MOVES)
+    getState().setAnalysis(DUMMY_ANALYSIS)
+  })
+
+  it('분석 전에는 화살표를 그릴 수 없다', () => {
+    getState().clearAnalysis()
+    getState().toggleArrow(E2E4)
+    expect(selectCurrentArrows(getState())).toEqual([])
+    expect(getState().annotationsDirty).toBe(false)
+  })
+
+  it('메인라인 포지션별로 저장되고 dirty가 된다', () => {
+    getState().goToMove(1)
+    getState().toggleArrow(G1F3)
+
+    expect(getState().moveArrows).toEqual({ '1': [G1F3] })
+    expect(selectCurrentArrows(getState())).toEqual([G1F3])
+    expect(getState().annotationsDirty).toBe(true)
+
+    getState().goToMove(2)
+    expect(selectCurrentArrows(getState())).toEqual([])
+  })
+
+  it('시작 포지션(-1)에도 그릴 수 있다', () => {
+    getState().toggleArrow(E2E4)
+    expect(getState().moveArrows).toEqual({ '-1': [E2E4] })
+  })
+
+  it('같은 화살표를 같은 색으로 다시 그리면 지워지고, 다른 색이면 색이 바뀐다', () => {
+    getState().toggleArrow(E2E4)
+    getState().toggleArrow({ ...E2E4, color: '#f44336' })
+    expect(getState().moveArrows['-1']).toEqual([{ ...E2E4, color: '#f44336' }])
+
+    getState().toggleArrow({ ...E2E4, color: '#f44336' })
+    expect(getState().moveArrows).toEqual({})
+  })
+
+  it('clearCurrentArrows는 현재 포지션 화살표만 지운다', () => {
+    getState().toggleArrow(E2E4)
+    getState().goToMove(1)
+    getState().toggleArrow(G1F3)
+
+    getState().clearCurrentArrows()
+
+    expect(getState().moveArrows).toEqual({ '-1': [E2E4] })
+  })
+
+  it('저장된 변형선 안에서는 그 변형선의 moveArrows에 저장', () => {
+    getState().loadAnnotations({ ...SAMPLE_ANNOTATIONS, analysis: DUMMY_ANALYSIS })
+    getState().enterSavedVariation(SAMPLE_ANNOTATIONS.variations[0], 0)
+    getState().goToVariationMove(0)
+    getState().toggleArrow(G1F3)
+
+    expect(getState().savedVariations[0].moveArrows).toEqual({ '0': [G1F3] })
+    expect(getState().moveArrows).toEqual({})
+    expect(getState().annotationsDirty).toBe(true)
+  })
+
+  it('저장 전 변형선의 화살표는 변형선 저장 시 함께 저장된다', () => {
+    getState().makeMove('e2', 'e4') // 시작 포지션에서 분기
+    getState().toggleArrow(G1F3)
+    expect(selectCurrentArrows(getState())).toEqual([G1F3])
+
+    getState().saveCurrentVariation()
+
+    expect(getState().savedVariations[0].moveArrows).toEqual({ '0': [G1F3] })
+  })
+
+  it('변형선을 나가면 저장 전 화살표는 버려진다', () => {
+    getState().makeMove('e2', 'e4')
+    getState().toggleArrow(G1F3)
+    getState().exitVariation()
+    getState().makeMove('d2', 'd4')
+
+    expect(selectCurrentArrows(getState())).toEqual([])
+  })
+
+  it('loadAnnotations / getAnnotationsSnapshot에 moveArrows 포함', () => {
+    getState().loadAnnotations({ ...SAMPLE_ANNOTATIONS, moveArrows: { '0': [E2E4] } })
+    expect(getState().moveArrows).toEqual({ '0': [E2E4] })
+    expect(getState().getAnnotationsSnapshot().moveArrows).toEqual({ '0': [E2E4] })
+  })
+})
+
+describe('boardStore — 저장된 변형선 이어가기', () => {
+  // 1.e4 e5 이후(startMoveIndex 1) 분기: 2.Bc4 d6
+  const VARIATION = { startMoveIndex: 1, moves: ['Bc4', 'd6'], comment: '', moveComments: { '0': 'Bc4 메모' } }
+
+  beforeEach(() => {
+    getState().loadMoves(SAMPLE_MOVES)
+    getState().loadAnnotations({ moveComments: {}, variations: [VARIATION], analysis: DUMMY_ANALYSIS })
+    getState().enterSavedVariation(getState().savedVariations[0], 0)
+  })
+
+  it('저장된 변형선 안에서 수정이 없으면 미저장 수가 없다', () => {
+    getState().goToVariationMove(1)
+    expect(selectHasUnsavedVariationMoves(getState())).toBe(false)
+  })
+
+  it('끝에서 이어서 두면 같은 변형선에 머물고 미저장 수가 생긴다', () => {
+    getState().goToVariationMove(1)
+    getState().makeMove('g1', 'f3')
+
+    expect(getState().activeVariationIndex).toBe(0)
+    expect(getState().variationMoves).toEqual(['Bc4', 'd6', 'Nf3'])
+    expect(selectHasUnsavedVariationMoves(getState())).toBe(true)
+  })
+
+  it('저장하면 기존 변형선이 이어진 수로 갱신되고 메모는 유지된다', () => {
+    getState().goToVariationMove(1)
+    getState().makeMove('g1', 'f3')
+    getState().saveCurrentVariation()
+
+    expect(getState().savedVariations).toHaveLength(1)
+    expect(getState().savedVariations[0].moves).toEqual(['Bc4', 'd6', 'Nf3'])
+    expect(getState().savedVariations[0].moveComments).toEqual({ '0': 'Bc4 메모' })
+    expect(getState().annotationsDirty).toBe(true)
+    expect(selectHasUnsavedVariationMoves(getState())).toBe(false)
+  })
+
+  it('중간에서 다른 수를 두면 원본은 그대로 두고 새 변형선(미저장)으로 분기한다', () => {
+    getState().goToVariationMove(0) // 2.Bc4 이후
+    getState().makeMove('g8', 'f6') // d6 대신 Nf6
+
+    expect(getState().activeVariationIndex).toBe(-1)
+    expect(getState().variationMoves).toEqual(['Bc4', 'Nf6'])
+    expect(getState().savedVariations[0].moves).toEqual(['Bc4', 'd6'])
+
+    getState().saveCurrentVariation()
+    expect(getState().savedVariations).toHaveLength(2)
+    expect(getState().savedVariations[1].moves).toEqual(['Bc4', 'Nf6'])
+  })
+
+  it('다음 수와 같은 수를 두면 새로 만들지 않고 한 수 앞으로 이동한다', () => {
+    getState().goToVariationMove(0)
+    getState().makeMove('d7', 'd6')
+
+    expect(getState().variationIndex).toBe(1)
+    expect(getState().variationMoves).toEqual(['Bc4', 'd6'])
+    expect(getState().activeVariationIndex).toBe(0)
+    expect(selectHasUnsavedVariationMoves(getState())).toBe(false)
+  })
+
+  it('저장 안 한 이어진 수에 남은 메모·화살표는 서버 스냅샷에서 제외된다', () => {
+    getState().goToVariationMove(1)
+    getState().makeMove('g1', 'f3') // index 2 (미저장)
+    getState().setVariationMoveComment(2, '미저장 수 메모')
+    getState().toggleArrow({ startSquare: 'e8', endSquare: 'g8', color: '#ffaa00' })
+
+    const snapshot = getState().getAnnotationsSnapshot()
+    expect(snapshot.variations[0].moveComments).toEqual({ '0': 'Bc4 메모' })
+    expect(snapshot.variations[0].moveArrows ?? {}).toEqual({})
   })
 })
