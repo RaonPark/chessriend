@@ -521,3 +521,36 @@ describe('boardStore — 저장된 변형선 이어가기', () => {
     expect(snapshot.variations[0].moveArrows ?? {}).toEqual({})
   })
 })
+
+describe('boardStore — deleteCurrentVariation', () => {
+  const VARIATION = { startMoveIndex: 1, moves: ['Bc4', 'd6'], comment: '', moveComments: {} }
+  const OTHER = { startMoveIndex: 0, moves: ['d5'], comment: '', moveComments: {} }
+
+  beforeEach(() => {
+    getState().loadMoves(SAMPLE_MOVES)
+    getState().loadAnnotations({ moveComments: {}, variations: [OTHER, VARIATION], analysis: DUMMY_ANALYSIS })
+  })
+
+  it('저장된 변형선 안에서 호출하면 그 변형선을 삭제하고 분기 지점(메인라인)으로 돌아간다', () => {
+    getState().enterSavedVariation(getState().savedVariations[1], 1)
+    getState().goToVariationMove(1)
+
+    getState().deleteCurrentVariation()
+
+    expect(getState().savedVariations).toEqual([OTHER])
+    expect(getState().isInVariation).toBe(false)
+    expect(getState().currentIndex).toBe(1)
+    expect(getState().annotationsDirty).toBe(true)
+  })
+
+  it('저장 전 변형선이면 저장된 변형선은 건드리지 않고 버린다', () => {
+    getState().goToMove(1)
+    getState().makeMove('f1', 'c4')
+
+    getState().deleteCurrentVariation()
+
+    expect(getState().savedVariations).toHaveLength(2)
+    expect(getState().isInVariation).toBe(false)
+    expect(getState().annotationsDirty).toBe(false)
+  })
+})

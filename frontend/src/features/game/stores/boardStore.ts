@@ -47,6 +47,7 @@ interface BoardState {
   setVariationMoveComment: (variationMoveIndex: number, comment: string) => void
   saveCurrentVariation: (comment?: string) => void
   deleteSavedVariation: (index: number) => void
+  deleteCurrentVariation: () => void
   enterSavedVariation: (variation: VariationResponse, index: number) => void
   setAnalysis: (analysis: GameAnalysis) => void
   clearAnalysis: () => void
@@ -396,6 +397,19 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       savedVariations: savedVariations.filter((_, i) => i !== index),
       annotationsDirty: true,
     })
+  },
+
+  deleteCurrentVariation: () => {
+    const { isInVariation, activeVariationIndex, savedVariations } = get()
+    if (!isInVariation) return
+    // 저장된 변형선이면 목록에서 제거, 저장 전 변형선이면 그냥 버림 → 분기 지점(메인라인)으로 복귀
+    if (activeVariationIndex >= 0) {
+      set({
+        savedVariations: savedVariations.filter((_, i) => i !== activeVariationIndex),
+        annotationsDirty: true,
+      })
+    }
+    get().exitVariation()
   },
 
   enterSavedVariation: (variation, index) => {

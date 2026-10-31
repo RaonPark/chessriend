@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { ContextMenu, type ContextMenuItem } from '@/shared/components/ContextMenu'
 import { useBoardStore, selectHasUnsavedVariationMoves } from '../stores/boardStore'
 import type { MoveClassification, VariationResponse } from '../types/game'
 import { formatNumberedMove, variationMovePly } from '../utils/moveNumber'
@@ -17,12 +18,21 @@ export function MoveList() {
   const savedVariations = useBoardStore((s) => s.savedVariations)
   const enterSavedVariation = useBoardStore((s) => s.enterSavedVariation)
   const deleteSavedVariation = useBoardStore((s) => s.deleteSavedVariation)
+  const deleteCurrentVariation = useBoardStore((s) => s.deleteCurrentVariation)
   const saveCurrentVariation = useBoardStore((s) => s.saveCurrentVariation)
   const activeVariationIndex = useBoardStore((s) => s.activeVariationIndex)
   const hasUnsavedVariationMoves = useBoardStore(selectHasUnsavedVariationMoves)
   const classificationByMove = useBoardStore((s) => s.classificationByMove)
   const analysis = useBoardStore((s) => s.analysis)
   const activeRef = useRef<HTMLButtonElement>(null)
+
+  // 변형선 우클릭 메뉴
+  const [menu, setMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null)
+  const closeMenu = useCallback(() => setMenu(null), [])
+  const openMenu = (e: React.MouseEvent, items: ContextMenuItem[]) => {
+    e.preventDefault()
+    setMenu({ x: e.clientX, y: e.clientY, items })
+  }
 
   useEffect(() => {
     activeRef.current?.scrollIntoView({ block: 'nearest' })
@@ -113,6 +123,12 @@ export function MoveList() {
                         variation={variation}
                         onEnter={() => enterSavedVariation(variation, globalIndex)}
                         onDelete={() => deleteSavedVariation(globalIndex)}
+                        onContextMenu={(e) =>
+                          openMenu(e, [
+                            { label: '변형선 보기', onSelect: () => enterSavedVariation(variation, globalIndex) },
+                            { label: '변형선 삭제', onSelect: () => deleteSavedVariation(globalIndex), danger: true },
+                          ])
+                        }
                       />
                     ))}
                   </div>
@@ -120,7 +136,13 @@ export function MoveList() {
 
                 {/* 현재 분석 중인 변형선 (인라인) — 분석 완료 후에만 표시 */}
                 {analysis && pairIdx === variationAfterPairIndex && isInVariation && variationMoves.length > 0 && (
-                  <div className="border-y border-indigo-200 bg-indigo-50 px-2 py-2 dark:border-indigo-800 dark:bg-indigo-950/30">
+                  <div
+                    data-testid="current-variation"
+                    onContextMenu={(e) =>
+                      openMenu(e, [{ label: '변형선 삭제', onSelect: deleteCurrentVariation, danger: true }])
+                    }
+                    className="border-y border-indigo-200 bg-indigo-50 px-2 py-2 dark:border-indigo-800 dark:bg-indigo-950/30"
+                  >
                     <div className="mb-1.5 flex items-center justify-between">
                       <span className="text-[10px] font-medium text-indigo-500 dark:text-indigo-400">변형선</span>
                       <div className="flex gap-1">
@@ -171,6 +193,8 @@ export function MoveList() {
           })}
         </div>
       </div>
+
+      {menu && <ContextMenu position={menu} items={menu.items} onClose={closeMenu} />}
     </div>
   )
 }
@@ -228,13 +252,14 @@ function MoveCell({ move, isActive, isBranchPoint, hasComment, classification, g
   )
 }
 
-function SavedVariationLine({ variation, onEnter, onDelete }: {
+function SavedVariationLine({ variation, onEnter, onDelete, onContextMenu }: {
   variation: VariationResponse
   onEnter: () => void
   onDelete: () => void
+  onContextMenu: (e: React.MouseEvent) => void
 }) {
   return (
-    <div className="group flex items-center gap-1 py-0.5">
+    <div className="group flex items-center gap-1 py-0.5" onContextMenu={onContextMenu}>
       <button
         onClick={onEnter}
         className="flex flex-wrap gap-0.5 text-xs text-emerald-700 hover:text-emerald-900 dark:text-emerald-400 dark:hover:text-emerald-300"

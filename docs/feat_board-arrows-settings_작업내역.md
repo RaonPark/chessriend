@@ -211,3 +211,22 @@
 
 ### Key files
 - `features/game/components/GameViewer.tsx`
+
+## 13. 변형선 우클릭 → 삭제
+
+### What
+- 수 목록의 **저장된 변형선 줄**을 우클릭 → 메뉴 "변형선 보기 / 변형선 삭제"
+- **보고 있는 변형선 박스**를 우클릭 → "변형선 삭제"
+  - 저장된 변형선이면 목록에서 제거, 저장 전 변형선이면 버림 → 분기 지점(메인라인)으로 복귀 (`deleteCurrentVariation`)
+- 삭제는 메모와 같은 흐름: `annotationsDirty` → 저장 버튼 / Ctrl+S로 서버에 반영
+- 공용 `ContextMenu` 컴포넌트 추가 (`shared/components`, 브라우저 기본 메뉴 대신)
+  - Esc · 바깥 클릭 · 스크롤 · 리사이즈 시 닫힘, ↑↓로 항목 이동, 화면 밖으로 넘치지 않게 위치 보정
+  - 키 입력을 capture 단계에서 먼저 받아 막아서, 메뉴가 열린 동안 보드 단축키(Esc = 변형선 나가기, 방향키 = 수 이동)가 같이 동작하지 않음
+
+### Why
+- 우클릭 즉시 삭제는 실수로 변형선과 메모를 잃기 쉬워서, 메뉴를 한 번 거치도록 함
+
+### Key files
+- `shared/components/ContextMenu.tsx` (신규)
+- `features/game/components/MoveList.tsx`, `features/game/stores/boardStore.ts`
+- 테스트: `ContextMenu.test.tsx`(3개), `MoveList.test.tsx`(3개), `boardStore.test.ts`(+2)
