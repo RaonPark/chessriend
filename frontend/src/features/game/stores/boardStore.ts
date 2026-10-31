@@ -47,7 +47,9 @@ interface BoardState {
   setVariationMoveComment: (variationMoveIndex: number, comment: string) => void
   saveCurrentVariation: (comment?: string) => void
   deleteSavedVariation: (index: number) => void
-  enterSavedVariation: (variation: VariationResponse, index: number) => void
+  deleteCurrentVariation: () => void
+  /** moveIndex: 진입할 변형선 내 수 (기본 0 = 첫 수). 분기 포지션(-1)이 아니라 수로 바로 가야 메모·화살표가 함께 보인다 */
+  enterSavedVariation: (variation: VariationResponse, index: number, moveIndex?: number) => void
   setAnalysis: (analysis: GameAnalysis) => void
   clearAnalysis: () => void
   toggleArrow: (arrow: BoardArrow) => void
@@ -264,6 +266,15 @@ export const useBoardStore = create<BoardState>((set, get) => ({
 
     const newFen = chess.fen()
 
+    // 메인라인에서 다음 기보 수와 같은 수 → 변형선을 만들지 않고 기보를 따라 한 수 앞으로 (분석 전에도 가능)
+    if (!isInVariation) {
+      const { mainlineMoves, mainlineFens } = get()
+      if (mainlineMoves[currentIndex + 1]?.san === result.san) {
+        set({ currentIndex: currentIndex + 1, currentFen: mainlineFens[currentIndex + 2] })
+        return true
+      }
+    }
+
     if (isInVariation) {
       // 변형선의 다음 수와 같은 수 → 새로 만들지 않고 한 수 앞으로
       if (variationMoves[variationIndex + 1] === result.san) {
@@ -398,7 +409,20 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     })
   },
 
-  enterSavedVariation: (variation, index) => {
+  deleteCurrentVariation: () => {
+    const { isInVariation, activeVariationIndex, savedVariations } = get()
+    if (!isInVariation) return
+    // 저장된 변형선이면 목록에서 제거, 저장 전 변형선이면 그냥 버림 → 분기 지점(메인라인)으로 복귀
+    if (activeVariationIndex >= 0) {
+      set({
+        savedVariations: savedVariations.filter((_, i) => i !== activeVariationIndex),
+        annotationsDirty: true,
+      })
+    }
+    get().exitVariation()
+  },
+
+  enterSavedVariation: (variation, index, moveIndex = 0) => {
     const { mainlineFens } = get()
     const startFen = mainlineFens[variation.startMoveIndex + 1]
     const chess = new Chess(startFen)
@@ -414,14 +438,15 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       fens.push(chess.fen())
     }
     if (validMoves.length === 0) return
+    const target = Math.max(0, Math.min(moveIndex, validMoves.length - 1))
     set({
       isInVariation: true,
       variationStartIndex: variation.startMoveIndex,
       variationMoves: validMoves,
       variationFens: fens,
-      variationIndex: -1,
+      variationIndex: target,
       currentIndex: variation.startMoveIndex,
-      currentFen: startFen,
+      currentFen: fens[target + 1],
       activeVariationIndex: index,
     })
   },

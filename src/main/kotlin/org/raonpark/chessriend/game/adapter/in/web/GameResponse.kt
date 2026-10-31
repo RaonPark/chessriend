@@ -1,6 +1,8 @@
 package org.raonpark.chessriend.game.adapter.`in`.web
 
 import org.raonpark.chessriend.game.domain.*
+import org.raonpark.chessriend.game.domain.analysis.GameAnalysisSummary
+import org.raonpark.chessriend.game.domain.analysis.SideAnalysisSummary
 import org.raonpark.chessriend.game.port.`in`.CreateGameFromPgnCommand
 import java.time.Instant
 
@@ -16,9 +18,11 @@ data class GameResponse(
     val opening: OpeningResponse?,
     val totalMoves: Int,
     val playedAt: Instant,
+    /** 분석 완료된 게임만 값이 있음 (목록에서 "분석됨" 표시용) */
+    val analysisSummary: AnalysisSummaryResponse? = null,
 ) {
     companion object {
-        fun from(game: Game): GameResponse = GameResponse(
+        fun from(game: Game, analysisSummary: GameAnalysisSummary? = null): GameResponse = GameResponse(
             id = game.id!!.toString(),
             source = game.source.name,
             sourceGameId = game.sourceGameId,
@@ -33,6 +37,39 @@ data class GameResponse(
             opening = game.opening?.let { OpeningResponse(it.eco, it.name) },
             totalMoves = game.totalMoves,
             playedAt = game.playedAt,
+            analysisSummary = analysisSummary?.let { AnalysisSummaryResponse.from(it) },
+        )
+    }
+}
+
+data class AnalysisSummaryResponse(
+    val depth: Int,
+    val white: SideAnalysisSummaryResponse,
+    val black: SideAnalysisSummaryResponse,
+) {
+    companion object {
+        fun from(summary: GameAnalysisSummary): AnalysisSummaryResponse = AnalysisSummaryResponse(
+            depth = summary.depth,
+            white = SideAnalysisSummaryResponse.from(summary.white),
+            black = SideAnalysisSummaryResponse.from(summary.black),
+        )
+    }
+}
+
+data class SideAnalysisSummaryResponse(
+    val brilliant: Int,
+    val blunder: Int,
+    val mistake: Int,
+    val inaccuracy: Int,
+    val acpl: Int?,
+) {
+    companion object {
+        fun from(side: SideAnalysisSummary): SideAnalysisSummaryResponse = SideAnalysisSummaryResponse(
+            brilliant = side.brilliant,
+            blunder = side.blunder,
+            mistake = side.mistake,
+            inaccuracy = side.inaccuracy,
+            acpl = side.acpl,
         )
     }
 }

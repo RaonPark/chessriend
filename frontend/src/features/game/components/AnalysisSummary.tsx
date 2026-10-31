@@ -89,9 +89,34 @@ export function AnalysisSummary({ analysis, moves, whiteName, blackName }: Analy
 }
 
 /** cp loss 설명 툴팁 (호버/키보드 포커스로 표시) */
+// 툴팁 크기 추정값 (w-64 = 256px, 본문 4~5줄) — 펼칠 방향을 고를 때 사용
+const TOOLTIP_WIDTH = 256
+const TOOLTIP_HEIGHT = 200
+const VIEWPORT_MARGIN = 8
+
+type TooltipPlacement = 'bottom-start' | 'bottom-end' | 'top-start' | 'top-end'
+
+const PLACEMENT_CLASS: Record<TooltipPlacement, string> = {
+  'bottom-start': 'left-0 top-full mt-1.5',
+  'bottom-end': 'right-0 top-full mt-1.5',
+  'top-start': 'left-0 bottom-full mb-1.5',
+  'top-end': 'right-0 bottom-full mb-1.5',
+}
+
+/** 버튼 위치를 보고 화면 밖으로 나가지 않는 방향 선택 (아래 공간 부족 → 위, 오른쪽 부족 → 왼쪽으로) */
+function choosePlacement(button: HTMLElement): TooltipPlacement {
+  const rect = button.getBoundingClientRect()
+  const fitsBelow = rect.bottom + TOOLTIP_HEIGHT + VIEWPORT_MARGIN <= window.innerHeight
+  const fitsRight = rect.left + TOOLTIP_WIDTH + VIEWPORT_MARGIN <= window.innerWidth
+  return `${fitsBelow ? 'bottom' : 'top'}-${fitsRight ? 'start' : 'end'}`
+}
+
 export function CpLossHelp() {
-  const [open, setOpen] = useState(false)
+  const [placement, setPlacement] = useState<TooltipPlacement | null>(null)
+  const open = placement !== null
   const tooltipId = useId()
+  const show = (e: React.SyntheticEvent<HTMLButtonElement>) => setPlacement(choosePlacement(e.currentTarget))
+  const hide = () => setPlacement(null)
 
   return (
     <span className="relative inline-flex">
@@ -99,10 +124,10 @@ export function CpLossHelp() {
         type="button"
         aria-label="cp loss 설명"
         aria-describedby={open ? tooltipId : undefined}
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setOpen(false)}
+        onMouseEnter={show}
+        onMouseLeave={hide}
+        onFocus={show}
+        onBlur={hide}
         className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-amber-300 text-[10px] font-bold leading-none text-amber-600 transition hover:bg-amber-50 dark:border-gray-500 dark:text-gray-300 dark:hover:bg-gray-700"
       >
         ?
@@ -111,7 +136,8 @@ export function CpLossHelp() {
         <span
           id={tooltipId}
           role="tooltip"
-          className="absolute left-0 top-full z-20 mt-1.5 w-64 rounded-lg border border-amber-200 bg-white p-3 text-left text-[11px] font-normal leading-relaxed text-gray-700 shadow-lg dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200"
+          data-placement={placement}
+          className={`absolute ${PLACEMENT_CLASS[placement]} z-20 w-64 rounded-lg border border-amber-200 bg-white p-3 text-left text-[11px] font-normal leading-relaxed text-gray-700 shadow-lg dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200`}
         >
           <span className="mb-1 block font-semibold text-amber-700 dark:text-amber-400">Centipawn Loss (CPL)</span>
           매 수마다 엔진이 찾은 최선수와 비교해 <b>평가 점수를 얼마나 잃었는지</b>를 나타냅니다.

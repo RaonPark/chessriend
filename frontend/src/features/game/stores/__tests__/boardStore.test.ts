@@ -143,6 +143,29 @@ describe('boardStore — Annotation', () => {
       expect(getState().activeVariationIndex).toBe(0)
     })
 
+    it('진입하면 분기 포지션이 아니라 변형선의 첫 수로 바로 간다 (메모·화살표가 한 번에 보이도록)', () => {
+      getState().loadAnnotations(SAMPLE_ANNOTATIONS)
+      getState().enterSavedVariation(getState().savedVariations[0], 0)
+
+      expect(getState().variationIndex).toBe(0)
+      expect(getState().currentFen).toBe(getState().variationFens[1])
+    })
+
+    it('특정 수를 지정하면 그 수로 바로 간다', () => {
+      getState().loadAnnotations(SAMPLE_ANNOTATIONS)
+      getState().enterSavedVariation(getState().savedVariations[0], 0, 1)
+
+      expect(getState().variationIndex).toBe(1)
+      expect(getState().currentFen).toBe(getState().variationFens[2])
+    })
+
+    it('범위를 벗어난 수 인덱스는 마지막 수로 보정한다', () => {
+      getState().loadAnnotations(SAMPLE_ANNOTATIONS)
+      getState().enterSavedVariation(getState().savedVariations[0], 0, 99)
+
+      expect(getState().variationIndex).toBe(1)
+    })
+
     it('유효하지 않은 수가 있으면 유효한 부분까지만 로드한다', () => {
       const badVariation: VariationResponse = {
         startMoveIndex: 0,
@@ -426,7 +449,7 @@ describe('boardStore — 화살표', () => {
   })
 
   it('저장 전 변형선의 화살표는 변형선 저장 시 함께 저장된다', () => {
-    getState().makeMove('e2', 'e4') // 시작 포지션에서 분기
+    getState().makeMove('d2', 'd4') // 시작 포지션에서 분기 (기보 1.e4와 다른 수)
     getState().toggleArrow(G1F3)
     expect(selectCurrentArrows(getState())).toEqual([G1F3])
 
@@ -436,10 +459,10 @@ describe('boardStore — 화살표', () => {
   })
 
   it('변형선을 나가면 저장 전 화살표는 버려진다', () => {
-    getState().makeMove('e2', 'e4')
+    getState().makeMove('d2', 'd4')
     getState().toggleArrow(G1F3)
     getState().exitVariation()
-    getState().makeMove('d2', 'd4')
+    getState().makeMove('c2', 'c4')
 
     expect(selectCurrentArrows(getState())).toEqual([])
   })
@@ -519,5 +542,74 @@ describe('boardStore — 저장된 변형선 이어가기', () => {
     const snapshot = getState().getAnnotationsSnapshot()
     expect(snapshot.variations[0].moveComments).toEqual({ '0': 'Bc4 메모' })
     expect(snapshot.variations[0].moveArrows ?? {}).toEqual({})
+  })
+})
+
+describe('boardStore — deleteCurrentVariation', () => {
+  const VARIATION = { startMoveIndex: 1, moves: ['Bc4', 'd6'], comment: '', moveComments: {} }
+  const OTHER = { startMoveIndex: 0, moves: ['d5'], comment: '', moveComments: {} }
+
+  beforeEach(() => {
+    getState().loadMoves(SAMPLE_MOVES)
+    getState().loadAnnotations({ moveComments: {}, variations: [OTHER, VARIATION], analysis: DUMMY_ANALYSIS })
+  })
+
+  it('저장된 변형선 안에서 호출하면 그 변형선을 삭제하고 분기 지점(메인라인)으로 돌아간다', () => {
+    getState().enterSavedVariation(getState().savedVariations[1], 1)
+    getState().goToVariationMove(1)
+
+    getState().deleteCurrentVariation()
+
+    expect(getState().savedVariations).toEqual([OTHER])
+    expect(getState().isInVariation).toBe(false)
+    expect(getState().currentIndex).toBe(1)
+    expect(getState().annotationsDirty).toBe(true)
+  })
+
+  it('저장 전 변형선이면 저장된 변형선은 건드리지 않고 버린다', () => {
+    getState().goToMove(1)
+    getState().makeMove('f1', 'c4')
+
+    getState().deleteCurrentVariation()
+
+    expect(getState().savedVariations).toHaveLength(2)
+    expect(getState().isInVariation).toBe(false)
+    expect(getState().annotationsDirty).toBe(false)
+  })
+})
+
+describe('boardStore — 기보와 같은 수', () => {
+  beforeEach(() => {
+    getState().loadMoves(SAMPLE_MOVES) // 1.e4 e5 2.Nf3 Nc6 3.Bb5
+    getState().setAnalysis(DUMMY_ANALYSIS)
+  })
+
+  it('메인라인에서 다음 기보 수와 같은 수를 두면 변형선을 만들지 않고 한 수 앞으로 간다', () => {
+    getState().goToMove(0) // 1.e4 이후
+    const ok = getState().makeMove('e7', 'e5')
+
+    expect(ok).toBe(true)
+    expect(getState().isInVariation).toBe(false)
+    expect(getState().currentIndex).toBe(1)
+    expect(getState().currentFen).toBe(getState().mainlineFens[2])
+  })
+
+  it('시작 포지션에서 첫 기보 수(1.e4)를 둬도 메인라인으로 간다', () => {
+    getState().makeMove('e2', 'e4')
+    expect(getState().isInVariation).toBe(false)
+    expect(getState().currentIndex).toBe(0)
+  })
+
+  it('분석 전이어도 기보와 같은 수는 그대로 진행된다 (단순 이동이므로)', () => {
+    getState().clearAnalysis()
+    getState().goToMove(1)
+    expect(getState().makeMove('g1', 'f3')).toBe(true)
+    expect(getState().currentIndex).toBe(2)
+  })
+
+  it('기보와 다른 수는 기존처럼 변형선을 만든다', () => {
+    getState().goToMove(0)
+    getState().makeMove('d7', 'd5')
+    expect(getState().isInVariation).toBe(true)
   })
 })

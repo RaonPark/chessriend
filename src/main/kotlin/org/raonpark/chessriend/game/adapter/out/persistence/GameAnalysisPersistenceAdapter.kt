@@ -69,6 +69,26 @@ class GameAnalysisPersistenceAdapter(
             .awaitSingleOrNull()
     }
 
+    override suspend fun findByGameIds(gameIds: List<Long>): Map<Long, GameAnalysisData> {
+        if (gameIds.isEmpty()) return emptyMap()
+        val query = dsl.select(DSL.asterisk())
+            .from(GAME_ANALYSES)
+            .where(GAME_ANALYSES.GAME_ID.`in`(gameIds))
+
+        return bindQuery(query)
+            .map { row, _ ->
+                row.get("game_id", java.lang.Long::class.java)!!.toLong() to GameAnalysisData(
+                    evaluations = parseEvaluations(row.get("evaluations", Json::class.java)!!.asString()),
+                    depth = row.get("depth", Int::class.java)!!,
+                    analyzedAt = row.get("analyzed_at", Instant::class.java)!!.toString(),
+                )
+            }
+            .all()
+            .collectList()
+            .awaitSingle()
+            .toMap()
+    }
+
     override suspend fun existsByGameId(gameId: Long): Boolean {
         // selectOne()의 inline 1이 jOOQ params에 포함되면 R2DBC bind 인덱스와 어긋남 → ID 컬럼으로 대체
         val query = dsl.select(GAME_ANALYSES.ID)

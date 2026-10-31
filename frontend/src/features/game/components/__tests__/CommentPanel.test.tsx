@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '@/test/test-utils'
 import { useBoardStore } from '../../stores/boardStore'
@@ -190,5 +190,54 @@ describe('CommentPanel', () => {
     await userEvent.click(screen.getByText('메모 추가...'))
 
     expect(screen.getByLabelText('1. e4 메모')).toBeInTheDocument()
+  })
+
+  describe('한글 입력(IME 조합)', () => {
+    it('조합 중에 누른 Ctrl+Enter는 저장하지 않는다 (마지막 글자 누락 방지)', async () => {
+      useBoardStore.getState().goToMove(0)
+      const onPersist = vi.fn()
+      renderPanel({ onPersist })
+      await userEvent.click(screen.getByText('메모 추가...'))
+      const textarea = screen.getByRole('textbox')
+
+      fireEvent.keyDown(textarea, { key: 'Enter', ctrlKey: true, isComposing: true })
+
+      expect(onPersist).not.toHaveBeenCalled()
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
+    })
+
+    it('조합 중에 누른 Esc는 편집을 취소하지 않는다', async () => {
+      useBoardStore.getState().goToMove(0)
+      renderPanel()
+      await userEvent.click(screen.getByText('메모 추가...'))
+
+      fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Escape', isComposing: true })
+
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
+    })
+
+    it('입력 중 다시 렌더링되어도 입력칸 값을 덮어쓰지 않는다', async () => {
+      useBoardStore.getState().goToMove(0)
+      const { rerender } = renderPanel()
+      await userEvent.click(screen.getByText('메모 추가...'))
+      const textarea = screen.getByRole('textbox') as HTMLTextAreaElement
+
+      // 브라우저가 조합 중인 글자를 DOM에 반영한 상태를 흉내 (React 상태와 다를 수 있음)
+      textarea.value = '가ㄴ'
+      rerender(<CommentPanel />) // 엔진 평가 등으로 인한 리렌더
+
+      expect(textarea.value).toBe('가ㄴ')
+      expect(screen.getByRole('textbox')).toBe(textarea) // 같은 요소 유지 (재생성 X)
+    })
+
+    it('저장 시 입력칸의 최종 값을 저장한다', async () => {
+      useBoardStore.getState().goToMove(0)
+      renderPanel()
+      await userEvent.click(screen.getByText('메모 추가...'))
+      await userEvent.type(screen.getByRole('textbox'), '가나다')
+      await userEvent.click(screen.getByText('저장'))
+
+      expect(useBoardStore.getState().moveComments['0']).toBe('가나다')
+    })
   })
 })

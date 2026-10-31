@@ -1,13 +1,16 @@
+import { useState } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
+import { SettingsDialog } from '@/features/settings/components/SettingsDialog'
 
 const NAV_ITEMS = [
   { to: '/games', label: '내 게임' },
   { to: '/import', label: '가져오기' },
-  { to: '/settings', label: '설정' },
 ]
 
 export function Layout() {
   const location = useLocation()
+  // 설정은 페이지 이동 없이 다이얼로그로 (복기 중에도 보드 상태 유지)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   return (
     <div className="min-h-screen bg-amber-50 dark:bg-gray-900">
@@ -32,6 +35,13 @@ export function Layout() {
                 {label}
               </Link>
             ))}
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              className="text-sm font-medium text-amber-400 transition hover:text-amber-100"
+            >
+              설정
+            </button>
           </nav>
         </div>
       </header>
@@ -40,6 +50,8 @@ export function Layout() {
       <main className="mx-auto max-w-5xl px-6 py-8">
         <Outlet />
       </main>
+
+      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
       {/* Footer */}
       <footer className="border-t border-amber-200 py-6 text-center text-xs text-amber-700 dark:border-gray-700 dark:text-gray-500">

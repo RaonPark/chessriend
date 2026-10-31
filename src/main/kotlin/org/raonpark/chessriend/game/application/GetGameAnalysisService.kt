@@ -1,6 +1,7 @@
 package org.raonpark.chessriend.game.application
 
 import org.raonpark.chessriend.game.domain.GameAnalysisData
+import org.raonpark.chessriend.game.domain.analysis.GameAnalysisSummary
 import org.raonpark.chessriend.game.port.`in`.GetGameAnalysisUseCase
 import org.raonpark.chessriend.game.port.out.GameAnalysisRepository
 import org.raonpark.chessriend.shared.exception.GameAnalysisNotFoundException
@@ -17,4 +18,9 @@ class GetGameAnalysisService(
 
     override suspend fun findAnalysis(gameId: Long): GameAnalysisData? =
         gameAnalysisRepository.findByGameId(gameId)
+
+    override suspend fun findSummaries(gameIds: List<Long>): Map<Long, GameAnalysisSummary> {
+        if (gameIds.isEmpty()) return emptyMap()
+        return gameAnalysisRepository.findByGameIds(gameIds).mapValues { (_, analysis) -> GameAnalysisSummary.from(analysis) }
+    }
 }

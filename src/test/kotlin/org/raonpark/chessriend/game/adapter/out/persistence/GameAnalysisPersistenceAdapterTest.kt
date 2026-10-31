@@ -193,4 +193,27 @@ class GameAnalysisPersistenceAdapterTest {
             assertNull(analysisAdapter.findByGameId(game.id!!))
         }
     }
+
+    @Nested
+    inner class FindByGameIds {
+        @Test
+        fun `여러 gameId의 분석을 한 번에 조회한다 (분석 없는 게임은 빠짐)`() = runTest {
+            val analyzed1 = gameAdapter.save(createGame("batch-1"))
+            val analyzed2 = gameAdapter.save(createGame("batch-2"))
+            val notAnalyzed = gameAdapter.save(createGame("batch-3"))
+            analysisAdapter.save(analyzed1.id!!, sampleAnalysis())
+            analysisAdapter.save(analyzed2.id!!, sampleAnalysis("2026-06-01T00:00:00Z"))
+
+            val result = analysisAdapter.findByGameIds(listOf(analyzed1.id!!, analyzed2.id!!, notAnalyzed.id!!))
+
+            assertEquals(setOf(analyzed1.id!!, analyzed2.id!!), result.keys)
+            assertEquals(sampleAnalysis().evaluations, result.getValue(analyzed1.id!!).evaluations)
+            assertEquals("2026-06-01T00:00:00Z", result.getValue(analyzed2.id!!).analyzedAt)
+        }
+
+        @Test
+        fun `빈 목록이면 빈 맵을 반환한다`() = runTest {
+            assertTrue(analysisAdapter.findByGameIds(emptyList()).isEmpty())
+        }
+    }
 }

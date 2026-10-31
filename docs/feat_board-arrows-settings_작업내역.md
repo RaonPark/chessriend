@@ -182,3 +182,102 @@
 - `features/game/components/AnalysisSummary.tsx` — `summarizeAnalysis` 사용, `CpLossHelp` export
 - `features/game/utils/analysisStats.ts`, `outcome.ts`(`getPlayerBadge`), `arrows.ts`(`dedupeArrows`)
 - 테스트: `PlayerBar.test.tsx`, `analysisStats.test.ts`, `outcome.test.ts`(+4), `arrows.test.ts`(+2)
+
+## 11. 설정을 다이얼로그로 변경 (복기 중에도 사용)
+
+### What
+- 헤더의 "설정"이 `/settings` 페이지 링크에서 **다이얼로그를 여는 버튼**으로 바뀜 (`SettingsDialog`)
+  - 페이지 이동이 없어서 복기 중인 수·변형선·보드 상태가 그대로 유지됨
+  - 토글은 즉시 적용·저장 (localStorage). ✕ / Esc / 바깥 클릭으로 닫힘
+  - `/settings` 라우트와 `SettingsPage` 제거
+- fix: `BoardControls`의 전역 키보드 단축키가 다이얼로그 안에서 누른 키까지 처리하던 문제
+  - 변형선 안에서 다이얼로그(설정·삭제 확인)를 열고 Esc를 누르면, 다이얼로그는 안 닫히고 **변형선이 닫혔음**
+  - 방향키를 누르면 다이얼로그 뒤에서 수가 넘어갔음
+  - → 이벤트가 `<dialog>` 안에서 왔으면 보드 단축키를 무시
+
+### Key files
+- `features/settings/components/SettingsDialog.tsx` (SettingsPage에서 전환)
+- `app/Layout.tsx`, `app/router.tsx`
+- `features/game/components/BoardControls.tsx`
+- 테스트: `settings/components/__tests__/SettingsDialog.test.tsx`(3개), `game/components/__tests__/BoardControls.test.tsx`(3개)
+
+## 12. fix: 상태 줄 버튼 글자가 2줄로 깨지던 문제
+
+### What
+- 오른쪽 열 상태 줄(Stockfish · depth / 게임 분석 / 화살표 지우기 / 분석 모드 / 저장)에 버튼이 여러 개 뜨면 글자가 2줄로 접히던 문제 수정
+  - 각 항목에 `whitespace-nowrap`
+  - 줄 전체는 `flex-wrap` → 공간이 모자라면 글자를 접지 않고 버튼 묶음이 다음 줄로 넘어감
+- 확인: 1280px에서는 버튼 묶음이 다음 줄로 정렬되고, 1024px에서는 한 줄로 들어감 ("화살표 지우기" 높이 42px → 26px)
+
+### Key files
+- `features/game/components/GameViewer.tsx`
+
+## 13. 변형선 우클릭 → 삭제
+
+### What
+- 수 목록의 **저장된 변형선 줄**을 우클릭 → 메뉴 "변형선 보기 / 변형선 삭제"
+- **보고 있는 변형선 박스**를 우클릭 → "변형선 삭제"
+  - 저장된 변형선이면 목록에서 제거, 저장 전 변형선이면 버림 → 분기 지점(메인라인)으로 복귀 (`deleteCurrentVariation`)
+- 삭제는 메모와 같은 흐름: `annotationsDirty` → 저장 버튼 / Ctrl+S로 서버에 반영
+- 공용 `ContextMenu` 컴포넌트 추가 (`shared/components`, 브라우저 기본 메뉴 대신)
+  - Esc · 바깥 클릭 · 스크롤 · 리사이즈 시 닫힘, ↑↓로 항목 이동, 화면 밖으로 넘치지 않게 위치 보정
+  - 키 입력을 capture 단계에서 먼저 받아 막아서, 메뉴가 열린 동안 보드 단축키(Esc = 변형선 나가기, 방향키 = 수 이동)가 같이 동작하지 않음
+
+### Why
+- 우클릭 즉시 삭제는 실수로 변형선과 메모를 잃기 쉬워서, 메뉴를 한 번 거치도록 함
+
+### Key files
+- `shared/components/ContextMenu.tsx` (신규)
+- `features/game/components/MoveList.tsx`, `features/game/stores/boardStore.ts`
+- 테스트: `ContextMenu.test.tsx`(3개), `MoveList.test.tsx`(3개), `boardStore.test.ts`(+2)
+
+## 14. fix: 변형선을 누르면 한 번 떴다가 바뀌던 문제
+
+### 원인
+- `enterSavedVariation`이 변형선의 **분기 포지션**(`variationIndex: -1`)으로 진입했음
+  - 보드는 첫 수를 두기 전 상태로 남아 있음
+  - 메모 패널은 -1에서 아무것도 표시하지 않아 카드가 사라지고, 수 목록이 위로 튐
+  - 사용자가 첫 수를 다시 눌러야 그제서야 보드·메모·화살표가 바뀜 → "떴다가 바뀌는" 느낌
+- 저장된 변형선 줄 전체가 버튼 하나라서, `2.exd5`를 눌러도 분기 포지션으로 진입했음
+
+### What
+- `enterSavedVariation(variation, index, moveIndex = 0)`: 분기 포지션 대신 **첫 수(또는 지정한 수)로 바로 진입** (범위 밖은 마지막 수로 보정)
+- 저장된 변형선 줄을 **수마다 버튼**으로 → 누른 수로 바로 진입 (메모가 있으면 aria-label에 "메모 있음")
+- 테스트 환경: jsdom에 없는 `scrollIntoView` 스텁 추가 (`src/test/setup.ts`)
+
+### Key files
+- `features/game/stores/boardStore.ts`, `features/game/components/MoveList.tsx`, `src/test/setup.ts`
+- 테스트: `boardStore.test.ts`(+3), `MoveList.test.tsx`(+1)
+
+## 15. 기보와 같은 수는 변형선으로 만들지 않기 + 메모 한글 입력 안정화
+
+### What
+- **기보와 같은 수**: 메인라인에서 다음 기보 수와 같은 수를 두면 변형선을 만들지 않고 기보를 따라 한 수 앞으로 이동
+  - 단순 이동이라 분석 전에도 동작
+  - 변형선 안에서 다음 수와 같은 수를 두는 경우는 기존(#8)과 같이 한 수 앞으로
+- **메모 한글 깨짐("ㄱㅏㄴㅏ")** 원인 후보 제거
+  - 메모 textarea를 비제어(uncontrolled, `defaultValue` + ref)로 변경 → 입력 중 리렌더(엔진 평가로 잦음)가 일어나도 React가 입력칸 값을 다시 쓰지 않음. 저장 시 ref로 최종 값을 읽음
+  - 한글 조합 중(`isComposing`)에 누른 Ctrl+Enter / Esc는 무시 → 마지막 글자 누락이나 조합 깨짐 방지
+
+### Why
+- 사용자 보고: 메모 칸에서 가끔 자모가 분리됨. CDP IME 시뮬레이션으로는 재현 안 됨
+  - 대신 "리렌더 시 React가 DOM 값을 상태값으로 덮어쓰는" 동작을 테스트로 확인 → 비제어로 원인 자체를 제거
+  - 실제 macOS 한글 입력기 동작과 완전히 같은 검증은 아님 → 계속 발생하면 추가 조사 필요
+
+### Key files
+- `features/game/stores/boardStore.ts` (`makeMove`), `features/game/components/CommentPanel.tsx`
+- 테스트: `boardStore.test.ts`(+4, 기존 e2-e4 분기 테스트 2개를 d2-d4로 수정), `CommentPanel.test.tsx`(+4)
+
+## 16. fix: cp loss `?` 툴팁이 화면 아래로 잘리던 문제
+
+### What
+- 툴팁이 항상 버튼 아래(`top-full`)로 펼쳐져서, 아래쪽 대국자 바의 `?`는 화면 밖으로 잘렸음
+- 열 때(호버·포커스) 버튼 위치를 재서 방향 선택
+  - 아래 공간이 툴팁 높이(약 200px)보다 작으면 위로
+  - 오른쪽 공간이 툴팁 너비(256px)보다 작으면 왼쪽으로 정렬
+  - `data-placement`: `bottom-start` / `bottom-end` / `top-start` / `top-end`
+- 확인: 1280×800, 1440×760에서 아래쪽 바 → `top-start`로 화면 안에 들어옴. 1280×1000에서는 공간이 있어 아래로
+
+### Key files
+- `features/game/components/AnalysisSummary.tsx` (`CpLossHelp`, `choosePlacement`)
+- 테스트: `AnalysisSummary.test.tsx` (+3)

@@ -33,8 +33,10 @@ class GameController(
         @RequestParam(required = false) timeCategory: TimeCategory?,
     ): PagedGameResponse {
         val result = getGameUseCase.getGames(page, size, source, timeCategory)
+        // 페이지의 게임들 분석 요약을 한 번에 조회 (N+1 방지)
+        val summaries = getGameAnalysisUseCase.findSummaries(result.content.mapNotNull { it.id })
         return PagedGameResponse(
-            content = result.content.map { GameResponse.from(it) },
+            content = result.content.map { GameResponse.from(it, summaries[it.id]) },
             page = result.page,
             size = result.size,
             totalElements = result.totalElements,

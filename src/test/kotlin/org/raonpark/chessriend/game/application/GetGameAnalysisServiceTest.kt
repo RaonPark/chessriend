@@ -55,4 +55,19 @@ class GetGameAnalysisServiceTest : DescribeSpec({
             service.findAnalysis(999L) shouldBe null
         }
     }
+
+    describe("findSummaries") {
+        it("여러 게임의 분석을 한 번에 조회해 요약으로 변환한다 (분석 없는 게임은 빠짐)") {
+            coEvery { analysisRepository.findByGameIds(listOf(1L, 2L)) } returns mapOf(1L to analysis)
+
+            val summaries = service.findSummaries(listOf(1L, 2L))
+
+            summaries.keys shouldBe setOf(1L)
+            summaries.getValue(1L).white.acpl shouldBe 5
+        }
+
+        it("빈 목록이면 저장소를 조회하지 않는다") {
+            service.findSummaries(emptyList()) shouldBe emptyMap()
+        }
+    }
 })

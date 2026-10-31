@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useBoardStore, selectHasUnsavedVariationMoves } from '../stores/boardStore'
 import { formatNumberedMove, variationMovePly } from '../utils/moveNumber'
 
@@ -25,7 +25,10 @@ export function CommentPanel({ onPersist, isPersisting }: CommentPanelProps = {}
   const analysis = useBoardStore((s) => s.analysis)
 
   // 편집 상태는 편집을 시작한 포지션 키와 묶어서 보관 → 수가 바뀌면 자동으로 편집 종료
-  const [editing, setEditing] = useState<{ key: string; draft: string } | null>(null)
+  const [editingKey, setEditingKey] = useState<string | null>(null)
+  // 입력칸은 비제어(uncontrolled): 입력 중 React가 값을 다시 쓰지 않아야 한글 조합(IME)이 끊기지 않는다.
+  // (엔진 평가 등으로 리렌더가 잦음) 저장할 때 ref로 최종 값을 읽는다.
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // 현재 수의 메모와 라벨 결정
   const isInSavedVariation = isInVariation && activeVariationIndex >= 0
@@ -55,9 +58,7 @@ export function CommentPanel({ onPersist, isPersisting }: CommentPanelProps = {}
   }
 
   const positionKey = `${isInVariation ? `v${activeVariationIndex}:${variationIndex}` : currentIndex}`
-  const isEditing = editing?.key === positionKey
-  const draft = isEditing ? editing.draft : savedComment
-  const setDraft = (text: string) => setEditing({ key: positionKey, draft: text })
+  const isEditing = editingKey === positionKey
 
   if (!analysis) {
     return (
@@ -70,10 +71,11 @@ export function CommentPanel({ onPersist, isPersisting }: CommentPanelProps = {}
   if (!canComment) return null
 
   function handleSave() {
+    const draft = textareaRef.current?.value ?? savedComment
     if (hasUnsavedVariationMoves) {
       // 빈 메모로 변형선만 저장되는 일이 없도록
       if (!draft.trim()) {
-        setEditing(null)
+        setEditingKey(null)
         return
       }
       saveCurrentVariation()
@@ -83,15 +85,19 @@ export function CommentPanel({ onPersist, isPersisting }: CommentPanelProps = {}
     } else {
       setMoveComment(currentIndex, draft)
     }
-    setEditing(null)
+    setEditingKey(null)
     onPersist?.()
   }
 
   function handleCancel() {
-    setEditing(null)
+    setEditingKey(null)
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    // 보드 단축키(방향키·Esc 등)로 새지 않게
+    e.stopPropagation()
+    // 한글 조합 중에 누른 키는 입력기에 맡김 — 여기서 저장/취소하면 마지막 글자가 빠지거나 조합이 깨짐
+    if (e.nativeEvent.isComposing) return
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault()
       handleSave()
@@ -100,7 +106,6 @@ export function CommentPanel({ onPersist, isPersisting }: CommentPanelProps = {}
       e.preventDefault()
       handleCancel()
     }
-    e.stopPropagation()
   }
 
   // 저장된 변형선 = emerald, 저장 전 변형선 = indigo, 메인라인 = amber (ui.md 시맨틱 색)
@@ -142,8 +147,8 @@ export function CommentPanel({ onPersist, isPersisting }: CommentPanelProps = {}
       {isEditing ? (
         <div className="space-y-2">
           <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            ref={textareaRef}
+            defaultValue={savedComment}
             onKeyDown={handleKeyDown}
             placeholder="이 수에 대한 메모를 작성하세요..."
             aria-label={`${moveLabel} 메모`}
@@ -174,7 +179,7 @@ export function CommentPanel({ onPersist, isPersisting }: CommentPanelProps = {}
         </div>
       ) : (
         <button
-          onClick={() => setDraft(savedComment)}
+          onClick={() => setEditingKey(positionKey)}
           className={`w-full whitespace-pre-wrap rounded-lg border border-dashed border-amber-300 px-3 py-2 text-left text-sm transition hover:border-amber-400 hover:bg-white dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-900 ${
             // 저장된 메모는 선명하게, 빈 상태 안내 문구만 흐리게
             savedComment ? 'text-gray-900 dark:text-white' : 'text-amber-400 dark:text-gray-500'

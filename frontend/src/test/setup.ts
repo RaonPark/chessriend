@@ -14,6 +14,9 @@ if (typeof HTMLDialogElement !== 'undefined') {
   }
 }
 
+// jsdom does not implement scrollIntoView (MoveList scrolls the active move into view)
+Element.prototype.scrollIntoView ??= function () {}
+
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
 afterEach(() => {
   cleanup()
