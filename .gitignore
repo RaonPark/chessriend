@@ -61,3 +61,6 @@ frontend/dist/
 
 ### Test screenshots ###
 docs/test-screenshots/
+
+# 런칭 전 보안 점검 보고서 (공개 저장소에 올리지 않음)
+docs/chore_license-security-audit_작업내역.md
