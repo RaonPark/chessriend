@@ -17,7 +17,7 @@ paths:
 
 ## jOOQ DSL → R2DBC Execution Pattern
 
-동적 조건은 `DSL.trueCondition()`으로 시작해 `?.let { }`로 덧붙인다(조건 0개여도 valid). 실행은 `query.params`를 순회 바인딩하며, **jOOQ `JSONB`는 R2DBC가 직접 인코딩 못 하므로 `Json.of(...)`로 변환**한다.
+동적 조건은 `DSL.trueCondition()`으로 시작해 `?.let { }`로 덧붙인다(조건 0개여도 valid). 실행은 `query.params`를 순회 바인딩하며, **jOOQ `JSONB`는 R2DBC가 직접 인코딩 못 하므로 `Json.of(...)`로 변환**하고, **null 값은 `bindNull(index, type)`**으로 바인딩한다. (WHERE의 null 비교는 `= NULL`이 아니라 `isNull()`)
 
 ```kotlin
 // ✅ jOOQ DSL로 타입 세이프 쿼리 작성 (동적 WHERE)
@@ -32,11 +32,11 @@ val finalQuery = query.orderBy(GAMES.PLAYED_AT.desc()).limit(limit).offset(offse
 fun bindQuery(query: org.jooq.Query): DatabaseClient.GenericExecuteSpec {
     var spec = databaseClient.sql(query.getSQL(ParamType.NAMED))
     query.params.entries.forEachIndexed { index, (_, param) ->
-        val value = when (val v = param.value!!) {
-            is JSONB -> Json.of(v.data())   // jOOQ JSONB → R2DBC Json
-            else -> v
+        spec = when (val v = param.value) {
+            null -> spec.bindNull(index, param.type)   // 값 지우기(SET col = NULL) 등
+            is JSONB -> spec.bind(index, Json.of(v.data()))   // jOOQ JSONB → R2DBC Json
+            else -> spec.bind(index, v)
         }
-        spec = spec.bind(index, value)
     }
     return spec
 }

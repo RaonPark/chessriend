@@ -88,6 +88,7 @@ class ChesslibAdapterTest : DescribeSpec({
             p.timeControl shouldBe "600+5"
             p.eco shouldBe "C52"
             p.openingName shouldBe "Evans Gambit"
+            p.event shouldBe "Casual Game"
             p.hasSetup shouldBe false
         }
 

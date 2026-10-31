@@ -2,6 +2,7 @@ import { ChessKing } from '@/shared/components/ChessKing'
 import type { PlayerBadge } from '../utils/outcome'
 import type { SideStats } from '../utils/analysisStats'
 import { CpLossHelp } from './AnalysisSummary'
+import { MOVE_SYMBOLS, MOVE_SYMBOL_ORDER } from '../utils/moveSymbols'
 
 interface PlayerBarProps {
   color: 'white' | 'black'
@@ -38,8 +39,17 @@ export function PlayerBar({ color, name, rating, badge, stats }: PlayerBarProps)
 
       {stats && (
         <div className="flex items-center gap-3 text-[11px] text-gray-600 dark:text-gray-300">
-          <Stat dotClass="bg-red-500" label="Blunder" value={stats.counts.blunder} />
-          <Stat dotClass="bg-orange-500" label="Mistake" value={stats.counts.mistake} />
+          {MOVE_SYMBOL_ORDER.map((kind) => (
+            <span
+              key={kind}
+              aria-label={`${MOVE_SYMBOLS[kind].label} ${stats.counts[kind]}`}
+              title={MOVE_SYMBOLS[kind].label}
+              className="inline-flex items-baseline gap-0.5"
+            >
+              <b className={`font-bold ${MOVE_SYMBOLS[kind].className}`}>{MOVE_SYMBOLS[kind].symbol}</b>
+              <span className="font-semibold tabular-nums text-gray-900 dark:text-gray-100">{stats.counts[kind]}</span>
+            </span>
+          ))}
           <span className="inline-flex items-center gap-1">
             cp loss
             <span data-testid={`player-acpl-${color}`} className="font-semibold tabular-nums text-gray-900 dark:text-gray-100">
@@ -50,15 +60,5 @@ export function PlayerBar({ color, name, rating, badge, stats }: PlayerBarProps)
         </div>
       )}
     </div>
-  )
-}
-
-function Stat({ dotClass, label, value }: { dotClass: string; label: string; value: number }) {
-  return (
-    <span className="inline-flex items-center gap-1">
-      <span className={`inline-block h-1.5 w-1.5 rounded-full ${dotClass}`} />
-      {label}
-      <span className="font-semibold tabular-nums text-gray-900 dark:text-gray-100">{value}</span>
-    </span>
   )
 }

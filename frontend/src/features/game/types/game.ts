@@ -7,6 +7,7 @@ export type TimeCategory =
   | 'RAPID'
   | 'CLASSICAL'
   | 'CORRESPONDENCE'
+  | 'OTHER'
 
 export interface PlayerResponse {
   name: string
@@ -96,6 +97,8 @@ export interface GameDetailResponse {
   annotations: AnnotationResponse
   totalMoves: number
   playedAt: string
+  nickname?: string | null
+  memo?: string | null
 }
 
 /** 목록용 분석 요약 (백엔드 GameAnalysisSummary) */
@@ -128,13 +131,60 @@ export interface GameResponse {
   playedAt: string
   /** 분석 완료된 게임만 값이 있음 */
   analysisSummary?: AnalysisSummaryResponse | null
+  /** 이 게임이 들어 있는 폴더들 */
+  folders?: FolderTag[]
+  /** 게임 애칭 */
+  nickname?: string | null
+  /** 게임 전체 메모 (수별 메모와 별개) */
+  memo?: string | null
 }
+
+export interface GameNote {
+  nickname: string | null
+  memo: string | null
+}
+
+export interface FolderTag {
+  id: string
+  name: string
+}
+
+export interface FolderResponse {
+  id: string
+  name: string
+  gameCount: number
+}
+
+/** LNB "오프닝별" 묶음 */
+export interface OpeningCount {
+  name: string
+  count: number
+}
+
+/** 결과 필터 (소유자 관점) */
+export type GameOutcomeFilter = 'WIN' | 'LOSS' | 'DRAW'
+
+/** 레이팅 구간 필터. UNRATED = 레이팅 없음 */
+export type RatingBand =
+  | 'UNDER_1200'
+  | 'FROM_1200_TO_1499'
+  | 'FROM_1500_TO_1799'
+  | 'FROM_1800_TO_2099'
+  | 'FROM_2100'
+  | 'UNRATED'
 
 export interface GameFilter {
   page?: number
   size?: number
   source?: GameSource
   timeCategory?: TimeCategory
+  outcome?: GameOutcomeFilter
+  /** 상대 레이팅 구간 */
+  ratingBand?: RatingBand
+  /** 오프닝 이름 (LNB 오프닝별) */
+  opening?: string
+  /** 폴더 (LNB 내 폴더) */
+  folderId?: string
 }
 
 export interface ImportParams {

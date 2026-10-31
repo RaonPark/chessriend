@@ -5,7 +5,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.reactive.asFlow
 import kotlinx.coroutines.reactor.awaitSingle
+import org.jooq.Condition
 import org.jooq.DSLContext
+import org.jooq.Field
 import org.jooq.JSONB
 import org.jooq.conf.ParamType
 import org.jooq.impl.DSL
@@ -13,6 +15,7 @@ import tools.jackson.databind.ObjectMapper
 import org.raonpark.chessriend.game.domain.*
 import org.raonpark.chessriend.game.port.out.GameRepository
 import org.raonpark.chessriend.jooq.tables.references.GAMES
+import org.raonpark.chessriend.jooq.tables.references.GAME_FOLDERS
 import org.raonpark.chessriend.shared.id.SnowflakeIdGenerator
 import org.springframework.r2dbc.core.DatabaseClient
 import org.springframework.stereotype.Component
@@ -53,6 +56,14 @@ class GamePersistenceAdapter(
         repository.deleteAll()
     }
 
+    override suspend fun updateNote(id: Long, note: GameNote) {
+        val query = dsl.update(GAMES)
+            .set(GAMES.NICKNAME, note.nickname)
+            .set(GAMES.MEMO, note.memo)
+            .where(GAMES.ID.eq(id))
+        executeUpdate(query)
+    }
+
     override suspend fun updateAnnotations(id: Long, annotations: GameAnnotation) {
         val json = objectMapper.writeValueAsString(annotations)
         val query = dsl.update(GAMES)
@@ -62,15 +73,10 @@ class GamePersistenceAdapter(
         executeUpdate(query)
     }
 
-    override fun findAll(offset: Int, limit: Int, source: GameSource?, timeCategory: TimeCategory?): Flow<Game> {
-        var query = dsl.select(DSL.asterisk())
+    override fun findAll(offset: Int, limit: Int, criteria: GameSearchCriteria): Flow<Game> {
+        val finalQuery = dsl.select(DSL.asterisk())
             .from(GAMES)
-            .where(DSL.trueCondition())
-
-        source?.let { query = query.and(GAMES.SOURCE.eq(it.name)) }
-        timeCategory?.let { query = query.and(GAMES.TIME_CATEGORY.eq(it.name)) }
-
-        val finalQuery = query
+            .where(conditionOf(criteria))
             .orderBy(GAMES.PLAYED_AT.desc())
             .limit(limit)
             .offset(offset)
@@ -98,17 +104,16 @@ class GamePersistenceAdapter(
                     playedAt = row.get("played_at", java.time.Instant::class.java)!!,
                     importedAt = row.get("imported_at", java.time.Instant::class.java)!!,
                     annotations = row.get("annotations", Json::class.java) ?: Json.of("""{"moveComments":{},"variations":[]}"""),
+                    nickname = row.get("nickname", String::class.java),
+                    memo = row.get("memo", String::class.java),
                 ).also { it.isNewEntity = false }
             }.all().asFlow().map { toDomain(it) }
     }
 
-    override suspend fun count(source: GameSource?, timeCategory: TimeCategory?): Long {
-        var query = dsl.selectCount()
+    override suspend fun count(criteria: GameSearchCriteria): Long {
+        val query = dsl.selectCount()
             .from(GAMES)
-            .where(DSL.trueCondition())
-
-        source?.let { query = query.and(GAMES.SOURCE.eq(it.name)) }
-        timeCategory?.let { query = query.and(GAMES.TIME_CATEGORY.eq(it.name)) }
+            .where(conditionOf(criteria))
 
         return bindQuery(query)
             .map { row, _ -> row.get(0, Long::class.java)!! }
@@ -116,16 +121,78 @@ class GamePersistenceAdapter(
             .awaitSingle()
     }
 
+    override suspend fun countByOpening(): List<OpeningCount> {
+        val gameCount = DSL.count().`as`("game_count")
+        val query = dsl.select(GAMES.OPENING_NAME, gameCount)
+            .from(GAMES)
+            .where(GAMES.OPENING_NAME.isNotNull)
+            .groupBy(GAMES.OPENING_NAME)
+            .orderBy(gameCount.desc(), GAMES.OPENING_NAME.asc())
+
+        return bindQuery(query)
+            .map { row, _ -> OpeningCount(row.get("opening_name", String::class.java)!!, row.get("game_count", Long::class.java)!!) }
+            .all()
+            .collectList()
+            .awaitSingle()
+    }
+
+    // 소유자가 백/흑인지: 이름과 owner_username을 대소문자 무시 비교 (owner가 빈 문자열이면 둘 다 false)
+    private val ownerIsWhite: Condition =
+        GAMES.OWNER_USERNAME.ne("").and(DSL.lower(GAMES.WHITE_NAME).eq(DSL.lower(GAMES.OWNER_USERNAME)))
+    private val ownerIsBlack: Condition =
+        GAMES.OWNER_USERNAME.ne("").and(DSL.lower(GAMES.BLACK_NAME).eq(DSL.lower(GAMES.OWNER_USERNAME)))
+
+    /** 검색 조건 → WHERE 절. null 비교는 SQL 의미상 `= NULL`이 아닌 isNull()을 사용 */
+    private fun conditionOf(criteria: GameSearchCriteria): Condition {
+        var condition: Condition = DSL.trueCondition()
+        criteria.source?.let { condition = condition.and(GAMES.SOURCE.eq(it.name)) }
+        criteria.timeCategory?.let { condition = condition.and(GAMES.TIME_CATEGORY.eq(it.name)) }
+        criteria.outcome?.let { condition = condition.and(outcomeCondition(it)) }
+        criteria.ratingBand?.let { condition = condition.and(opponentRatingCondition(it)) }
+        criteria.opening?.let { condition = condition.and(GAMES.OPENING_NAME.eq(it)) }
+        criteria.folderId?.let { folderId ->
+            condition = condition.and(
+                GAMES.ID.`in`(DSL.select(GAME_FOLDERS.GAME_ID).from(GAME_FOLDERS).where(GAME_FOLDERS.FOLDER_ID.eq(folderId))),
+            )
+        }
+        return condition
+    }
+
+    private fun outcomeCondition(outcome: OwnerOutcome): Condition {
+        val whiteWin = GAMES.RESULT.eq(GameResult.WHITE_WIN.name)
+        val blackWin = GAMES.RESULT.eq(GameResult.BLACK_WIN.name)
+        return when (outcome) {
+            OwnerOutcome.WIN -> ownerIsWhite.and(whiteWin).or(ownerIsBlack.and(blackWin))
+            OwnerOutcome.LOSS -> ownerIsWhite.and(blackWin).or(ownerIsBlack.and(whiteWin))
+            OwnerOutcome.DRAW -> GAMES.RESULT.eq(GameResult.DRAW.name)
+        }
+    }
+
+    private fun opponentRatingCondition(band: RatingBand): Condition {
+        // 상대 레이팅 = 소유자 반대편. 소유자가 없으면 상대를 정할 수 없어 레이팅 조건에 걸리지 않음
+        val rating: Field<Int?> = DSL.case_()
+            .`when`(ownerIsWhite, GAMES.BLACK_RATING)
+            .`when`(ownerIsBlack, GAMES.WHITE_RATING)
+        val hasOwnerSide = ownerIsWhite.or(ownerIsBlack)
+        if (band == RatingBand.UNRATED) return hasOwnerSide.and(rating.isNull)
+
+        var condition = hasOwnerSide.and(rating.isNotNull)
+        band.min?.let { condition = condition.and(rating.ge(it)) }
+        band.max?.let { condition = condition.and(rating.le(it)) }
+        return condition
+    }
+
     private fun bindQuery(query: org.jooq.Query): DatabaseClient.GenericExecuteSpec {
         val sql = query.getSQL(ParamType.NAMED)
         var spec = databaseClient.sql(sql)
         query.params.entries.forEachIndexed { index, (_, param) ->
-            // R2DBC Postgres 코덱은 jOOQ의 JSONB 타입을 직접 인코딩하지 못함 → R2DBC의 Json 으로 변환
-            val value = when (val v = param.value!!) {
-                is JSONB -> Json.of(v.data())
-                else -> v
+            spec = when (val v = param.value) {
+                // null 값(예: 애칭 지우기)은 타입을 알려 bindNull
+                null -> spec.bindNull(index, param.type)
+                // R2DBC Postgres 코덱은 jOOQ의 JSONB 타입을 직접 인코딩하지 못함 → R2DBC의 Json 으로 변환
+                is JSONB -> spec.bind(index, Json.of(v.data()))
+                else -> spec.bind(index, v)
             }
-            spec = spec.bind(index, value)
         }
         return spec
     }
@@ -158,6 +225,8 @@ class GamePersistenceAdapter(
             playedAt = game.playedAt,
             importedAt = game.importedAt,
             annotations = Json.of(objectMapper.writeValueAsString(game.annotations)),
+            nickname = game.note.nickname,
+            memo = game.note.memo,
         )
         entity.isNewEntity = game.id == null
         return entity
@@ -186,6 +255,7 @@ class GamePersistenceAdapter(
         playedAt = entity.playedAt,
         importedAt = entity.importedAt,
         annotations = parseAnnotations(entity.annotations.asString()),
+        note = GameNote(entity.nickname, entity.memo),
     )
 
     private fun Move.toMap(): Map<String, Any?> = mapOf(

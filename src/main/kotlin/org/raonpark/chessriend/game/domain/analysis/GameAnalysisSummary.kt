@@ -56,7 +56,8 @@ data class GameAnalysisSummary(
 
         private fun moveCpLoss(before: EvalScore, after: EvalScore, isWhite: Boolean): Int {
             val b = clampedCp(before)
-            val a = clampedCp(after)
+            // 수 직후 mate 0 = 방금 둔 쪽이 메이트시킴 (UCI mate 0에는 부호가 없음)
+            val a = if (after.mate == 0) (if (isWhite) CP_CEILING else -CP_CEILING) else clampedCp(after)
             return max(0, if (isWhite) b - a else a - b)
         }
 

@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { http, HttpResponse } from 'msw'
+import { server } from '@/test/mocks/server'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '@/test/test-utils'
 import { GameListItem } from '../GameListItem'
@@ -124,6 +126,57 @@ describe('GameListItem', () => {
       renderWithProviders(<GameListItem game={game} />)
 
       expect(screen.getByTestId('analysis-stats')).toHaveTextContent('cp loss 16 / -')
+    })
+  })
+
+  describe('폴더', () => {
+    const FOLDERS = [
+      { id: 'f1', name: '시실리안 연구', gameCount: 1 },
+      { id: 'f2', name: '토너먼트', gameCount: 0 },
+    ]
+
+    it('들어 있는 폴더를 태그로 보여준다', () => {
+      renderWithProviders(<GameListItem game={createGameResponse({ folders: [{ id: 'f1', name: '시실리안 연구' }] })} />)
+      expect(screen.getByText('시실리안 연구')).toBeInTheDocument()
+    })
+
+    it('우클릭하면 폴더 목록(들어 있는 폴더는 체크)이 뜨고, 체크 안 된 폴더를 누르면 넣는다', async () => {
+      const game = createGameResponse({ id: 'g1', folders: [{ id: 'f1', name: '시실리안 연구' }] })
+      let added: unknown
+      server.use(
+        http.get('/api/folders', () => HttpResponse.json(FOLDERS)),
+        http.post('/api/folders/f2/games', async ({ request }) => { added = await request.json(); return new HttpResponse(null, { status: 204 }) }),
+      )
+      renderWithProviders(<GameListItem game={game} />)
+
+      fireEvent.contextMenu(screen.getByRole('link'))
+      expect(await screen.findByRole('menuitemcheckbox', { name: '시실리안 연구' })).toHaveAttribute('aria-checked', 'true')
+      await userEvent.click(screen.getByRole('menuitemcheckbox', { name: '토너먼트' }))
+
+      await waitFor(() => expect(added).toEqual(['g1']))
+    })
+
+    it('체크된 폴더를 누르면 뺀다', async () => {
+      const game = createGameResponse({ id: 'g1', folders: [{ id: 'f1', name: '시실리안 연구' }] })
+      let removed: unknown
+      server.use(
+        http.get('/api/folders', () => HttpResponse.json(FOLDERS)),
+        http.delete('/api/folders/f1/games', async ({ request }) => { removed = await request.json(); return new HttpResponse(null, { status: 204 }) }),
+      )
+      renderWithProviders(<GameListItem game={game} />)
+
+      fireEvent.contextMenu(screen.getByRole('link'))
+      await userEvent.click(await screen.findByRole('menuitemcheckbox', { name: '시실리안 연구' }))
+
+      await waitFor(() => expect(removed).toEqual(['g1']))
+    })
+  })
+
+  describe('애칭·메모', () => {
+    it('애칭이 있으면 굵게 보여주고, 메모가 있으면 메모 표시(미리보기)를 붙인다', () => {
+      renderWithProviders(<GameListItem game={createGameResponse({ nickname: '에버그린', memo: '퀸 희생으로 메이트' })} />)
+      expect(screen.getByText('에버그린')).toBeInTheDocument()
+      expect(screen.getByTitle('퀸 희생으로 메이트')).toHaveTextContent('메모')
     })
   })
 })

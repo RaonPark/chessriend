@@ -19,6 +19,18 @@ describe('fetchGames', () => {
     expect(fetch).toHaveBeenCalledWith('/api/games', expect.anything())
   })
 
+  it('결과·레이팅 필터를 쿼리스트링으로 변환한다', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ content: [] }), { status: 200 }),
+    )
+
+    await fetchGames({ outcome: 'LOSS', ratingBand: 'UNRATED' })
+
+    const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string
+    expect(calledUrl).toContain('outcome=LOSS')
+    expect(calledUrl).toContain('ratingBand=UNRATED')
+  })
+
   it('필터를 쿼리스트링으로 변환한다', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ content: [] }), { status: 200 }),

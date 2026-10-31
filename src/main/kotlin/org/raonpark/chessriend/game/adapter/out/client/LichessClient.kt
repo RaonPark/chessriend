@@ -186,6 +186,7 @@ class LichessClient(
         TimeCategory.RAPID -> "rapid"
         TimeCategory.CLASSICAL -> "classical"
         TimeCategory.CORRESPONDENCE -> "correspondence"
+        TimeCategory.OTHER -> throw IllegalArgumentException("'기타' 분류는 가져오기 조건으로 쓸 수 없습니다")
     }
 
     private fun org.springframework.web.util.UriBuilder.queryParamIfPresent(

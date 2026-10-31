@@ -125,4 +125,110 @@ describe('GameListPage', () => {
     expect(screen.getByText('래피드')).toBeInTheDocument()
     expect(screen.getByText('불릿')).toBeInTheDocument()
   })
+
+  describe('결과·레이팅 필터', () => {
+    // 요청된 쿼리스트링을 기록하는 핸들러
+    function recordRequests(response = createPagedResponse(games, { totalElements: 3 })) {
+      const urls: URL[] = []
+      server.use(
+        http.get('/api/games', ({ request }) => {
+          urls.push(new URL(request.url))
+          return HttpResponse.json(response)
+        }),
+      )
+      return urls
+    }
+
+    it('결과 필터(패배)를 누르면 outcome=LOSS로 다시 조회한다', async () => {
+      const urls = recordRequests()
+      renderWithProviders(<GameListPage />)
+      await userEvent.click(await screen.findByRole('radio', { name: '패배' }))
+
+      await waitFor(() => expect(urls.at(-1)?.searchParams.get('outcome')).toBe('LOSS'))
+      expect(screen.getByRole('radio', { name: '패배' })).toHaveAttribute('aria-checked', 'true')
+    })
+
+    it('상대 레이팅 구간을 고르면 ratingBand로 조회한다', async () => {
+      const urls = recordRequests()
+      renderWithProviders(<GameListPage />)
+      await userEvent.click(await screen.findByRole('radio', { name: '1500–1799' }))
+
+      await waitFor(() => expect(urls.at(-1)?.searchParams.get('ratingBand')).toBe('FROM_1500_TO_1799'))
+      expect(screen.getByRole('radiogroup', { name: '상대 레이팅' })).toBeInTheDocument()
+    })
+
+    it('"레이팅 없음"을 고를 수 있다', async () => {
+      const urls = recordRequests()
+      renderWithProviders(<GameListPage />)
+      await userEvent.click(await screen.findByRole('radio', { name: '레이팅 없음' }))
+
+      await waitFor(() => expect(urls.at(-1)?.searchParams.get('ratingBand')).toBe('UNRATED'))
+    })
+
+    it('필터를 쓰면 조건에 맞는 게임 수와 초기화 버튼을 보여주고, 초기화하면 조건이 사라진다', async () => {
+      const urls = recordRequests()
+      renderWithProviders(<GameListPage />)
+      await userEvent.click(await screen.findByRole('radio', { name: '승리' }))
+
+      expect(await screen.findByText('조건에 맞는 게임 3개')).toBeInTheDocument()
+      await userEvent.click(screen.getByRole('button', { name: '필터 초기화' }))
+
+      await waitFor(() => expect(urls.at(-1)?.searchParams.get('outcome')).toBeNull())
+      expect(screen.queryByRole('button', { name: '필터 초기화' })).not.toBeInTheDocument()
+    })
+
+    it('필터 결과가 0개면 "가져온 게임 없음"이 아니라 조건에 맞는 게임이 없다고 안내한다', async () => {
+      recordRequests(createPagedResponse([]))
+      renderWithProviders(<GameListPage />)
+      await userEvent.click(await screen.findByRole('radio', { name: '무승부' }))
+
+      expect(await screen.findByText('조건에 맞는 게임이 없습니다.')).toBeInTheDocument()
+      expect(screen.queryByText('아직 가져온 게임이 없습니다.')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('LNB · 폴더', () => {
+    const FOLDERS = [{ id: 'f1', name: '시실리안 연구', gameCount: 2 }]
+
+    function setup() {
+      const urls: URL[] = []
+      let added: unknown
+      server.use(
+        http.get('/api/games', ({ request }) => { urls.push(new URL(request.url)); return HttpResponse.json(createPagedResponse(games, { totalElements: 3 })) }),
+        http.get('/api/folders', () => HttpResponse.json(FOLDERS)),
+        http.get('/api/games/openings', () => HttpResponse.json([{ name: 'Sicilian Defense', count: 5 }])),
+        http.post('/api/folders/f1/games', async ({ request }) => { added = await request.json(); return new HttpResponse(null, { status: 204 }) }),
+      )
+      renderWithProviders(<GameListPage />)
+      return { urls, getAdded: () => added }
+    }
+
+    it('LNB에서 폴더를 고르면 folderId로 조회하고 제목이 폴더 이름이 된다', async () => {
+      const { urls } = setup()
+      await userEvent.click(await screen.findByRole('button', { name: /시실리안 연구\s*2/ }))
+
+      await waitFor(() => expect(urls.at(-1)?.searchParams.get('folderId')).toBe('f1'))
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('시실리안 연구')
+    })
+
+    it('LNB에서 오프닝을 고르면 opening으로 조회한다', async () => {
+      const { urls } = setup()
+      await userEvent.click(await screen.findByRole('button', { name: /Sicilian Defense\s*5/ }))
+
+      await waitFor(() => expect(urls.at(-1)?.searchParams.get('opening')).toBe('Sicilian Defense'))
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Sicilian Defense')
+    })
+
+    it('게임을 선택하고 "폴더에 추가"로 한 번에 넣는다', async () => {
+      const { getAdded } = setup()
+      const checkboxes = await screen.findAllByRole('checkbox')
+      // [0] = 전체 선택, [1..] = 게임
+      await userEvent.click(checkboxes[1])
+      await userEvent.click(checkboxes[2])
+      await userEvent.click(screen.getByRole('button', { name: '폴더에 추가' }))
+      await userEvent.click(await screen.findByRole('menuitem', { name: '시실리안 연구' }))
+
+      await waitFor(() => expect(getAdded()).toEqual(['1', '2']))
+    })
+  })
 })

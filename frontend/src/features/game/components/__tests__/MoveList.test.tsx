@@ -61,3 +61,29 @@ describe('MoveList — 변형선 우클릭 삭제', () => {
     expect(state.variationIndex).toBe(1)
   })
 })
+
+describe('MoveList — 기보 기호', () => {
+  it('분석 분류에 따라 수 옆에 !! / ?? / ? / ?! 를 붙인다', () => {
+    const moves = [
+      { number: 1, color: 'WHITE' as const, san: 'e4' },
+      { number: 1, color: 'BLACK' as const, san: 'f6' },
+      { number: 2, color: 'WHITE' as const, san: 'Nc3' },
+      { number: 2, color: 'BLACK' as const, san: 'g5' },
+    ]
+    const ev = (moveIndex: number, classification: 'brilliant' | 'blunder' | 'mistake' | 'inaccuracy') => ({
+      moveIndex, evalBefore: { cp: 0, mate: null }, evalAfter: { cp: 0, mate: null }, cpLoss: 0, classification,
+    })
+    useBoardStore.getState().loadMoves(moves)
+    useBoardStore.getState().setAnalysis({
+      evaluations: [ev(0, 'brilliant'), ev(1, 'inaccuracy'), ev(2, 'mistake'), ev(3, 'blunder')],
+      depth: 18,
+      analyzedAt: '',
+    })
+    render(<MoveList />)
+
+    expect(screen.getByRole('button', { name: /^e4/ })).toHaveTextContent('e4!!')
+    expect(screen.getByRole('button', { name: /^f6/ })).toHaveTextContent('f6?!')
+    expect(screen.getByRole('button', { name: /^Nc3/ })).toHaveTextContent('Nc3?')
+    expect(screen.getByRole('button', { name: /^g5/ })).toHaveTextContent('g5??')
+  })
+})

@@ -12,6 +12,9 @@ export const handlers = [
     return HttpResponse.json(createPagedResponse(sampleGames, { totalElements: 3 }))
   }),
 
+  // :id보다 먼저 — "openings"가 게임 ID로 잡히지 않게
+  http.get('/api/games/openings', () => HttpResponse.json([])),
+  http.get('/api/folders', () => HttpResponse.json([])),
   http.get('/api/games/:id', ({ params }) => {
     const game = sampleGames.find((g) => g.id === params.id)
     if (!game) {

@@ -16,6 +16,7 @@ data class Game(
     val playedAt: Instant,
     val importedAt: Instant,
     val annotations: GameAnnotation = GameAnnotation.empty(),
+    val note: GameNote = GameNote.EMPTY,
 ) {
     val totalMoves: Int
         get() = moves.size

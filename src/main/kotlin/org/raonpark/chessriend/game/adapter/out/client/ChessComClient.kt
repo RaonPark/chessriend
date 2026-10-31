@@ -317,5 +317,6 @@ class ChessComClient(
         TimeCategory.RAPID -> "rapid"
         TimeCategory.CLASSICAL -> "rapid"
         TimeCategory.CORRESPONDENCE -> "daily"
+        TimeCategory.OTHER -> throw IllegalArgumentException("'기타' 분류는 가져오기 조건으로 쓸 수 없습니다")
     }
 }

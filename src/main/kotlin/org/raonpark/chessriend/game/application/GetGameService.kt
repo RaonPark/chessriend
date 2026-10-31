@@ -3,9 +3,10 @@ package org.raonpark.chessriend.game.application
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.flow.toList
 import org.raonpark.chessriend.game.domain.GameAnnotation
+import org.raonpark.chessriend.game.domain.GameNote
 import org.raonpark.chessriend.game.domain.Game
-import org.raonpark.chessriend.game.domain.GameSource
-import org.raonpark.chessriend.game.domain.TimeCategory
+import org.raonpark.chessriend.game.domain.GameSearchCriteria
+import org.raonpark.chessriend.game.domain.OpeningCount
 import org.raonpark.chessriend.game.port.`in`.GetGameUseCase
 import org.raonpark.chessriend.game.port.out.GameRepository
 import org.raonpark.chessriend.shared.domain.PagedResult
@@ -38,21 +39,29 @@ class GetGameService(
         log.warn { "all games deleted" }
     }
 
+    override suspend fun updateNote(id: Long, nickname: String?, memo: String?): GameNote {
+        val note = GameNote.of(nickname, memo)
+        gameRepository.findById(id) ?: throw GameNotFoundException(id)
+        gameRepository.updateNote(id, note)
+        return note
+    }
+
     override suspend fun updateAnnotations(id: Long, annotations: GameAnnotation) {
         gameRepository.findById(id) ?: throw GameNotFoundException(id)
         gameRepository.updateAnnotations(id, annotations)
         log.debug { "annotations updated: gameId=$id" }
     }
 
+    override suspend fun getOpeningCounts(): List<OpeningCount> = gameRepository.countByOpening()
+
     override suspend fun getGames(
         page: Int,
         size: Int,
-        source: GameSource?,
-        timeCategory: TimeCategory?,
+        criteria: GameSearchCriteria,
     ): PagedResult<Game> {
         val offset = page * size
-        val content = gameRepository.findAll(offset, size, source, timeCategory).toList()
-        val totalElements = gameRepository.count(source, timeCategory)
+        val content = gameRepository.findAll(offset, size, criteria).toList()
+        val totalElements = gameRepository.count(criteria)
         val totalPages = if (totalElements == 0L) 0 else ((totalElements + size - 1) / size).toInt()
 
         return PagedResult(

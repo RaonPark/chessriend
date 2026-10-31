@@ -1,4 +1,6 @@
 import { AnalysisSummary } from './AnalysisSummary'
+import { GameMemoSection } from './GameNote'
+import { formatTimeControl } from '../utils/timeCategory'
 import type { GameAnalysis, GameDetailResponse, GameSource } from '../types/game'
 
 interface GameInfoPanelProps {
@@ -28,7 +30,7 @@ function formatDate(iso: string) {
 export function GameInfoPanel({ game, analysis, onDelete, isDeleting }: GameInfoPanelProps) {
   const rows: [string, string][] = [
     ['플랫폼', SOURCE_LABELS[game.source]],
-    ['시간 제한', `${game.timeControl.time} (${game.timeControl.category})`],
+    ['시간 제한', formatTimeControl(game.timeControl)],
     ['오프닝', game.opening ? `${game.opening.name}${game.opening.eco ? ` (${game.opening.eco})` : ''}` : '-'],
     ['총 수', `${game.totalMoves}수`],
     ['대국 날짜', formatDate(game.playedAt)],
@@ -36,6 +38,8 @@ export function GameInfoPanel({ game, analysis, onDelete, isDeleting }: GameInfo
 
   return (
     <div className="space-y-3">
+      <GameMemoSection gameId={game.id} nickname={game.nickname} memo={game.memo} />
+
       <dl className="divide-y divide-amber-100 rounded-xl border border-amber-200 bg-white px-4 text-sm dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-800">
         {rows.map(([label, value]) => (
           <div key={label} className="flex items-start justify-between gap-4 py-2.5">

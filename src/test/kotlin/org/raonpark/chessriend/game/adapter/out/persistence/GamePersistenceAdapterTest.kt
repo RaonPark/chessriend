@@ -133,7 +133,7 @@ class GamePersistenceAdapterTest {
             adapter.save(createGame("findall-test-2").copy(playedAt = Instant.parse("2026-04-10T12:00:00Z")))
             adapter.save(createGame("findall-test-3").copy(playedAt = Instant.parse("2026-04-10T11:00:00Z")))
 
-            val result = adapter.findAll(0, 2, null, null).toList()
+            val result = adapter.findAll(0, 2, GameSearchCriteria()).toList()
 
             assertEquals(2, result.size)
             // played_at DESC 정렬 확인
@@ -144,11 +144,11 @@ class GamePersistenceAdapterTest {
         fun `source 필터로 조회한다`() = runTest {
             adapter.save(createGame("findall-source-1"))
 
-            val result = adapter.findAll(0, 100, GameSource.LICHESS, null).toList()
+            val result = adapter.findAll(0, 100, GameSearchCriteria(source = GameSource.LICHESS)).toList()
             assertTrue(result.isNotEmpty())
             assertTrue(result.all { it.source == GameSource.LICHESS })
 
-            val chessComResult = adapter.findAll(0, 100, GameSource.CHESS_COM, null).toList()
+            val chessComResult = adapter.findAll(0, 100, GameSearchCriteria(source = GameSource.CHESS_COM)).toList()
             assertTrue(chessComResult.isEmpty())
         }
 
@@ -156,11 +156,11 @@ class GamePersistenceAdapterTest {
         fun `timeCategory 필터로 조회한다`() = runTest {
             adapter.save(createGame("findall-tc-1"))
 
-            val result = adapter.findAll(0, 100, null, TimeCategory.RAPID).toList()
+            val result = adapter.findAll(0, 100, GameSearchCriteria(timeCategory = TimeCategory.RAPID)).toList()
             assertTrue(result.isNotEmpty())
             assertTrue(result.all { it.timeControl.category == TimeCategory.RAPID })
 
-            val bulletResult = adapter.findAll(0, 100, null, TimeCategory.BULLET).toList()
+            val bulletResult = adapter.findAll(0, 100, GameSearchCriteria(timeCategory = TimeCategory.BULLET)).toList()
             assertTrue(bulletResult.isEmpty())
         }
 
@@ -173,7 +173,7 @@ class GamePersistenceAdapterTest {
                 ),
             )
 
-            val result = adapter.findAll(0, 100, null, null).toList()
+            val result = adapter.findAll(0, 100, GameSearchCriteria()).toList()
 
             val found = result.find { it.id == saved.id }
             assertNotNull(found)
@@ -188,7 +188,7 @@ class GamePersistenceAdapterTest {
         fun `전체 개수를 조회한다`() = runTest {
             adapter.save(createGame("count-test-1"))
 
-            val count = adapter.count(null, null)
+            val count = adapter.count(GameSearchCriteria())
             assertTrue(count >= 1)
         }
 
@@ -196,10 +196,10 @@ class GamePersistenceAdapterTest {
         fun `source 필터로 개수를 조회한다`() = runTest {
             adapter.save(createGame("count-source-1"))
 
-            val lichessCount = adapter.count(GameSource.LICHESS, null)
+            val lichessCount = adapter.count(GameSearchCriteria(source = GameSource.LICHESS))
             assertTrue(lichessCount >= 1)
 
-            val chessComCount = adapter.count(GameSource.CHESS_COM, null)
+            val chessComCount = adapter.count(GameSearchCriteria(source = GameSource.CHESS_COM))
             assertEquals(0L, chessComCount)
         }
     }
@@ -215,6 +215,111 @@ class GamePersistenceAdapterTest {
         @Test
         fun `존재하지 않는 게임은 false`() = runTest {
             assertFalse(adapter.existsBySourceGameId("nonexistent"))
+        }
+    }
+
+    @Nested
+    inner class SearchCriteria {
+        // 소유자 alice 기준 게임 4개. DB를 다른 테스트와 공유하므로 테스트마다 고유 접두어로 만들고 그 게임만 비교
+        private var prefix = ""
+
+        private suspend fun seed() {
+            prefix = "flt-${java.util.UUID.randomUUID().toString().take(8)}-"
+            val base = createGame("unused").copy(ownerUsername = "alice")
+            adapter.save(base.copy(sourceGameId = "${prefix}1", // 내가 백, 승리, 상대 1600 / 나 1500
+                players = Players(Player("alice", 1500), Player("bob", 1600)), result = GameResult.WHITE_WIN))
+            adapter.save(base.copy(sourceGameId = "${prefix}2", // 내가 흑, 패배, 상대 1900 / 나 1450
+                players = Players(Player("carol", 1900), Player("Alice", 1450)), result = GameResult.WHITE_WIN))
+            adapter.save(base.copy(sourceGameId = "${prefix}3", // 내가 백, 무승부, 레이팅 없음
+                players = Players(Player("alice", null), Player("dave", null)), result = GameResult.DRAW))
+            adapter.save(base.copy(sourceGameId = "${prefix}4", ownerUsername = "", // 소유자 없음
+                players = Players(Player("x", 1300), Player("y", 1700)), result = GameResult.BLACK_WIN))
+        }
+
+        private suspend fun search(criteria: GameSearchCriteria): List<String> =
+            adapter.findAll(0, 1000, criteria).toList().map { it.sourceGameId }.filter { it.startsWith(prefix) }.map { it.removePrefix(prefix) }.sorted()
+
+        private suspend fun countFlt(criteria: GameSearchCriteria): Int = search(criteria).size
+
+        @Test
+        fun `결과 필터는 소유자 관점 (대소문자 무시)`() = runTest {
+            seed()
+            assertEquals(listOf("1"), search(GameSearchCriteria(outcome = OwnerOutcome.WIN)))
+            assertEquals(listOf("2"), search(GameSearchCriteria(outcome = OwnerOutcome.LOSS)))
+            assertEquals(listOf("3"), search(GameSearchCriteria(outcome = OwnerOutcome.DRAW)))
+        }
+
+        @Test
+        fun `상대 레이팅 구간 필터 (소유자 없는 게임은 제외)`() = runTest {
+            seed()
+            assertEquals(listOf("1"), search(GameSearchCriteria(ratingBand = RatingBand.FROM_1500_TO_1799)))
+            assertEquals(listOf("2"), search(GameSearchCriteria(ratingBand = RatingBand.FROM_1800_TO_2099)))
+            assertEquals(emptyList<String>(), search(GameSearchCriteria(ratingBand = RatingBand.FROM_1200_TO_1499)))
+        }
+
+        @Test
+        fun `레이팅 없음은 상대 레이팅이 null인 게임 (소유자 없는 게임은 제외)`() = runTest {
+            seed()
+            assertEquals(listOf("3"), search(GameSearchCriteria(ratingBand = RatingBand.UNRATED)))
+        }
+
+        @Test
+        fun `조건을 함께 쓰면 AND로 결합되고 count도 같은 조건을 따른다`() = runTest {
+            seed()
+            val criteria = GameSearchCriteria(outcome = OwnerOutcome.LOSS, ratingBand = RatingBand.FROM_1800_TO_2099)
+            assertEquals(listOf("2"), search(criteria))
+            assertEquals(adapter.findAll(0, 1000, criteria).toList().size.toLong(), adapter.count(criteria))
+            assertEquals(1, countFlt(criteria))
+        }
+    }
+
+    @Nested
+    inner class Openings {
+        // DB 공유 → 테스트마다 고유한 오프닝 이름을 써서 그 결과만 비교
+        private val tag = java.util.UUID.randomUUID().toString().take(6)
+        private fun opening(name: String) = Opening("A00", "$name $tag")
+
+        @Test
+        fun `오프닝 이름별 게임 수를 많은 순으로 센다 (오프닝 없는 게임 제외)`() = runTest {
+            val base = createGame("unused")
+            repeat(3) { adapter.save(base.copy(sourceGameId = "op-$tag-s$it", opening = opening("Sicilian"))) }
+            adapter.save(base.copy(sourceGameId = "op-$tag-r", opening = opening("Ruy")))
+            adapter.save(base.copy(sourceGameId = "op-$tag-n", opening = null))
+
+            val mine = adapter.countByOpening().filter { it.name.endsWith(tag) }
+
+            assertEquals(listOf(OpeningCount("Sicilian $tag", 3), OpeningCount("Ruy $tag", 1)), mine)
+        }
+
+        @Test
+        fun `오프닝 이름으로 목록을 거른다`() = runTest {
+            val base = createGame("unused")
+            adapter.save(base.copy(sourceGameId = "op-$tag-a", opening = opening("Italian")))
+            adapter.save(base.copy(sourceGameId = "op-$tag-b", opening = opening("French")))
+
+            val criteria = GameSearchCriteria(opening = "Italian $tag")
+            val found = adapter.findAll(0, 100, criteria).toList().map { it.sourceGameId }
+
+            assertEquals(listOf("op-$tag-a"), found)
+            assertEquals(1L, adapter.count(criteria))
+        }
+    }
+
+    @Nested
+    inner class Note {
+        @Test
+        fun `새 게임은 애칭·메모가 없고, 저장한 애칭·메모는 단건·목록 조회에 모두 나온다`() = runTest {
+            val saved = adapter.save(createGame("note-${java.util.UUID.randomUUID()}"))
+            assertEquals(GameNote.EMPTY, saved.note)
+
+            adapter.updateNote(saved.id!!, GameNote("에버그린", "퀸 희생으로 메이트"))
+
+            assertEquals(GameNote("에버그린", "퀸 희생으로 메이트"), adapter.findById(saved.id!!)?.note)
+            val listed = adapter.findAll(0, 1000, GameSearchCriteria()).toList().single { it.id == saved.id }
+            assertEquals("에버그린", listed.note.nickname)
+
+            adapter.updateNote(saved.id!!, GameNote.EMPTY)
+            assertEquals(GameNote.EMPTY, adapter.findById(saved.id!!)?.note)
         }
     }
 }

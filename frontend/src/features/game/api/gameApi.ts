@@ -1,6 +1,6 @@
 import { apiFetch, ApiError } from '@/shared/api/apiClient'
 import type { PagedResponse } from '@/shared/types/api'
-import type { AnnotationRequest, CreateGameFromPgnRequest, GameAnalysis, GameDetailResponse, GameFilter, GameResponse, ImportParams } from '../types/game'
+import type { AnnotationRequest, CreateGameFromPgnRequest, GameAnalysis, GameDetailResponse, GameFilter, GameNote, GameResponse, ImportParams, OpeningCount } from '../types/game'
 
 export async function fetchGames(filters: GameFilter = {}): Promise<PagedResponse<GameResponse>> {
   const params = new URLSearchParams()
@@ -8,6 +8,10 @@ export async function fetchGames(filters: GameFilter = {}): Promise<PagedRespons
   if (filters.size != null) params.set('size', String(filters.size))
   if (filters.source) params.set('source', filters.source)
   if (filters.timeCategory) params.set('timeCategory', filters.timeCategory)
+  if (filters.outcome) params.set('outcome', filters.outcome)
+  if (filters.ratingBand) params.set('ratingBand', filters.ratingBand)
+  if (filters.opening) params.set('opening', filters.opening)
+  if (filters.folderId) params.set('folderId', filters.folderId)
 
   const query = params.toString()
   return apiFetch(`/api/games${query ? `?${query}` : ''}`)
@@ -86,4 +90,14 @@ export function createImportEventSource(params: ImportParams): EventSource {
   if (params.rated != null) query.set('rated', String(params.rated))
 
   return new EventSource(`/api/games/import?${query}`)
+}
+
+/** LNB "오프닝별": 오프닝 이름별 게임 수 (많은 순) */
+export async function fetchOpeningCounts(): Promise<OpeningCount[]> {
+  return apiFetch('/api/games/openings')
+}
+
+/** 게임 애칭·메모 저장 (둘 다 보냄 — 빈 값은 지움). 정리된 값을 돌려줌 */
+export async function updateGameNote(id: string, note: GameNote): Promise<GameNote> {
+  return apiFetch(`/api/games/${id}/note`, { method: 'PUT', body: JSON.stringify(note) })
 }

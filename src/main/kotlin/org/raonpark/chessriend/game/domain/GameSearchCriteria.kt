@@ -1,0 +1,30 @@
+package org.raonpark.chessriend.game.domain
+
+/** 게임 목록 검색 조건. 모든 조건은 AND로 결합되고, null/기본값은 "조건 없음". */
+data class GameSearchCriteria(
+    val source: GameSource? = null,
+    val timeCategory: TimeCategory? = null,
+    /** 소유자 관점 결과. 소유자가 없는 게임은 WIN/LOSS에 걸리지 않음 (DRAW는 결과만 봄) */
+    val outcome: OwnerOutcome? = null,
+    /** 상대(소유자 반대편) 레이팅 구간. 소유자가 없는 게임은 상대를 정할 수 없어 걸리지 않음 */
+    val ratingBand: RatingBand? = null,
+    /** 오프닝 이름 (정확히 일치) */
+    val opening: String? = null,
+    /** 이 폴더에 들어 있는 게임만 */
+    val folderId: Long? = null,
+)
+
+/** 오프닝 이름별 게임 수 (LNB "오프닝별" 묶음) */
+data class OpeningCount(val name: String, val count: Long)
+
+enum class OwnerOutcome { WIN, LOSS, DRAW }
+
+/** 레이팅 구간. [min]/[max]는 포함 범위, null이면 열린 구간. [UNRATED]는 레이팅이 없는 경우 */
+enum class RatingBand(val min: Int?, val max: Int?) {
+    UNDER_1200(null, 1199),
+    FROM_1200_TO_1499(1200, 1499),
+    FROM_1500_TO_1799(1500, 1799),
+    FROM_1800_TO_2099(1800, 2099),
+    FROM_2100(2100, null),
+    UNRATED(null, null),
+}

@@ -28,6 +28,13 @@ object MoveClassifier {
 
     fun pieceValue(kind: PieceKind): Int = VALUES.getValue(kind)
 
+    /**
+     * 수를 둔 직후 포지션의 평가를 cp로 변환(백 관점).
+     * UCI는 메이트된 포지션을 부호 없는 "mate 0"으로 주므로, 이때는 방금 둔 쪽([moverIsWhite])이 메이트시킨 것으로 본다.
+     */
+    fun evalAfterMoveToCp(score: EvalScore, moverIsWhite: Boolean): Int =
+        if (score.mate == 0) (if (moverIsWhite) MATE_SCORE else -MATE_SCORE) else evalToCp(score)
+
     /** mate/cp 평가를 centipawn 단일 값으로 변환(백 관점). mate-in-N → ±(MATE_SCORE - |N|). */
     fun evalToCp(score: EvalScore): Int {
         val mate = score.mate

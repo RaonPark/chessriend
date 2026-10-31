@@ -23,4 +23,5 @@ data class ParsedPgn(
     val moveComments: Map<String, String>,
     val variations: List<Variation>,
     val hasSetup: Boolean,
+    val event: String? = null,     // [Event] 태그 (Daily/Correspondence 판별용)
 )

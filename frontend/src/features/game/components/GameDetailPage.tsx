@@ -10,6 +10,7 @@ import { getPlayerBadge } from '../utils/outcome'
 import { GameViewer } from './GameViewer'
 import { GameInfoPanel } from './GameInfoPanel'
 import { PlayerBar } from './PlayerBar'
+import { GameNicknameHeader } from './GameNote'
 
 export function GameDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -52,6 +53,8 @@ export function GameDetailPage() {
       <Link to="/games" className="inline-block text-sm text-amber-700 hover:underline dark:text-amber-400">
         &larr; 게임 목록
       </Link>
+
+      <GameNicknameHeader gameId={game.id} nickname={game.nickname} memo={game.memo} />
 
       {hasMoves ? (
         // 대국자 바·보드·탭(기보·메모 / 경기 정보) — 경기 정보와 삭제는 "경기 정보" 탭에 있음

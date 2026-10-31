@@ -6,10 +6,14 @@ import kotlinx.coroutines.flow.onCompletion
 import org.raonpark.chessriend.game.domain.Color
 import org.raonpark.chessriend.game.domain.GameSource
 import org.raonpark.chessriend.game.domain.TimeCategory
+import org.raonpark.chessriend.game.domain.GameSearchCriteria
+import org.raonpark.chessriend.game.domain.OwnerOutcome
+import org.raonpark.chessriend.game.domain.RatingBand
 import org.raonpark.chessriend.game.port.`in`.CreateGameFromPgnUseCase
 import org.raonpark.chessriend.game.port.`in`.GetGameAnalysisUseCase
 import org.raonpark.chessriend.game.port.`in`.GetGameUseCase
 import org.raonpark.chessriend.game.port.`in`.ImportGameUseCase
+import org.raonpark.chessriend.game.port.`in`.ManageFolderUseCase
 import org.raonpark.chessriend.game.port.out.GameFetchCriteria
 import org.springframework.http.MediaType
 import org.springframework.http.codec.ServerSentEvent
@@ -23,6 +27,7 @@ class GameController(
     private val createGameFromPgnUseCase: CreateGameFromPgnUseCase,
     private val getGameUseCase: GetGameUseCase,
     private val getGameAnalysisUseCase: GetGameAnalysisUseCase,
+    private val manageFolderUseCase: ManageFolderUseCase,
 ) {
 
     @GetMapping
@@ -31,12 +36,26 @@ class GameController(
         @RequestParam(defaultValue = "20") size: Int,
         @RequestParam(required = false) source: GameSource?,
         @RequestParam(required = false) timeCategory: TimeCategory?,
+        @RequestParam(required = false) outcome: OwnerOutcome?,
+        @RequestParam(required = false) ratingBand: RatingBand?,
+        @RequestParam(required = false) opening: String?,
+        @RequestParam(required = false) folderId: Long?,
     ): PagedGameResponse {
-        val result = getGameUseCase.getGames(page, size, source, timeCategory)
+        val criteria = GameSearchCriteria(
+            source = source,
+            timeCategory = timeCategory,
+            outcome = outcome,
+            ratingBand = ratingBand,
+            opening = opening,
+            folderId = folderId,
+        )
+        val result = getGameUseCase.getGames(page, size, criteria)
         // 페이지의 게임들 분석 요약을 한 번에 조회 (N+1 방지)
-        val summaries = getGameAnalysisUseCase.findSummaries(result.content.mapNotNull { it.id })
+        val gameIds = result.content.mapNotNull { it.id }
+        val summaries = getGameAnalysisUseCase.findSummaries(gameIds)
+        val folders = manageFolderUseCase.findFoldersOfGames(gameIds)
         return PagedGameResponse(
-            content = result.content.map { GameResponse.from(it, summaries[it.id]) },
+            content = result.content.map { GameResponse.from(it, summaries[it.id], folders[it.id].orEmpty()) },
             page = result.page,
             size = result.size,
             totalElements = result.totalElements,
@@ -46,12 +65,22 @@ class GameController(
         )
     }
 
+    /** LNB "오프닝별" 묶음: 오프닝 이름별 게임 수 (많은 순) */
+    @GetMapping("/openings")
+    suspend fun getOpeningCounts(): List<OpeningCountResponse> =
+        getGameUseCase.getOpeningCounts().map { OpeningCountResponse(it.name, it.count) }
+
     @GetMapping("/{id}")
     suspend fun getGame(@PathVariable id: Long): GameDetailResponse {
         val game = getGameUseCase.getGame(id)
         val analysis = getGameAnalysisUseCase.findAnalysis(id)
         return GameDetailResponse.from(game, analysis)
     }
+
+    /** 게임 애칭·메모 저장 (빈 값은 지움). 정리된 값을 돌려줌 */
+    @PutMapping("/{id}/note")
+    suspend fun updateNote(@PathVariable id: Long, @RequestBody request: GameNoteRequest): GameNoteResponse =
+        GameNoteResponse.from(getGameUseCase.updateNote(id, request.nickname, request.memo))
 
     @PutMapping("/{id}/annotations")
     suspend fun updateAnnotations(

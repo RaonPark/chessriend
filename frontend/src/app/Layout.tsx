@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { SettingsDialog } from '@/features/settings/components/SettingsDialog'
+import { useThemeSync } from '@/features/settings/hooks/useThemeSync'
 
 const NAV_ITEMS = [
   { to: '/games', label: '내 게임' },
@@ -9,6 +10,7 @@ const NAV_ITEMS = [
 
 export function Layout() {
   const location = useLocation()
+  useThemeSync()
   // 설정은 페이지 이동 없이 다이얼로그로 (복기 중에도 보드 상태 유지)
   const [settingsOpen, setSettingsOpen] = useState(false)
 
@@ -16,7 +18,7 @@ export function Layout() {
     <div className="min-h-screen bg-amber-50 dark:bg-gray-900">
       {/* Header */}
       <header className="border-b border-amber-200 bg-amber-900 dark:border-amber-800 dark:bg-gray-950">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <Link to="/" className="flex items-center gap-2 text-xl font-bold text-amber-50">
             <span className="text-2xl">&#9822;</span>
             Chessriend
@@ -47,7 +49,7 @@ export function Layout() {
       </header>
 
       {/* Main */}
-      <main className="mx-auto max-w-5xl px-6 py-8">
+      <main className="mx-auto max-w-6xl px-6 py-8">
         <Outlet />
       </main>
 

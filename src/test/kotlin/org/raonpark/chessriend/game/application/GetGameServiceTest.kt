@@ -56,10 +56,10 @@ class GetGameServiceTest : DescribeSpec({
     describe("getGames") {
         it("페이지네이션으로 게임 목록을 조회한다") {
             val games = listOf(createGame(1L, "g1"), createGame(2L, "g2"))
-            coEvery { gameRepository.findAll(0, 20, null, null) } returns flowOf(*games.toTypedArray())
-            coEvery { gameRepository.count(null, null) } returns 2L
+            coEvery { gameRepository.findAll(0, 20, GameSearchCriteria()) } returns flowOf(*games.toTypedArray())
+            coEvery { gameRepository.count(GameSearchCriteria()) } returns 2L
 
-            val result = service.getGames(0, 20, null, null)
+            val result = service.getGames(0, 20, GameSearchCriteria())
 
             result.content.size shouldBe 2
             result.page shouldBe 0
@@ -72,10 +72,10 @@ class GetGameServiceTest : DescribeSpec({
 
         it("source 필터로 조회한다") {
             val game = createGame(1L, "g1")
-            coEvery { gameRepository.findAll(0, 10, GameSource.LICHESS, null) } returns flowOf(game)
-            coEvery { gameRepository.count(GameSource.LICHESS, null) } returns 1L
+            coEvery { gameRepository.findAll(0, 10, GameSearchCriteria(source = GameSource.LICHESS)) } returns flowOf(game)
+            coEvery { gameRepository.count(GameSearchCriteria(source = GameSource.LICHESS)) } returns 1L
 
-            val result = service.getGames(0, 10, GameSource.LICHESS, null)
+            val result = service.getGames(0, 10, GameSearchCriteria(source = GameSource.LICHESS))
 
             result.content.size shouldBe 1
             result.totalElements shouldBe 1L
@@ -83,10 +83,10 @@ class GetGameServiceTest : DescribeSpec({
 
         it("두 번째 페이지를 조회한다") {
             val game = createGame(3L, "g3")
-            coEvery { gameRepository.findAll(20, 20, null, null) } returns flowOf(game)
-            coEvery { gameRepository.count(null, null) } returns 41L
+            coEvery { gameRepository.findAll(20, 20, GameSearchCriteria()) } returns flowOf(game)
+            coEvery { gameRepository.count(GameSearchCriteria()) } returns 41L
 
-            val result = service.getGames(1, 20, null, null)
+            val result = service.getGames(1, 20, GameSearchCriteria())
 
             result.content.size shouldBe 1
             result.page shouldBe 1
@@ -96,14 +96,37 @@ class GetGameServiceTest : DescribeSpec({
         }
 
         it("결과가 없으면 빈 목록을 반환한다") {
-            coEvery { gameRepository.findAll(0, 20, null, null) } returns flowOf()
-            coEvery { gameRepository.count(null, null) } returns 0L
+            coEvery { gameRepository.findAll(0, 20, GameSearchCriteria()) } returns flowOf()
+            coEvery { gameRepository.count(GameSearchCriteria()) } returns 0L
 
-            val result = service.getGames(0, 20, null, null)
+            val result = service.getGames(0, 20, GameSearchCriteria())
 
             result.content.size shouldBe 0
             result.totalElements shouldBe 0L
             result.totalPages shouldBe 0
+        }
+    }
+
+    describe("getOpeningCounts") {
+        it("저장소의 오프닝별 게임 수를 그대로 돌려준다") {
+            val counts = listOf(OpeningCount("Sicilian Defense", 14), OpeningCount("Ruy Lopez", 9))
+            coEvery { gameRepository.countByOpening() } returns counts
+
+            service.getOpeningCounts() shouldBe counts
+        }
+    }
+
+    describe("updateNote") {
+        it("게임이 없으면 GameNotFoundException") {
+            coEvery { gameRepository.findById(999L) } returns null
+            shouldThrow<GameNotFoundException> { service.updateNote(999L, "애칭", null) }
+        }
+
+        it("정리된 애칭·메모를 저장하고 돌려준다") {
+            coEvery { gameRepository.findById(1L) } returns createGame(1L, "note")
+            coEvery { gameRepository.updateNote(1L, GameNote("역전승", "퀸 희생 복기")) } returns Unit
+
+            service.updateNote(1L, " 역전승 ", "퀸 희생 복기") shouldBe GameNote("역전승", "퀸 희생 복기")
         }
     }
 })
