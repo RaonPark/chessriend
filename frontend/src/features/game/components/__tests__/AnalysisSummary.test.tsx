@@ -75,4 +75,33 @@ describe('AnalysisSummary — cp loss', () => {
     expect(screen.getByRole('button', { name: 'cp loss 설명' })).toHaveFocus()
     expect(screen.getByRole('tooltip')).toBeInTheDocument()
   })
+
+  describe('툴팁 위치', () => {
+    function mockButtonRect(rect: Partial<DOMRect>) {
+      const help = screen.getByRole('button', { name: 'cp loss 설명' })
+      help.getBoundingClientRect = () => ({ top: 0, bottom: 0, left: 0, right: 0, width: 16, height: 16, x: 0, y: 0, toJSON: () => ({}), ...rect }) as DOMRect
+      return help
+    }
+
+    it('아래 공간이 넉넉하면 아래로 펼친다', async () => {
+      renderSummary()
+      const help = mockButtonRect({ top: 100, bottom: 116, left: 100, right: 116 })
+      await userEvent.hover(help)
+      expect(screen.getByRole('tooltip')).toHaveAttribute('data-placement', 'bottom-start')
+    })
+
+    it('화면 아래쪽에 있으면 위로 펼친다 (화면 밖으로 안 나가게)', async () => {
+      renderSummary()
+      const help = mockButtonRect({ top: window.innerHeight - 40, bottom: window.innerHeight - 24, left: 100, right: 116 })
+      await userEvent.hover(help)
+      expect(screen.getByRole('tooltip')).toHaveAttribute('data-placement', 'top-start')
+    })
+
+    it('화면 오른쪽 끝에 있으면 왼쪽으로 펼친다', async () => {
+      renderSummary()
+      const help = mockButtonRect({ top: 100, bottom: 116, left: window.innerWidth - 30, right: window.innerWidth - 14 })
+      await userEvent.hover(help)
+      expect(screen.getByRole('tooltip')).toHaveAttribute('data-placement', 'bottom-end')
+    })
+  })
 })

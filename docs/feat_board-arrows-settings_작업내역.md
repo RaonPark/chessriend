@@ -267,3 +267,17 @@
 ### Key files
 - `features/game/stores/boardStore.ts` (`makeMove`), `features/game/components/CommentPanel.tsx`
 - 테스트: `boardStore.test.ts`(+4, 기존 e2-e4 분기 테스트 2개를 d2-d4로 수정), `CommentPanel.test.tsx`(+4)
+
+## 16. fix: cp loss `?` 툴팁이 화면 아래로 잘리던 문제
+
+### What
+- 툴팁이 항상 버튼 아래(`top-full`)로 펼쳐져서, 아래쪽 대국자 바의 `?`는 화면 밖으로 잘렸음
+- 열 때(호버·포커스) 버튼 위치를 재서 방향 선택
+  - 아래 공간이 툴팁 높이(약 200px)보다 작으면 위로
+  - 오른쪽 공간이 툴팁 너비(256px)보다 작으면 왼쪽으로 정렬
+  - `data-placement`: `bottom-start` / `bottom-end` / `top-start` / `top-end`
+- 확인: 1280×800, 1440×760에서 아래쪽 바 → `top-start`로 화면 안에 들어옴. 1280×1000에서는 공간이 있어 아래로
+
+### Key files
+- `features/game/components/AnalysisSummary.tsx` (`CpLossHelp`, `choosePlacement`)
+- 테스트: `AnalysisSummary.test.tsx` (+3)
