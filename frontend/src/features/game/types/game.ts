@@ -130,11 +130,29 @@ export interface GameResponse {
   analysisSummary?: AnalysisSummaryResponse | null
 }
 
+/** 결과 필터 (소유자 관점) */
+export type GameOutcomeFilter = 'WIN' | 'LOSS' | 'DRAW'
+
+/** 레이팅 구간 필터. UNRATED = 레이팅 없음 */
+export type RatingBand =
+  | 'UNDER_1200'
+  | 'FROM_1200_TO_1499'
+  | 'FROM_1500_TO_1799'
+  | 'FROM_1800_TO_2099'
+  | 'FROM_2100'
+  | 'UNRATED'
+
+/** 레이팅 구간을 누구 기준으로 볼지 */
+export type RatingBasis = 'OPPONENT' | 'ME'
+
 export interface GameFilter {
   page?: number
   size?: number
   source?: GameSource
   timeCategory?: TimeCategory
+  outcome?: GameOutcomeFilter
+  ratingBand?: RatingBand
+  ratingBasis?: RatingBasis
 }
 
 export interface ImportParams {

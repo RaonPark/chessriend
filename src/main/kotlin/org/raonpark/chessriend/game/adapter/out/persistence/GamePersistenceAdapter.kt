@@ -5,7 +5,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.reactive.asFlow
 import kotlinx.coroutines.reactor.awaitSingle
+import org.jooq.Condition
 import org.jooq.DSLContext
+import org.jooq.Field
 import org.jooq.JSONB
 import org.jooq.conf.ParamType
 import org.jooq.impl.DSL
@@ -62,15 +64,10 @@ class GamePersistenceAdapter(
         executeUpdate(query)
     }
 
-    override fun findAll(offset: Int, limit: Int, source: GameSource?, timeCategory: TimeCategory?): Flow<Game> {
-        var query = dsl.select(DSL.asterisk())
+    override fun findAll(offset: Int, limit: Int, criteria: GameSearchCriteria): Flow<Game> {
+        val finalQuery = dsl.select(DSL.asterisk())
             .from(GAMES)
-            .where(DSL.trueCondition())
-
-        source?.let { query = query.and(GAMES.SOURCE.eq(it.name)) }
-        timeCategory?.let { query = query.and(GAMES.TIME_CATEGORY.eq(it.name)) }
-
-        val finalQuery = query
+            .where(conditionOf(criteria))
             .orderBy(GAMES.PLAYED_AT.desc())
             .limit(limit)
             .offset(offset)
@@ -102,18 +99,59 @@ class GamePersistenceAdapter(
             }.all().asFlow().map { toDomain(it) }
     }
 
-    override suspend fun count(source: GameSource?, timeCategory: TimeCategory?): Long {
-        var query = dsl.selectCount()
+    override suspend fun count(criteria: GameSearchCriteria): Long {
+        val query = dsl.selectCount()
             .from(GAMES)
-            .where(DSL.trueCondition())
-
-        source?.let { query = query.and(GAMES.SOURCE.eq(it.name)) }
-        timeCategory?.let { query = query.and(GAMES.TIME_CATEGORY.eq(it.name)) }
+            .where(conditionOf(criteria))
 
         return bindQuery(query)
             .map { row, _ -> row.get(0, Long::class.java)!! }
             .one()
             .awaitSingle()
+    }
+
+    // 소유자가 백/흑인지: 이름과 owner_username을 대소문자 무시 비교 (owner가 빈 문자열이면 둘 다 false)
+    private val ownerIsWhite: Condition =
+        GAMES.OWNER_USERNAME.ne("").and(DSL.lower(GAMES.WHITE_NAME).eq(DSL.lower(GAMES.OWNER_USERNAME)))
+    private val ownerIsBlack: Condition =
+        GAMES.OWNER_USERNAME.ne("").and(DSL.lower(GAMES.BLACK_NAME).eq(DSL.lower(GAMES.OWNER_USERNAME)))
+
+    /** 검색 조건 → WHERE 절. bindQuery가 null 파라미터를 못 받으므로 null 비교는 isNull()만 사용 */
+    private fun conditionOf(criteria: GameSearchCriteria): Condition {
+        var condition: Condition = DSL.trueCondition()
+        criteria.source?.let { condition = condition.and(GAMES.SOURCE.eq(it.name)) }
+        criteria.timeCategory?.let { condition = condition.and(GAMES.TIME_CATEGORY.eq(it.name)) }
+        criteria.outcome?.let { condition = condition.and(outcomeCondition(it)) }
+        criteria.ratingBand?.let { condition = condition.and(ratingCondition(it, criteria.ratingBasis)) }
+        return condition
+    }
+
+    private fun outcomeCondition(outcome: OwnerOutcome): Condition {
+        val whiteWin = GAMES.RESULT.eq(GameResult.WHITE_WIN.name)
+        val blackWin = GAMES.RESULT.eq(GameResult.BLACK_WIN.name)
+        return when (outcome) {
+            OwnerOutcome.WIN -> ownerIsWhite.and(whiteWin).or(ownerIsBlack.and(blackWin))
+            OwnerOutcome.LOSS -> ownerIsWhite.and(blackWin).or(ownerIsBlack.and(whiteWin))
+            OwnerOutcome.DRAW -> GAMES.RESULT.eq(GameResult.DRAW.name)
+        }
+    }
+
+    private fun ratingCondition(band: RatingBand, basis: RatingBasis): Condition {
+        // 기준 쪽 레이팅: 상대 = 소유자 반대편, 나 = 소유자 쪽. 소유자가 없으면 레이팅 조건에 걸리지 않음
+        val (whenOwnerWhite, whenOwnerBlack) = when (basis) {
+            RatingBasis.OPPONENT -> GAMES.BLACK_RATING to GAMES.WHITE_RATING
+            RatingBasis.ME -> GAMES.WHITE_RATING to GAMES.BLACK_RATING
+        }
+        val rating: Field<Int?> = DSL.case_()
+            .`when`(ownerIsWhite, whenOwnerWhite)
+            .`when`(ownerIsBlack, whenOwnerBlack)
+        val hasOwnerSide = ownerIsWhite.or(ownerIsBlack)
+        if (band == RatingBand.UNRATED) return hasOwnerSide.and(rating.isNull)
+
+        var condition = hasOwnerSide.and(rating.isNotNull)
+        band.min?.let { condition = condition.and(rating.ge(it)) }
+        band.max?.let { condition = condition.and(rating.le(it)) }
+        return condition
     }
 
     private fun bindQuery(query: org.jooq.Query): DatabaseClient.GenericExecuteSpec {

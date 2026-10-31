@@ -8,6 +8,12 @@ export async function fetchGames(filters: GameFilter = {}): Promise<PagedRespons
   if (filters.size != null) params.set('size', String(filters.size))
   if (filters.source) params.set('source', filters.source)
   if (filters.timeCategory) params.set('timeCategory', filters.timeCategory)
+  if (filters.outcome) params.set('outcome', filters.outcome)
+  // 기준은 구간이 있을 때만 의미가 있음
+  if (filters.ratingBand) {
+    params.set('ratingBand', filters.ratingBand)
+    params.set('ratingBasis', filters.ratingBasis ?? 'OPPONENT')
+  }
 
   const query = params.toString()
   return apiFetch(`/api/games${query ? `?${query}` : ''}`)

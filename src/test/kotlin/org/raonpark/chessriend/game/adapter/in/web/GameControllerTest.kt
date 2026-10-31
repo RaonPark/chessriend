@@ -172,7 +172,7 @@ class GameControllerTest {
         @Primary
         fun getGameUseCase(): GetGameUseCase {
             val mock = mockk<GetGameUseCase>()
-            coEvery { mock.getGames(0, 20, null, null) } returns PagedResult(
+            coEvery { mock.getGames(0, 20, GameSearchCriteria()) } returns PagedResult(
                 content = listOf(testGame),
                 page = 0,
                 size = 20,

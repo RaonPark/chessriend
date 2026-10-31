@@ -4,8 +4,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.flow.toList
 import org.raonpark.chessriend.game.domain.GameAnnotation
 import org.raonpark.chessriend.game.domain.Game
-import org.raonpark.chessriend.game.domain.GameSource
-import org.raonpark.chessriend.game.domain.TimeCategory
+import org.raonpark.chessriend.game.domain.GameSearchCriteria
 import org.raonpark.chessriend.game.port.`in`.GetGameUseCase
 import org.raonpark.chessriend.game.port.out.GameRepository
 import org.raonpark.chessriend.shared.domain.PagedResult
@@ -47,12 +46,11 @@ class GetGameService(
     override suspend fun getGames(
         page: Int,
         size: Int,
-        source: GameSource?,
-        timeCategory: TimeCategory?,
+        criteria: GameSearchCriteria,
     ): PagedResult<Game> {
         val offset = page * size
-        val content = gameRepository.findAll(offset, size, source, timeCategory).toList()
-        val totalElements = gameRepository.count(source, timeCategory)
+        val content = gameRepository.findAll(offset, size, criteria).toList()
+        val totalElements = gameRepository.count(criteria)
         val totalPages = if (totalElements == 0L) 0 else ((totalElements + size - 1) / size).toInt()
 
         return PagedResult(

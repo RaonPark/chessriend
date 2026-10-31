@@ -7,30 +7,16 @@ import { useConfirm } from '@/shared/hooks/useConfirm'
 import { useGames } from '../api/queries'
 import { useDeleteGames, useDeleteAllGames } from '../api/mutations'
 import { GameListItem } from './GameListItem'
-import type { GameSource, TimeCategory } from '../types/game'
-
-const TIME_CATEGORIES: TimeCategory[] = [
-  'ULTRABULLET', 'BULLET', 'BLITZ', 'RAPID', 'CLASSICAL', 'CORRESPONDENCE',
-]
-
-const SOURCES: GameSource[] = ['LICHESS', 'CHESS_COM']
-
-const TIME_CATEGORY_LABELS: Record<TimeCategory, string> = {
-  ULTRABULLET: '울트라불릿',
-  BULLET: '불릿',
-  BLITZ: '블리츠',
-  RAPID: '래피드',
-  CLASSICAL: '클래시컬',
-  CORRESPONDENCE: '통신',
-}
+import { GameFilters } from './GameFilters'
+import { EMPTY_FILTERS, hasActiveFilters, type GameFilterValue } from '../utils/gameFilters'
 
 export function GameListPage() {
   const [page, setPage] = useState(0)
-  const [source, setSource] = useState<GameSource | undefined>()
-  const [timeCategory, setTimeCategory] = useState<TimeCategory | undefined>()
+  const [filters, setFilters] = useState<GameFilterValue>(EMPTY_FILTERS)
+  const filtered = hasActiveFilters(filters)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
-  const { data, isLoading, error, refetch } = useGames({ page, size: 20, source, timeCategory })
+  const { data, isLoading, error, refetch } = useGames({ page, size: 20, ...filters })
   const deleteGamesMutation = useDeleteGames()
   const deleteAllMutation = useDeleteAllGames()
   const { confirm, dialogProps } = useConfirm()
@@ -100,53 +86,43 @@ export function GameListPage() {
       </div>
 
       {/* 필터 */}
-      <div className="space-y-3">
-        {/* 플랫폼 필터 */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-amber-700 dark:text-amber-400">플랫폼</span>
-          <div className="flex overflow-hidden rounded-lg border border-amber-200 dark:border-gray-600">
-            {[{ value: undefined, label: '전체' }, ...SOURCES.map((s) => ({ value: s, label: s === 'LICHESS' ? 'Lichess' : 'Chess.com' }))].map(({ value, label }) => (
-              <button
-                key={label}
-                onClick={() => { setSource(value as GameSource | undefined); setPage(0) }}
-                className={`px-3 py-1.5 text-sm font-medium transition ${
-                  source === value
-                    ? 'bg-amber-800 text-amber-50 dark:bg-amber-700'
-                    : 'bg-white text-amber-800 hover:bg-amber-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+      <GameFilters
+        value={filters}
+        onChange={(next) => {
+          setFilters(next)
+          setPage(0)
+          setSelectedIds(new Set())
+        }}
+      />
+
+      {filtered && data && (
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-gray-500 dark:text-gray-400">조건에 맞는 게임 {data.totalElements}개</span>
+          <button
+            type="button"
+            onClick={() => {
+              setFilters(EMPTY_FILTERS)
+              setPage(0)
+            }}
+            className="font-medium text-amber-700 hover:underline dark:text-amber-400"
+          >
+            필터 초기화
+          </button>
         </div>
-        {/* 시간 제한 필터 */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-amber-700 dark:text-amber-400">시간</span>
-          <div className="flex flex-wrap gap-1">
-            {[{ value: undefined, label: '전체' }, ...TIME_CATEGORIES.map((tc) => ({ value: tc, label: TIME_CATEGORY_LABELS[tc] }))].map(({ value, label }) => (
-              <button
-                key={label}
-                onClick={() => { setTimeCategory(value as TimeCategory | undefined); setPage(0) }}
-                className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-                  timeCategory === value
-                    ? 'bg-amber-800 text-amber-50 dark:bg-amber-700'
-                    : 'bg-white text-amber-800 hover:bg-amber-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
-                } border border-amber-200 dark:border-gray-600`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* 게임 목록 */}
       {isLoading && <LoadingSpinner />}
 
       {error && <ErrorMessage message="게임 목록을 불러오지 못했습니다." onRetry={() => refetch()} />}
 
-      {data && data.content.length === 0 && (
+      {data && data.content.length === 0 && filtered && (
+        <div className="py-12 text-center text-gray-500 dark:text-gray-400">
+          <p>조건에 맞는 게임이 없습니다.</p>
+        </div>
+      )}
+
+      {data && data.content.length === 0 && !filtered && (
         <div className="py-12 text-center text-gray-500 dark:text-gray-400">
           <p>아직 가져온 게임이 없습니다.</p>
           <Link to="/import" className="mt-2 inline-block text-indigo-600 hover:underline dark:text-indigo-400">

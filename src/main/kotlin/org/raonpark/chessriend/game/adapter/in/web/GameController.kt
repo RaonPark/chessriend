@@ -6,6 +6,10 @@ import kotlinx.coroutines.flow.onCompletion
 import org.raonpark.chessriend.game.domain.Color
 import org.raonpark.chessriend.game.domain.GameSource
 import org.raonpark.chessriend.game.domain.TimeCategory
+import org.raonpark.chessriend.game.domain.GameSearchCriteria
+import org.raonpark.chessriend.game.domain.OwnerOutcome
+import org.raonpark.chessriend.game.domain.RatingBand
+import org.raonpark.chessriend.game.domain.RatingBasis
 import org.raonpark.chessriend.game.port.`in`.CreateGameFromPgnUseCase
 import org.raonpark.chessriend.game.port.`in`.GetGameAnalysisUseCase
 import org.raonpark.chessriend.game.port.`in`.GetGameUseCase
@@ -31,8 +35,18 @@ class GameController(
         @RequestParam(defaultValue = "20") size: Int,
         @RequestParam(required = false) source: GameSource?,
         @RequestParam(required = false) timeCategory: TimeCategory?,
+        @RequestParam(required = false) outcome: OwnerOutcome?,
+        @RequestParam(required = false) ratingBand: RatingBand?,
+        @RequestParam(defaultValue = "OPPONENT") ratingBasis: RatingBasis,
     ): PagedGameResponse {
-        val result = getGameUseCase.getGames(page, size, source, timeCategory)
+        val criteria = GameSearchCriteria(
+            source = source,
+            timeCategory = timeCategory,
+            outcome = outcome,
+            ratingBand = ratingBand,
+            ratingBasis = ratingBasis,
+        )
+        val result = getGameUseCase.getGames(page, size, criteria)
         // 페이지의 게임들 분석 요약을 한 번에 조회 (N+1 방지)
         val summaries = getGameAnalysisUseCase.findSummaries(result.content.mapNotNull { it.id })
         return PagedGameResponse(

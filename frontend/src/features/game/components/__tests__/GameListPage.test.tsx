@@ -125,4 +125,67 @@ describe('GameListPage', () => {
     expect(screen.getByText('래피드')).toBeInTheDocument()
     expect(screen.getByText('불릿')).toBeInTheDocument()
   })
+
+  describe('결과·레이팅 필터', () => {
+    // 요청된 쿼리스트링을 기록하는 핸들러
+    function recordRequests(response = createPagedResponse(games, { totalElements: 3 })) {
+      const urls: URL[] = []
+      server.use(
+        http.get('/api/games', ({ request }) => {
+          urls.push(new URL(request.url))
+          return HttpResponse.json(response)
+        }),
+      )
+      return urls
+    }
+
+    it('결과 필터(패배)를 누르면 outcome=LOSS로 다시 조회한다', async () => {
+      const urls = recordRequests()
+      renderWithProviders(<GameListPage />)
+      await userEvent.click(await screen.findByRole('radio', { name: '패배' }))
+
+      await waitFor(() => expect(urls.at(-1)?.searchParams.get('outcome')).toBe('LOSS'))
+      expect(screen.getByRole('radio', { name: '패배' })).toHaveAttribute('aria-checked', 'true')
+    })
+
+    it('레이팅 구간을 고르면 기본은 상대 레이팅 기준으로 조회한다', async () => {
+      const urls = recordRequests()
+      renderWithProviders(<GameListPage />)
+      await userEvent.click(await screen.findByRole('radio', { name: '1500–1799' }))
+
+      await waitFor(() => expect(urls.at(-1)?.searchParams.get('ratingBand')).toBe('FROM_1500_TO_1799'))
+      expect(urls.at(-1)?.searchParams.get('ratingBasis')).toBe('OPPONENT')
+    })
+
+    it('"나" 기준으로 바꾸고 "레이팅 없음"을 고를 수 있다', async () => {
+      const urls = recordRequests()
+      renderWithProviders(<GameListPage />)
+      await userEvent.click(await screen.findByRole('radio', { name: '내 레이팅' }))
+      await userEvent.click(screen.getByRole('radio', { name: '레이팅 없음' }))
+
+      await waitFor(() => expect(urls.at(-1)?.searchParams.get('ratingBand')).toBe('UNRATED'))
+      expect(urls.at(-1)?.searchParams.get('ratingBasis')).toBe('ME')
+    })
+
+    it('필터를 쓰면 조건에 맞는 게임 수와 초기화 버튼을 보여주고, 초기화하면 조건이 사라진다', async () => {
+      const urls = recordRequests()
+      renderWithProviders(<GameListPage />)
+      await userEvent.click(await screen.findByRole('radio', { name: '승리' }))
+
+      expect(await screen.findByText('조건에 맞는 게임 3개')).toBeInTheDocument()
+      await userEvent.click(screen.getByRole('button', { name: '필터 초기화' }))
+
+      await waitFor(() => expect(urls.at(-1)?.searchParams.get('outcome')).toBeNull())
+      expect(screen.queryByRole('button', { name: '필터 초기화' })).not.toBeInTheDocument()
+    })
+
+    it('필터 결과가 0개면 "가져온 게임 없음"이 아니라 조건에 맞는 게임이 없다고 안내한다', async () => {
+      recordRequests(createPagedResponse([]))
+      renderWithProviders(<GameListPage />)
+      await userEvent.click(await screen.findByRole('radio', { name: '무승부' }))
+
+      expect(await screen.findByText('조건에 맞는 게임이 없습니다.')).toBeInTheDocument()
+      expect(screen.queryByText('아직 가져온 게임이 없습니다.')).not.toBeInTheDocument()
+    })
+  })
 })
