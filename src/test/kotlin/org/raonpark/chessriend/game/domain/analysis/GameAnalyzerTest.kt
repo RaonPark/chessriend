@@ -34,6 +34,21 @@ class GameAnalyzerTest : DescribeSpec({
             result[2].classification shouldBe "inaccuracy" // 13.7%p
         }
 
+        it("메이트로 게임을 끝낸 수(수 직후 mate 0)는 최선 — cpLoss 0, 분류 없음 (백·흑 모두)") {
+            // UCI는 메이트된 포지션을 "mate 0"으로만 줘서 부호(누가 이겼는지)가 없음 → 방금 둔 쪽이 메이트시킨 것
+            val white = GameAnalyzer.computeClassifications(
+                listOf(EvalScore(null, 1), EvalScore(null, 0)), listOf(move(Color.WHITE, "Bxe7#")), listOf(null),
+            )
+            white[0].cpLoss shouldBe 0
+            white[0].classification.shouldBeNull()
+
+            val black = GameAnalyzer.computeClassifications(
+                listOf(EvalScore(null, -1), EvalScore(null, 0)), listOf(move(Color.BLACK, "Qh4#")), listOf(null),
+            )
+            black[0].cpLoss shouldBe 0
+            black[0].classification.shouldBeNull()
+        }
+
         it("메이트 점수 전환을 처리(큰 손실 → blunder)") {
             val moves = listOf(move(Color.WHITE, "f3"))
             val evals = listOf(EvalScore(500, null), EvalScore(null, -2))

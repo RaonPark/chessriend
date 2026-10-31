@@ -212,3 +212,30 @@
 - `db/migration/V6__reclassify_pgn_time_category.sql`
 - `frontend/.../utils/timeCategory.ts`(신규), `GameFilters.tsx`, `GameListItem.tsx`, `GameInfoPanel.tsx`, `types/game.ts`
 - 테스트: `TimeControlTest`(+7), `CreateGameFromPgnServiceTest`(+1), `ChesslibAdapterTest`(Event), `timeCategory.test.ts`(2)
+
+## 9. fix: 체크메이트로 끝낸 수가 Blunder로 나오던 문제 (+ 평균 cp loss 왜곡)
+
+### 증상
+- Evergreen game(PGN)의 마지막 수 **24.Bxe7#**이 blunder (cpLoss 19999)
+- 이긴 Anderssen의 평균 cp loss(113)가 진 Dufresne(70)보다 높게 나옴
+
+### 원인
+- UCI는 메이트된 포지션을 **부호 없는 `mate 0`**으로 준다. 백 관점으로 뒤집어도 0이라 **누가 이겼는지 정보가 사라짐**
+- 분석기(`MoveClassifier.evalToCp`)는 `mate 0`을 "백이 메이트당함"(-10000)으로 해석
+  → 백이 메이트시킨 수가 최대 손실로 계산됨
+- 평균 cp loss 계산(백엔드 `GameAnalysisSummary`, 프론트 `cpLoss.ts`)도 같은 이유로 그 수를 2000점 손실로 반영
+
+### What
+- 규칙: **수를 둔 직후 평가가 `mate 0`이면 방금 둔 쪽이 메이트시킨 것**
+  - 분류: `MoveClassifier.evalAfterMoveToCp(score, moverIsWhite)`를 `GameAnalyzer`에 적용
+  - 평균 cp loss: 백엔드 `GameAnalysisSummary`, 프론트 `moveCpLoss` 모두 적용
+- **V7 마이그레이션**: 이미 저장된 분석에서 수 직후 `mate 0`인 수를 cpLoss 0 + 분류 없음으로 보정 (재분석 불필요)
+- 로컬 DB 확인 (Evergreen)
+  - 24.Bxe7# → cpLoss 0, 분류 없음
+  - 평균 cp loss: Anderssen 113 → **30**, Dufresne 70 (그대로)
+
+### Key files
+- `domain/analysis/MoveClassifier.kt`, `GameAnalyzer.kt`, `GameAnalysisSummary.kt`
+- `frontend/.../utils/cpLoss.ts`
+- `db/migration/V7__fix_checkmate_move_classification.sql`
+- 테스트: `GameAnalyzerTest`(+1, 백·흑), `GameAnalysisSummaryTest`(+1), `cpLoss.test.ts`(+1)

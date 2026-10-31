@@ -53,6 +53,13 @@ class GameAnalysisSummaryTest : DescribeSpec({
             GameAnalysisSummary.from(analysis(keepMating)).white.acpl shouldBe 0
         }
 
+        it("메이트로 끝낸 수(수 직후 mate 0)는 손실 0 — 메이트시킨 쪽 평균이 부풀지 않음") {
+            val whiteMates = MoveEvaluationData(0, EvalScore(mate = 1), EvalScore(mate = 0), 19999, "blunder")
+            GameAnalysisSummary.from(analysis(whiteMates)).white.acpl shouldBe 0
+            val blackMates = MoveEvaluationData(1, EvalScore(mate = -1), EvalScore(mate = 0), 19999, "blunder")
+            GameAnalysisSummary.from(analysis(blackMates)).black.acpl shouldBe 0
+        }
+
         it("해당 색의 평가가 없으면 acpl은 null") {
             val summary = GameAnalysisSummary.from(analysis(ev(0, 30)))
             summary.white.acpl shouldBe 30

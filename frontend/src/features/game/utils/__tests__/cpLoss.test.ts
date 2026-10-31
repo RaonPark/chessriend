@@ -29,4 +29,9 @@ describe('moveCpLoss', () => {
   it('메이트 수순을 계속 진행하면 손실 0', () => {
     expect(moveCpLoss(mate(3), mate(2), true)).toBe(0)
   })
+
+  it('메이트로 끝낸 수(수 직후 mate 0)는 손실 0 — 0에는 부호가 없어 방금 둔 쪽이 이긴 것으로 본다', () => {
+    expect(moveCpLoss(mate(1), mate(0), true)).toBe(0)
+    expect(moveCpLoss(mate(-1), mate(0), false)).toBe(0)
+  })
 })

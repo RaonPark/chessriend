@@ -28,13 +28,13 @@ object GameAnalyzer {
             val evalBefore = positionEvals.getOrNull(i) ?: continue
             val evalAfter = positionEvals.getOrNull(i + 1) ?: continue
 
+            // 백의 수: 점수가 떨어지면 손실 / 흑의 수: 백 관점 점수가 올라가면 흑에게 손실
+            val isWhite = moves[i].color == Color.WHITE
             val cpBefore = MoveClassifier.evalToCp(evalBefore)
-            val cpAfter = MoveClassifier.evalToCp(evalAfter)
+            val cpAfter = MoveClassifier.evalAfterMoveToCp(evalAfter, moverIsWhite = isWhite)
             val winBefore = MoveClassifier.winPercent(cpBefore)
             val winAfter = MoveClassifier.winPercent(cpAfter)
 
-            // 백의 수: 점수가 떨어지면 손실 / 흑의 수: 백 관점 점수가 올라가면 흑에게 손실
-            val isWhite = moves[i].color == Color.WHITE
             val cpLoss = max(0, if (isWhite) cpBefore - cpAfter else cpAfter - cpBefore)
             val winLoss = max(0.0, if (isWhite) winBefore - winAfter else winAfter - winBefore)
 

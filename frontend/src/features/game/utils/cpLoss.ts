@@ -11,6 +11,7 @@ function clampedCp(score: EvalScore): number {
 /** 한 수의 centipawn loss (백 관점 평가 → 둔 쪽 기준 손실, 0 이상) */
 export function moveCpLoss(evalBefore: EvalScore, evalAfter: EvalScore, isWhite: boolean): number {
   const before = clampedCp(evalBefore)
-  const after = clampedCp(evalAfter)
+  // 수 직후 mate 0 = 방금 둔 쪽이 메이트시킴 (UCI mate 0에는 부호가 없어 승자 정보가 사라짐)
+  const after = evalAfter.mate === 0 ? (isWhite ? CP_CEILING : -CP_CEILING) : clampedCp(evalAfter)
   return Math.max(0, isWhite ? before - after : after - before)
 }
