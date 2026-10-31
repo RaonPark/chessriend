@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { useBoardStore } from '../stores/boardStore'
+import { useBoardStore, selectHasUnsavedVariationMoves } from '../stores/boardStore'
 import type { MoveClassification, VariationResponse } from '../types/game'
 import { formatNumberedMove, variationMovePly } from '../utils/moveNumber'
 
@@ -19,6 +19,7 @@ export function MoveList() {
   const deleteSavedVariation = useBoardStore((s) => s.deleteSavedVariation)
   const saveCurrentVariation = useBoardStore((s) => s.saveCurrentVariation)
   const activeVariationIndex = useBoardStore((s) => s.activeVariationIndex)
+  const hasUnsavedVariationMoves = useBoardStore(selectHasUnsavedVariationMoves)
   const classificationByMove = useBoardStore((s) => s.classificationByMove)
   const analysis = useBoardStore((s) => s.analysis)
   const activeRef = useRef<HTMLButtonElement>(null)
@@ -123,7 +124,7 @@ export function MoveList() {
                     <div className="mb-1.5 flex items-center justify-between">
                       <span className="text-[10px] font-medium text-indigo-500 dark:text-indigo-400">변형선</span>
                       <div className="flex gap-1">
-                        {activeVariationIndex < 0 && (
+                        {hasUnsavedVariationMoves && (
                           <button
                             onClick={() => saveCurrentVariation()}
                             className="rounded px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 hover:bg-emerald-100 dark:text-emerald-400 dark:hover:bg-emerald-900/30"

@@ -92,6 +92,32 @@ describe('CommentPanel', () => {
     expect(screen.getByText('메모 있음')).toBeInTheDocument()
   })
 
+  describe('저장된 변형선을 이어서 둔 경우', () => {
+    beforeEach(() => {
+      const variation = { startMoveIndex: 0, moves: ['d5'], comment: '', moveComments: {} }
+      useBoardStore.getState().loadAnnotations({ moveComments: {}, variations: [variation], analysis: DUMMY_ANALYSIS })
+      useBoardStore.getState().enterSavedVariation(useBoardStore.getState().savedVariations[0], 0)
+      useBoardStore.getState().goToVariationMove(0)
+      useBoardStore.getState().makeMove('e4', 'd5', undefined) // 2.exd5 (이어서 둔 수)
+    })
+
+    it('이어 둔 수에 메모를 저장하면 변형선도 갱신된다', async () => {
+      const onPersist = vi.fn()
+      renderPanel({ onPersist })
+
+      expect(screen.getByText('메모를 저장하면 변형선도 함께 저장됩니다')).toBeInTheDocument()
+      await userEvent.click(screen.getByText('메모 추가...'))
+      await userEvent.type(screen.getByRole('textbox'), '폰을 잡는다')
+      await userEvent.click(screen.getByText('저장'))
+
+      const saved = useBoardStore.getState().savedVariations
+      expect(saved).toHaveLength(1)
+      expect(saved[0].moves).toEqual(['d5', 'exd5'])
+      expect(saved[0].moveComments).toEqual({ '1': '폰을 잡는다' })
+      expect(onPersist).toHaveBeenCalledTimes(1)
+    })
+  })
+
   describe('저장 전 변형선', () => {
     beforeEach(() => {
       useBoardStore.getState().goToMove(0)

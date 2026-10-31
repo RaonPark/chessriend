@@ -71,6 +71,23 @@ function arrowMapAt(s: BoardState, target: ArrowTarget): MoveArrows {
   return s.savedVariations[s.activeVariationIndex]?.moveArrows ?? {}
 }
 
+/**
+ * 현재 변형선에 저장 안 된 수가 있는지 ("저장" 버튼 표시 기준)
+ * - 새 변형선: 수가 하나라도 있으면
+ * - 저장된 변형선: 끝에서 이어서 둔 수가 있으면 (중간 분기는 makeMove에서 새 변형선으로 전환됨)
+ */
+export function selectHasUnsavedVariationMoves(s: BoardState): boolean {
+  if (!s.isInVariation || s.variationMoves.length === 0) return false
+  if (s.activeVariationIndex < 0) return true
+  const saved = s.savedVariations[s.activeVariationIndex]
+  return saved != null && s.variationMoves.length > saved.moves.length
+}
+
+/** 인덱스 키(수 인덱스)가 length 미만인 항목만 남김 */
+function keepIndicesBelow<T>(record: Record<string, T> | undefined, length: number): Record<string, T> {
+  return Object.fromEntries(Object.entries(record ?? {}).filter(([k]) => Number(k) < length))
+}
+
 /** 현재 포지션에 그려진 화살표 */
 export function selectCurrentArrows(s: BoardState): BoardArrow[] {
   const { target, key } = arrowLocation(s)
@@ -239,7 +256,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   },
 
   makeMove: (from, to, promotion) => {
-    const { currentFen, isInVariation, variationFens, variationMoves, variationIndex, currentIndex } = get()
+    const { currentFen, isInVariation, variationFens, variationMoves, variationIndex, currentIndex, activeVariationIndex, savedVariations } = get()
 
     const chess = new Chess(currentFen)
     const result = chess.move({ from, to, promotion: promotion ?? 'q' })
@@ -248,15 +265,27 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     const newFen = chess.fen()
 
     if (isInVariation) {
+      // 변형선의 다음 수와 같은 수 → 새로 만들지 않고 한 수 앞으로
+      if (variationMoves[variationIndex + 1] === result.san) {
+        set({ variationIndex: variationIndex + 1, currentFen: variationFens[variationIndex + 2] })
+        return true
+      }
+
       // 이미 variation 중 → variation에 수 추가
       const trimmedMoves = variationMoves.slice(0, variationIndex + 1)
       const trimmedFens = variationFens.slice(0, variationIndex + 2)
-      // 잘려 나간 수들의 임시 화살표도 버림
-      const draftVariationArrows = Object.fromEntries(
-        Object.entries(get().draftVariationArrows).filter(([k]) => Number(k) < trimmedMoves.length),
-      )
+
+      // 저장된 변형선의 중간에서 다른 수 → 원본은 그대로 두고 새(미저장) 변형선으로 분기.
+      // 끝에서 이어서 두는 경우는 같은 변형선에 머물고 "저장" 시 갱신된다.
+      const saved = activeVariationIndex >= 0 ? savedVariations[activeVariationIndex] : undefined
+      const branchesFromSaved = saved != null && trimmedMoves.length < saved.moves.length
+      const draftVariationArrows = branchesFromSaved
+        ? keepIndicesBelow(saved.moveArrows, trimmedMoves.length)
+        : keepIndicesBelow(get().draftVariationArrows, trimmedMoves.length) // 잘려 나간 수들의 임시 화살표도 버림
+
       set({
         draftVariationArrows,
+        ...(branchesFromSaved ? { activeVariationIndex: -1 } : {}),
         variationMoves: [...trimmedMoves, result.san],
         variationFens: [...trimmedFens, newFen],
         variationIndex: trimmedMoves.length,
@@ -332,9 +361,19 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   },
 
   saveCurrentVariation: (comment = '') => {
-    const { isInVariation, variationStartIndex, variationMoves, savedVariations, draftVariationArrows, activeVariationIndex } = get()
-    // 이미 저장된 변형선 안이면 중복 저장하지 않음
-    if (!isInVariation || variationMoves.length === 0 || activeVariationIndex >= 0) return
+    const state = get()
+    const { variationStartIndex, variationMoves, savedVariations, draftVariationArrows, activeVariationIndex } = state
+    // 저장할 수가 없으면(이미 저장된 그대로면) 중복 저장하지 않음
+    if (!selectHasUnsavedVariationMoves(state)) return
+
+    if (activeVariationIndex >= 0) {
+      // 저장된 변형선을 끝에서 이어 둔 경우 → 같은 변형선을 갱신 (메모·화살표 인덱스는 그대로 유효)
+      const updated = [...savedVariations]
+      updated[activeVariationIndex] = { ...updated[activeVariationIndex], moves: [...variationMoves] }
+      set({ savedVariations: updated, annotationsDirty: true })
+      return
+    }
+
     const newVariation: VariationResponse = {
       startMoveIndex: variationStartIndex,
       moves: [...variationMoves],
@@ -425,7 +464,12 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     const { moveComments, savedVariations, moveArrows } = get()
     return {
       moveComments: { ...moveComments },
-      variations: [...savedVariations],
+      // 저장 안 한(이어 둔) 수에 달린 메모·화살표는 서버로 보내지 않음
+      variations: savedVariations.map((v) => ({
+        ...v,
+        moveComments: keepIndicesBelow(v.moveComments, v.moves.length),
+        moveArrows: keepIndicesBelow(v.moveArrows, v.moves.length),
+      })),
       moveArrows: { ...moveArrows },
     }
   },

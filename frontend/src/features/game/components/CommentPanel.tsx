@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useBoardStore } from '../stores/boardStore'
+import { useBoardStore, selectHasUnsavedVariationMoves } from '../stores/boardStore'
 import { formatNumberedMove, variationMovePly } from '../utils/moveNumber'
 
 interface CommentPanelProps {
@@ -20,6 +20,8 @@ export function CommentPanel({ onPersist, isPersisting }: CommentPanelProps = {}
   const setMoveComment = useBoardStore((s) => s.setMoveComment)
   const setVariationMoveComment = useBoardStore((s) => s.setVariationMoveComment)
   const saveCurrentVariation = useBoardStore((s) => s.saveCurrentVariation)
+  // 새 변형선이거나 저장된 변형선을 이어 둔 경우: 메모를 저장하면 변형선도 함께 저장
+  const hasUnsavedVariationMoves = useBoardStore(selectHasUnsavedVariationMoves)
   const analysis = useBoardStore((s) => s.analysis)
 
   // 편집 상태는 편집을 시작한 포지션 키와 묶어서 보관 → 수가 바뀌면 자동으로 편집 종료
@@ -68,7 +70,7 @@ export function CommentPanel({ onPersist, isPersisting }: CommentPanelProps = {}
   if (!canComment) return null
 
   function handleSave() {
-    if (isInDraftVariation) {
+    if (hasUnsavedVariationMoves) {
       // 빈 메모로 변형선만 저장되는 일이 없도록
       if (!draft.trim()) {
         setEditing(null)
@@ -132,7 +134,7 @@ export function CommentPanel({ onPersist, isPersisting }: CommentPanelProps = {}
         {savedComment && !isEditing && (
           <span className={`text-[10px] ${theme.accent}`}>메모 있음</span>
         )}
-        {isInDraftVariation && (
+        {hasUnsavedVariationMoves && (
           <span className={`text-[10px] ${theme.accent}`}>메모를 저장하면 변형선도 함께 저장됩니다</span>
         )}
       </div>

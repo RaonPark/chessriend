@@ -120,3 +120,23 @@
 - `features/game/utils/cpLoss.ts` — `moveCpLoss` (+ 테스트 6개)
 - `features/game/components/AnalysisSummary.tsx` — cp loss 행, `CpLossHelp` 툴팁
 - 테스트: `components/__tests__/AnalysisSummary.test.tsx` (5개)
+
+## 8. fix: 저장된 변형선을 이어서 두면 저장 버튼이 안 뜨던 문제
+
+### What
+- 저장된 변형선 **끝에서 이어서** 수를 두면 "저장" 버튼이 표시되고, 누르면 **같은 변형선이 갱신**됨 (기존 메모·화살표 유지)
+  - 이어 둔 수에 메모를 저장해도 변형선이 함께 갱신됨 (5번 결정과 같은 규칙)
+- 저장된 변형선 **중간에서 다른 수**를 두면 원본은 그대로 두고 **새(미저장) 변형선으로 분기**. 분기 지점까지의 화살표는 복사됨
+- 변형선의 **다음 수와 같은 수**를 두면 새로 만들지 않고 한 수 앞으로 이동
+- 저장 안 한(이어 둔) 수에 달린 메모·화살표는 서버로 보내는 스냅샷에서 제외
+
+### Why
+- 원인: "저장" 버튼 조건이 `activeVariationIndex < 0`(새 변형선)뿐이었음.
+  여기에 7c92333의 중복 저장 방지(저장된 변형선 안에서는 저장 무시)까지 겹쳐서, 이어 둔 수를 저장할 방법이 없었음
+- 버튼 표시 기준을 `selectHasUnsavedVariationMoves`(새 변형선이거나, 저장된 것보다 수가 많음) 하나로 통일
+- 중간 분기를 덮어쓰기로 처리하면 원본 뒷부분 수와 메모가 사라지므로, 파괴적이지 않은 새 변형선 분기를 선택
+
+### Key files
+- `features/game/stores/boardStore.ts` — `selectHasUnsavedVariationMoves`, `makeMove`, `saveCurrentVariation`, `getAnnotationsSnapshot`
+- `features/game/components/MoveList.tsx`, `CommentPanel.tsx`
+- 테스트: `boardStore.test.ts` (6개), `CommentPanel.test.tsx` (1개)
