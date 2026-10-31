@@ -11,22 +11,34 @@ import { BoardControls } from './BoardControls'
 import { EvalBar } from './EvalBar'
 import { AnalysisProgress } from './AnalysisProgress'
 import { CommentPanel } from './CommentPanel'
-import type { AnnotationResponse, MoveResponse } from '../types/game'
+import { PlayerBar } from './PlayerBar'
+import { GameInfoPanel } from './GameInfoPanel'
+import { summarizeAnalysis } from '../utils/analysisStats'
+import { getPlayerBadge } from '../utils/outcome'
+import type { GameDetailResponse } from '../types/game'
 import { ANALYSIS_DEPTH } from '../constants'
 
 interface GameViewerProps {
-  gameId: string
-  moves: MoveResponse[]
-  annotations: AnnotationResponse
-  ownerUsername: string
-  blackName: string
+  game: GameDetailResponse
   onSaveAnnotations?: () => void
   isSaving?: boolean
+  onDelete: () => void
+  isDeleting: boolean
 }
+
+type RightTab = 'moves' | 'info'
+
+const RIGHT_TABS: { id: RightTab; label: string }[] = [
+  { id: 'moves', label: '기보·메모' },
+  { id: 'info', label: '경기 정보' },
+]
 
 type AnalysisSaveMessage = { kind: 'success' | 'error'; text: string }
 
-export function GameViewer({ gameId, moves, annotations, ownerUsername, blackName, onSaveAnnotations, isSaving }: GameViewerProps) {
+export function GameViewer({ game, onSaveAnnotations, isSaving, onDelete, isDeleting }: GameViewerProps) {
+  const { id: gameId, moves, annotations, ownerUsername } = game
+  const blackName = game.black.name
+  const [tab, setTab] = useState<RightTab>('moves')
   const loadMoves = useBoardStore((s) => s.loadMoves)
   const loadAnnotations = useBoardStore((s) => s.loadAnnotations)
   const currentFen = useBoardStore((s) => s.currentFen)
@@ -122,11 +134,25 @@ export function GameViewer({ gameId, moves, annotations, ownerUsername, blackNam
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleKeyDown])
 
+  const stats = useMemo(() => (analysis ? summarizeAnalysis(analysis, moves) : null), [analysis, moves])
+  // 보드 방향 기준: 아래 = 내 시점 색, 위 = 상대
+  const topColor = orientation === 'white' ? 'black' : 'white'
+  const playerBar = (color: 'white' | 'black') => (
+    <PlayerBar
+      color={color}
+      name={game[color].name}
+      rating={game[color].rating}
+      badge={getPlayerBadge(game, color)}
+      stats={stats?.[color] ?? null}
+    />
+  )
+
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-4 md:flex-row">
-        {/* Eval Bar + 체스보드 */}
-        <div className="flex gap-2 self-start">
+    <div className="flex flex-col gap-4 md:flex-row">
+      {/* 왼쪽: 대국자 바 + Eval Bar·체스보드 + 대국자 바 + 네비게이션 */}
+      <div className="flex w-full flex-col gap-1.5 md:w-auto md:self-start">
+        {playerBar(topColor)}
+        <div className="flex gap-2">
           <div className="hidden sm:block md:h-[420px] lg:h-[480px] xl:h-[560px]">
             <EvalBar evaluation={displayEvaluation} isEvaluating={displayIsEvaluating} orientation={orientation} />
           </div>
@@ -134,83 +160,110 @@ export function GameViewer({ gameId, moves, annotations, ownerUsername, blackNam
             <GameBoard orientation={orientation} bestMove={bestMove} />
           </div>
         </div>
-
-        {/* 수 목록 + 메모 패널 */}
-        <div className="flex-1">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-xs text-amber-600 dark:text-amber-400">
-              {isReady ? (displayIsEvaluating ? '분석 중...' : `Stockfish · depth ${displayEvaluation?.depth ?? '-'}`) : 'Stockfish 로딩 중...'}
-            </span>
-            <div className="flex items-center gap-2">
-              {!batch.isAnalyzing && !analysis && isReady && (
-                <button
-                  onClick={handleStartAnalysis}
-                  className="rounded-lg border border-amber-300 px-3 py-1 text-xs font-medium text-amber-700 transition hover:bg-amber-50 dark:border-gray-600 dark:text-amber-400 dark:hover:bg-gray-700"
-                >
-                  게임 분석
-                </button>
-              )}
-              {hasArrows && (
-                <button
-                  onClick={clearCurrentArrows}
-                  className="rounded-lg border border-amber-300 px-3 py-1 text-xs font-medium text-amber-700 transition hover:bg-amber-50 dark:border-gray-600 dark:text-amber-400 dark:hover:bg-gray-700"
-                >
-                  화살표 지우기
-                </button>
-              )}
-              {isInVariation && (
-                <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
-                  분석 모드
-                </span>
-              )}
-              {annotationsDirty && onSaveAnnotations && (
-                <button
-                  onClick={onSaveAnnotations}
-                  disabled={isSaving}
-                  className="rounded-lg bg-amber-600 px-3 py-1 text-xs font-medium text-white transition hover:bg-amber-700 disabled:opacity-50 dark:bg-amber-700 dark:hover:bg-amber-600"
-                >
-                  {isSaving ? '저장 중...' : '저장 (Ctrl+S)'}
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* 분석 저장 결과 인라인 배너 */}
-          {analysisSaveMessage && (
-            <div
-              role="status"
-              className={`mb-2 rounded-lg border px-3 py-2 text-xs ${
-                analysisSaveMessage.kind === 'success'
-                  ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200'
-                  : 'border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/60 dark:text-red-300'
-              }`}
-            >
-              {analysisSaveMessage.text}
-            </div>
-          )}
-
-          {/* 배치 분석 진행률 */}
-          {batch.isAnalyzing && (
-            <div className="mb-2">
-              <AnalysisProgress
-                current={batch.progress.current}
-                total={batch.progress.total}
-                onCancel={batch.cancelAnalysis}
-              />
-            </div>
-          )}
-
-          {/* 현재 수 메모 (분석 결과 요약은 상단 대국 정보 카드로 이동) */}
-          <div className="mb-2">
-            <CommentPanel onPersist={onSaveAnnotations} isPersisting={isSaving} />
-          </div>
-
-          <MoveList />
+        {playerBar(orientation)}
+        <div className="pt-1.5">
+          <BoardControls />
         </div>
       </div>
 
-      {/* 네비게이션 */}
-      <BoardControls />
+      {/* 오른쪽: 상태 줄 + 탭 (기보·메모 / 경기 정보) */}
+      <div className="min-w-0 flex-1">
+        <div role="tablist" aria-label="게임 패널" className="mb-2 flex gap-1 rounded-xl bg-amber-100 p-1 dark:bg-gray-800">
+          {RIGHT_TABS.map(({ id, label }) => (
+            <button
+              key={id}
+              role="tab"
+              id={`game-tab-${id}`}
+              aria-selected={tab === id}
+              aria-controls={`game-tabpanel-${id}`}
+              onClick={() => setTab(id)}
+              className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                tab === id
+                  ? 'bg-white font-semibold text-amber-800 shadow-sm dark:bg-gray-700 dark:text-amber-300'
+                  : 'text-amber-700 hover:bg-amber-50 dark:text-gray-400 dark:hover:bg-gray-700/50'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-xs text-amber-600 dark:text-amber-400">
+            {isReady ? (displayIsEvaluating ? '분석 중...' : `Stockfish · depth ${displayEvaluation?.depth ?? '-'}`) : 'Stockfish 로딩 중...'}
+          </span>
+          <div className="flex items-center gap-2">
+            {!batch.isAnalyzing && !analysis && isReady && (
+              <button
+                onClick={handleStartAnalysis}
+                className="rounded-lg border border-amber-300 px-3 py-1 text-xs font-medium text-amber-700 transition hover:bg-amber-50 dark:border-gray-600 dark:text-amber-400 dark:hover:bg-gray-700"
+              >
+                게임 분석
+              </button>
+            )}
+            {hasArrows && (
+              <button
+                onClick={clearCurrentArrows}
+                className="rounded-lg border border-amber-300 px-3 py-1 text-xs font-medium text-amber-700 transition hover:bg-amber-50 dark:border-gray-600 dark:text-amber-400 dark:hover:bg-gray-700"
+              >
+                화살표 지우기
+              </button>
+            )}
+            {isInVariation && (
+              <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+                분석 모드
+              </span>
+            )}
+            {annotationsDirty && onSaveAnnotations && (
+              <button
+                onClick={onSaveAnnotations}
+                disabled={isSaving}
+                className="rounded-lg bg-amber-600 px-3 py-1 text-xs font-medium text-white transition hover:bg-amber-700 disabled:opacity-50 dark:bg-amber-700 dark:hover:bg-amber-600"
+              >
+                {isSaving ? '저장 중...' : '저장 (Ctrl+S)'}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* 분석 저장 결과 인라인 배너 */}
+        {analysisSaveMessage && (
+          <div
+            role="status"
+            className={`mb-2 rounded-lg border px-3 py-2 text-xs ${
+              analysisSaveMessage.kind === 'success'
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200'
+                : 'border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/60 dark:text-red-300'
+            }`}
+          >
+            {analysisSaveMessage.text}
+          </div>
+        )}
+
+        {/* 배치 분석 진행률 */}
+        {batch.isAnalyzing && (
+          <div className="mb-2">
+            <AnalysisProgress
+              current={batch.progress.current}
+              total={batch.progress.total}
+              onCancel={batch.cancelAnalysis}
+            />
+          </div>
+        )}
+
+        <div role="tabpanel" id={`game-tabpanel-${tab}`} aria-labelledby={`game-tab-${tab}`}>
+          {tab === 'moves' ? (
+            <>
+              <div className="mb-2">
+                <CommentPanel onPersist={onSaveAnnotations} isPersisting={isSaving} />
+              </div>
+              <MoveList />
+            </>
+          ) : (
+            <GameInfoPanel game={game} analysis={analysis} onDelete={onDelete} isDeleting={isDeleting} />
+          )}
+        </div>
+      </div>
     </div>
   )
 }

@@ -34,3 +34,17 @@ export function bestMoveArrow(fen: string, uci: string | null): BoardArrow | nul
   }
   return { startSquare: from, endSquare: to, color: BEST_MOVE_ARROW_COLOR }
 }
+
+/**
+ * 시작·끝 칸이 같은 화살표를 하나로 합침 (뒤에 온 것이 우선).
+ * react-chessboard는 시작·끝 칸으로 key를 만들어서 중복되면 key 충돌이 난다.
+ */
+export function dedupeArrows(arrows: BoardArrow[]): BoardArrow[] {
+  const byKey = new Map<string, BoardArrow>()
+  for (const arrow of arrows) {
+    const key = `${arrow.startSquare}-${arrow.endSquare}`
+    byKey.delete(key) // 뒤에 온 것이 그려지는 순서도 뒤로 가도록
+    byKey.set(key, arrow)
+  }
+  return [...byKey.values()]
+}

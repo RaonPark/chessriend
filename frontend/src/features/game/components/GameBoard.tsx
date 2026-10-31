@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { Chessboard } from 'react-chessboard'
 import { useBoardStore, selectCurrentArrows } from '../stores/boardStore'
 import { buildMoveHintStyles, getLegalTargets } from '../utils/moveHints'
-import { ARROW_COLORS, BEST_MOVE_ARROW_COLOR, arrowColorFor, bestMoveArrow } from '../utils/arrows'
+import { ARROW_COLORS, BEST_MOVE_ARROW_COLOR, arrowColorFor, bestMoveArrow, dedupeArrows } from '../utils/arrows'
 import type { BoardArrow } from '../types/game'
 
 interface GameBoardProps {
@@ -43,7 +43,8 @@ export function GameBoard({ orientation = 'white', bestMove = null }: GameBoardP
     if (activeDrawing && activeDrawing.start !== activeDrawing.over) {
       list.push({ startSquare: activeDrawing.start, endSquare: activeDrawing.over, color: activeDrawing.color })
     }
-    return list
+    // 우선순위: 그리는 중 > 저장된 화살표 > 엔진 최선수
+    return dedupeArrows(list)
   }, [currentFen, bestMove, savedArrows, activeDrawing])
 
   const selectSquare = useCallback(

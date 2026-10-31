@@ -1,6 +1,6 @@
 import { Fragment, useId, useState } from 'react'
 import type { GameAnalysis, MoveClassification, MoveResponse } from '../types/game'
-import { moveCpLoss } from '../utils/cpLoss'
+import { summarizeAnalysis } from '../utils/analysisStats'
 
 interface AnalysisSummaryProps {
   analysis: GameAnalysis
@@ -8,10 +8,6 @@ interface AnalysisSummaryProps {
   whiteName: string
   blackName: string
 }
-
-type Counts = Record<MoveClassification, number>
-
-const emptyCounts = (): Counts => ({ brilliant: 0, blunder: 0, mistake: 0, inaccuracy: 0 })
 
 const CLASSIFICATIONS: readonly MoveClassification[] = ['brilliant', 'blunder', 'mistake', 'inaccuracy']
 
@@ -23,27 +19,8 @@ const BADGE_CONFIG = {
 } as const satisfies Record<MoveClassification, { label: string; dotClass: string; textClass: string }>
 
 export function AnalysisSummary({ analysis, moves, whiteName, blackName }: AnalysisSummaryProps) {
-  const whiteCounts = emptyCounts()
-  const blackCounts = emptyCounts()
-  // 평균 cp loss (ACPL) 계산용
-  const cpLoss = { white: { sum: 0, count: 0 }, black: { sum: 0, count: 0 } }
-
-  for (const ev of analysis.evaluations) {
-    const isWhite = moves[ev.moveIndex]?.color === 'WHITE'
-    const side = isWhite ? cpLoss.white : cpLoss.black
-    side.sum += moveCpLoss(ev.evalBefore, ev.evalAfter, isWhite)
-    side.count++
-
-    if (!ev.classification) continue
-    if (isWhite) {
-      whiteCounts[ev.classification]++
-    } else {
-      blackCounts[ev.classification]++
-    }
-  }
-
-  const averageOf = ({ sum, count }: { sum: number; count: number }) =>
-    count > 0 ? String(Math.round(sum / count)) : '-'
+  const { white, black } = summarizeAnalysis(analysis, moves)
+  const formatAcpl = (acpl: number | null) => (acpl == null ? '-' : String(acpl))
 
   return (
     <div className="rounded-lg border border-amber-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
@@ -79,10 +56,10 @@ export function AnalysisSummary({ analysis, moves, whiteName, blackName }: Analy
                 <span className={`font-medium ${config.textClass}`}>{config.label}</span>
               </div>
               <span className="text-center font-medium tabular-nums text-gray-800 dark:text-gray-100">
-                {whiteCounts[type]}
+                {white.counts[type]}
               </span>
               <span className="text-center font-medium tabular-nums text-gray-800 dark:text-gray-100">
-                {blackCounts[type]}
+                {black.counts[type]}
               </span>
             </Fragment>
           )
@@ -98,13 +75,13 @@ export function AnalysisSummary({ analysis, moves, whiteName, blackName }: Analy
           data-testid="acpl-white"
           className="text-center font-medium tabular-nums text-gray-800 dark:text-gray-100"
         >
-          {averageOf(cpLoss.white)}
+          {formatAcpl(white.acpl)}
         </span>
         <span
           data-testid="acpl-black"
           className="text-center font-medium tabular-nums text-gray-800 dark:text-gray-100"
         >
-          {averageOf(cpLoss.black)}
+          {formatAcpl(black.acpl)}
         </span>
       </div>
     </div>
@@ -112,7 +89,7 @@ export function AnalysisSummary({ analysis, moves, whiteName, blackName }: Analy
 }
 
 /** cp loss 설명 툴팁 (호버/키보드 포커스로 표시) */
-function CpLossHelp() {
+export function CpLossHelp() {
   const [open, setOpen] = useState(false)
   const tooltipId = useId()
 

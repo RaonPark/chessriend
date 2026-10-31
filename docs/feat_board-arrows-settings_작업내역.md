@@ -152,3 +152,33 @@
 ### Why
 - npm `pretendard` 패키지는 `pnpm add` 시 `invalid array length` OOM으로 설치 실패 (패키지가 모든 폰트 포맷을 포함해 매우 큼)
   → 공식 문서에서 권장하는 CDN dynamic subset으로 대체 (페이지에서 쓰는 글자만 내려받음)
+
+## 10. 게임 상세 레이아웃 개편 — C안 (대국자 바, lichess 스타일)
+
+### What
+- 피그마 시안 3개(A 슬림 헤더 바 / B 보드 우선 2단 / C 대국자 바) 중 **C안** 채택
+  - 시안: https://www.figma.com/design/2l64N2RGEDFCWoxP1J6B70
+- 상단의 큰 대국 정보 카드 제거 → 1280×1000 화면에서 보드·컨트롤이 첫 화면에 다 보임 (보드 top 476px → 약 175px)
+- **대국자 바** (`PlayerBar`): 보드 위·아래에 배치, 보드 방향을 따라감 (흑 소유자면 흑이 아래)
+  - 이름 · 레이팅 · 결과 배지 · (분석 후) Blunder / Mistake / cp loss(+ 설명 툴팁)
+  - 결과 배지(`getPlayerBadge`): 소유자 쪽에만 소유자 관점 승리/패배/무승부.
+    소유자가 없는 게임은 이긴 쪽에 "승리", 무승부면 양쪽 모두 "무승부"
+- **오른쪽 열 탭**: `기보·메모`(메모 + 수 목록) | `경기 정보`(`GameInfoPanel`: 플랫폼·시간·오프닝·총 수·날짜 + 전체 분석 표 + 게임 삭제)
+  - Stockfish 상태 줄, 저장 버튼, 분석 진행률은 탭 위에 있어서 어느 탭에서나 보임
+- 이동 컨트롤(`BoardControls`)을 아래쪽 대국자 바 밑으로 이동
+- 수가 없는 게임은 보드 없이 대국자 바 + 경기 정보만 표시
+- fix: 엔진 최선수·그리는 중 화살표가 저장된 화살표와 같은 칸이면 react-chessboard key가 충돌하던 문제
+  → `dedupeArrows`로 하나만 남김 (그리는 중 > 저장 > 엔진)
+
+### Why
+- 체스 앱(lichess / chess.com) 사용자에게 가장 익숙한 배치이고,
+  "누가 몇 번 실수했나"가 보드 바로 옆에 보임
+- 백/흑별 분류 개수·평균 cp loss 계산을 `summarizeAnalysis`로 분리 → `AnalysisSummary` 표와 대국자 바가 같은 계산을 공유
+
+### Key files
+- `features/game/components/PlayerBar.tsx`, `GameInfoPanel.tsx` (신규)
+- `features/game/components/GameViewer.tsx` — `game` 전체를 props로 받고, 대국자 바 + 탭 레이아웃
+- `features/game/components/GameDetailPage.tsx` — 뒤로가기 링크 + 뷰어 (또는 수 없는 게임 대체 화면)
+- `features/game/components/AnalysisSummary.tsx` — `summarizeAnalysis` 사용, `CpLossHelp` export
+- `features/game/utils/analysisStats.ts`, `outcome.ts`(`getPlayerBadge`), `arrows.ts`(`dedupeArrows`)
+- 테스트: `PlayerBar.test.tsx`, `analysisStats.test.ts`, `outcome.test.ts`(+4), `arrows.test.ts`(+2)

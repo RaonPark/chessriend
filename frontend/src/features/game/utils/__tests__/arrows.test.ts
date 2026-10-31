@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { ARROW_COLORS, BEST_MOVE_ARROW_COLOR, arrowColorFor, bestMoveArrow } from '../arrows'
+import { ARROW_COLORS, BEST_MOVE_ARROW_COLOR, arrowColorFor, bestMoveArrow, dedupeArrows } from '../arrows'
 
 const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
 
@@ -27,5 +27,21 @@ describe('bestMoveArrow', () => {
 
   it('없음 → null', () => {
     expect(bestMoveArrow(START, null)).toBeNull()
+  })
+})
+
+describe('dedupeArrows', () => {
+  const a = (s: string, e: string, color: string) => ({ startSquare: s, endSquare: e, color })
+
+  it('같은 시작·끝 칸 화살표는 하나만 남기고, 뒤에 온 것이 이긴다', () => {
+    const engine = a('d7', 'd5', BEST_MOVE_ARROW_COLOR)
+    const saved = a('d7', 'd5', ARROW_COLORS.secondary)
+    expect(dedupeArrows([engine, saved])).toEqual([saved])
+  })
+
+  it('다른 화살표는 순서대로 유지', () => {
+    const x = a('e2', 'e4', ARROW_COLORS.primary)
+    const y = a('g1', 'f3', ARROW_COLORS.primary)
+    expect(dedupeArrows([x, y])).toEqual([x, y])
   })
 })
