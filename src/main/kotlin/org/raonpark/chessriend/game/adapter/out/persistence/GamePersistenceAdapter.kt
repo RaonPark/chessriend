@@ -15,6 +15,7 @@ import tools.jackson.databind.ObjectMapper
 import org.raonpark.chessriend.game.domain.*
 import org.raonpark.chessriend.game.port.out.GameRepository
 import org.raonpark.chessriend.jooq.tables.references.GAMES
+import org.raonpark.chessriend.jooq.tables.references.GAME_FOLDERS
 import org.raonpark.chessriend.shared.id.SnowflakeIdGenerator
 import org.springframework.r2dbc.core.DatabaseClient
 import org.springframework.stereotype.Component
@@ -139,6 +140,11 @@ class GamePersistenceAdapter(
         criteria.outcome?.let { condition = condition.and(outcomeCondition(it)) }
         criteria.ratingBand?.let { condition = condition.and(opponentRatingCondition(it)) }
         criteria.opening?.let { condition = condition.and(GAMES.OPENING_NAME.eq(it)) }
+        criteria.folderId?.let { folderId ->
+            condition = condition.and(
+                GAMES.ID.`in`(DSL.select(GAME_FOLDERS.GAME_ID).from(GAME_FOLDERS).where(GAME_FOLDERS.FOLDER_ID.eq(folderId))),
+            )
+        }
         return condition
     }
 

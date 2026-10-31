@@ -60,3 +60,47 @@
 
 ### Why
 - 사용자 피드백: 상대/나 전환이 굳이 필요 없음 → 상대 레이팅으로 고정 (상대 수준별 복기가 주 용도)
+
+## 3. 폴더 (백엔드)
+
+### What
+- **DB** `V5__create_folders.sql`
+  - `folders(id, name UNIQUE, created_at, updated_at)`
+  - `game_folders(game_id, folder_id)`: 다대다, PK (game_id, folder_id), 양쪽 FK `ON DELETE CASCADE`
+  - → 폴더를 지워도 게임은 남고 연결만 삭제. 게임을 지우면 폴더 연결도 삭제
+- **도메인** `Folder`(이름 trim, 1~30자 — 어기면 400), `FolderSummary`(폴더 + 게임 수)
+- **포트** `FolderRepository`, `ManageFolderUseCase` / **서비스** `FolderService`
+  - 이름 중복 사전 검사 → 409, 없는 폴더 → 404
+  - 생성·이름 변경·삭제는 `@Transactional` (이 코드베이스에서 처음 사용. R2DBC 트랜잭션 매니저로 정상 동작 확인)
+- **어댑터** `FolderPersistenceAdapter` (jOOQ + R2DBC)
+  - 게임 넣기는 `INSERT ... SELECT FROM games WHERE id IN (...) ON CONFLICT DO NOTHING` → 없는 게임·이미 들어 있는 게임 무시
+  - 동시 생성으로 유니크 제약 위반(`DuplicateKeyException`) 시 `DuplicateFolderNameException`으로 변환
+- **API** `/api/folders`
+
+  | 메서드 | 경로 | 응답 |
+  |---|---|---|
+  | GET | `/api/folders` | 목록 + 게임 수 (생성 순) |
+  | POST | `/api/folders` | `{name, gameIds?}` → 201 |
+  | PATCH | `/api/folders/{id}` | 이름 변경 |
+  | DELETE | `/api/folders/{id}` | 204 |
+  | POST | `/api/folders/{id}/games` | 게임 넣기 (body: ID 배열) → 204 |
+  | DELETE | `/api/folders/{id}/games` | 게임 빼기 → 204 |
+
+- **게임 목록**
+  - `GET /api/games?folderId=` 필터 (`IN (SELECT game_id FROM game_folders ...)`)
+  - 응답 `GameResponse.folders`(폴더 태그 `{id, name}`). 페이지 단위 일괄 조회
+
+### Why
+- 게임 하나가 여러 폴더에 속할 수 있어야 함 (예: "시실리안 연구"이면서 "블리츠 패배 복기") → 다대다 연결 테이블
+- 이름 대소문자는 구분 (단일 사용자 앱이라 단순하게)
+
+### Key files
+- `db/migration/V5__create_folders.sql`
+- `game/domain/Folder.kt`
+- `port/out/FolderRepository.kt`, `port/in/ManageFolderUseCase.kt`, `application/FolderService.kt`
+- `adapter/out/persistence/FolderPersistenceAdapter.kt`, `adapter/in/web/FolderController.kt`
+- `GameController.kt`, `GameResponse.kt`, `GamePersistenceAdapter.kt`(folderId 조건)
+- `shared/exception/Exceptions.kt`(`FolderNotFoundException`, `DuplicateFolderNameException`)
+- 테스트
+  - `FolderTest`(3), `FolderServiceTest`(8)
+  - `FolderPersistenceAdapterTest`(7, Testcontainers), `FolderControllerTest`(3, API 통합)

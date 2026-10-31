@@ -16,6 +16,12 @@ class GameAnalysisNotFoundException(gameId: Long) :
  */
 open class ConflictException(message: String) : RuntimeException(message)
 
+class FolderNotFoundException(folderId: Long) :
+    NotFoundException("Folder not found: $folderId")
+
+class DuplicateFolderNameException(name: String) :
+    ConflictException("Folder name already exists: $name")
+
 /**
  * 외부 API 일반 오류 (HTTP 502)
  */

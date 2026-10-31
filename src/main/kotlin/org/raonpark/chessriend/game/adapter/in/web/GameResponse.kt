@@ -20,9 +20,15 @@ data class GameResponse(
     val playedAt: Instant,
     /** 분석 완료된 게임만 값이 있음 (목록에서 "분석됨" 표시용) */
     val analysisSummary: AnalysisSummaryResponse? = null,
+    /** 이 게임이 들어 있는 폴더들 (목록의 폴더 태그) */
+    val folders: List<FolderTagResponse> = emptyList(),
 ) {
     companion object {
-        fun from(game: Game, analysisSummary: GameAnalysisSummary? = null): GameResponse = GameResponse(
+        fun from(
+            game: Game,
+            analysisSummary: GameAnalysisSummary? = null,
+            folders: List<Folder> = emptyList(),
+        ): GameResponse = GameResponse(
             id = game.id!!.toString(),
             source = game.source.name,
             sourceGameId = game.sourceGameId,
@@ -38,9 +44,12 @@ data class GameResponse(
             totalMoves = game.totalMoves,
             playedAt = game.playedAt,
             analysisSummary = analysisSummary?.let { AnalysisSummaryResponse.from(it) },
+            folders = folders.map { FolderTagResponse(it.id!!.toString(), it.name) },
         )
     }
 }
+
+data class FolderTagResponse(val id: String, val name: String)
 
 data class AnalysisSummaryResponse(
     val depth: Int,

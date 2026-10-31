@@ -10,6 +10,8 @@ data class GameSearchCriteria(
     val ratingBand: RatingBand? = null,
     /** 오프닝 이름 (정확히 일치) */
     val opening: String? = null,
+    /** 이 폴더에 들어 있는 게임만 */
+    val folderId: Long? = null,
 )
 
 /** 오프닝 이름별 게임 수 (LNB "오프닝별" 묶음) */

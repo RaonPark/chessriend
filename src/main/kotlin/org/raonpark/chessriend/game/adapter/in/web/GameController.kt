@@ -13,6 +13,7 @@ import org.raonpark.chessriend.game.port.`in`.CreateGameFromPgnUseCase
 import org.raonpark.chessriend.game.port.`in`.GetGameAnalysisUseCase
 import org.raonpark.chessriend.game.port.`in`.GetGameUseCase
 import org.raonpark.chessriend.game.port.`in`.ImportGameUseCase
+import org.raonpark.chessriend.game.port.`in`.ManageFolderUseCase
 import org.raonpark.chessriend.game.port.out.GameFetchCriteria
 import org.springframework.http.MediaType
 import org.springframework.http.codec.ServerSentEvent
@@ -26,6 +27,7 @@ class GameController(
     private val createGameFromPgnUseCase: CreateGameFromPgnUseCase,
     private val getGameUseCase: GetGameUseCase,
     private val getGameAnalysisUseCase: GetGameAnalysisUseCase,
+    private val manageFolderUseCase: ManageFolderUseCase,
 ) {
 
     @GetMapping
@@ -37,6 +39,7 @@ class GameController(
         @RequestParam(required = false) outcome: OwnerOutcome?,
         @RequestParam(required = false) ratingBand: RatingBand?,
         @RequestParam(required = false) opening: String?,
+        @RequestParam(required = false) folderId: Long?,
     ): PagedGameResponse {
         val criteria = GameSearchCriteria(
             source = source,
@@ -44,12 +47,15 @@ class GameController(
             outcome = outcome,
             ratingBand = ratingBand,
             opening = opening,
+            folderId = folderId,
         )
         val result = getGameUseCase.getGames(page, size, criteria)
         // 페이지의 게임들 분석 요약을 한 번에 조회 (N+1 방지)
-        val summaries = getGameAnalysisUseCase.findSummaries(result.content.mapNotNull { it.id })
+        val gameIds = result.content.mapNotNull { it.id }
+        val summaries = getGameAnalysisUseCase.findSummaries(gameIds)
+        val folders = manageFolderUseCase.findFoldersOfGames(gameIds)
         return PagedGameResponse(
-            content = result.content.map { GameResponse.from(it, summaries[it.id]) },
+            content = result.content.map { GameResponse.from(it, summaries[it.id], folders[it.id].orEmpty()) },
             page = result.page,
             size = result.size,
             totalElements = result.totalElements,
