@@ -91,4 +91,39 @@ describe('GameListItem', () => {
 
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
   })
+
+  describe('분석 요약', () => {
+    const side = (acpl: number | null, blunder = 0, mistake = 0) => ({ brilliant: 0, blunder, mistake, inaccuracy: 0, acpl })
+
+    it('분석 안 된 게임은 분석 표시가 없다', () => {
+      renderWithProviders(<GameListItem game={createGameResponse()} />)
+      expect(screen.queryByText('분석됨')).not.toBeInTheDocument()
+    })
+
+    it('분석된 게임은 "분석됨"과 내(소유자) cp loss·실수 횟수를 표시한다', () => {
+      const game = createGameResponse({
+        ownerUsername: 'bob',
+        white: { name: 'alice', rating: 1500 },
+        black: { name: 'bob', rating: 1400 },
+        analysisSummary: { depth: 18, white: side(16, 0, 1), black: side(60, 2, 1) },
+      })
+      renderWithProviders(<GameListItem game={game} />)
+
+      expect(screen.getByText('분석됨')).toBeInTheDocument()
+      const stats = screen.getByTestId('analysis-stats')
+      expect(stats).toHaveTextContent('cp loss 60')
+      expect(stats).toHaveTextContent('Blunder 2')
+      expect(stats).toHaveTextContent('Mistake 1')
+    })
+
+    it('소유자가 없는 게임은 백·흑 cp loss를 함께 표시한다', () => {
+      const game = createGameResponse({
+        ownerUsername: '',
+        analysisSummary: { depth: 18, white: side(16), black: side(null) },
+      })
+      renderWithProviders(<GameListItem game={game} />)
+
+      expect(screen.getByTestId('analysis-stats')).toHaveTextContent('cp loss 16 / -')
+    })
+  })
 })

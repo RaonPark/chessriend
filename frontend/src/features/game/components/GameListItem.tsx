@@ -4,7 +4,7 @@ import { ConfirmDialog } from '@/shared/components/ConfirmDialog'
 import { useConfirm } from '@/shared/hooks/useConfirm'
 import { useDeleteGame } from '../api/mutations'
 import { getOwnerOutcome, getResultLabel, type OwnerOutcome } from '../utils/outcome'
-import type { GameResponse } from '../types/game'
+import type { AnalysisSummaryResponse, GameResponse } from '../types/game'
 
 interface GameListItemProps {
   game: GameResponse
@@ -95,6 +95,7 @@ export function GameListItem({ game, selected, onToggleSelect }: GameListItemPro
               {game.timeControl.category}
               <span className="mx-1.5 text-amber-300">·</span>
               {game.totalMoves}수
+              {game.analysisSummary && <AnalysisStats game={game} summary={game.analysisSummary} />}
             </p>
           </div>
         </div>
@@ -117,6 +118,52 @@ export function GameListItem({ game, selected, onToggleSelect }: GameListItemPro
       </div>
     </Link>
     <ConfirmDialog {...dialogProps} />
+    </>
+  )
+}
+
+/** 분석된 게임 표시: "분석됨" 배지 + 내 cp loss·실수 횟수 (소유자 없으면 백/흑 cp loss) */
+function AnalysisStats({ game, summary }: { game: GameResponse; summary: AnalysisSummaryResponse }) {
+  const owner = game.ownerUsername.trim().toLowerCase()
+  const ownerColor = !owner
+    ? null
+    : game.white.name.toLowerCase() === owner
+      ? 'white'
+      : game.black.name.toLowerCase() === owner
+        ? 'black'
+        : null
+  const formatAcpl = (acpl: number | null) => (acpl == null ? '-' : String(acpl))
+
+  return (
+    <>
+      <span className="mx-1.5 text-amber-300">·</span>
+      <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1 align-middle">
+        <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-medium text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
+          분석됨
+        </span>
+        <span data-testid="analysis-stats" className="inline-flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
+          {ownerColor ? (
+            <>
+              <span>cp loss <b className="tabular-nums text-gray-900 dark:text-gray-100">{formatAcpl(summary[ownerColor].acpl)}</b></span>
+              <span className="inline-flex items-center gap-1">
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-red-500" />
+                Blunder <b className="tabular-nums text-gray-900 dark:text-gray-100">{summary[ownerColor].blunder}</b>
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-orange-500" />
+                Mistake <b className="tabular-nums text-gray-900 dark:text-gray-100">{summary[ownerColor].mistake}</b>
+              </span>
+            </>
+          ) : (
+            <span>
+              cp loss{' '}
+              <b className="tabular-nums text-gray-900 dark:text-gray-100">
+                {formatAcpl(summary.white.acpl)} / {formatAcpl(summary.black.acpl)}
+              </b>
+            </span>
+          )}
+        </span>
+      </span>
     </>
   )
 }

@@ -98,6 +98,22 @@ export interface GameDetailResponse {
   playedAt: string
 }
 
+/** 목록용 분석 요약 (백엔드 GameAnalysisSummary) */
+export interface SideAnalysisSummary {
+  brilliant: number
+  blunder: number
+  mistake: number
+  inaccuracy: number
+  /** 평균 cp loss. 해당 색의 평가가 없으면 null */
+  acpl: number | null
+}
+
+export interface AnalysisSummaryResponse {
+  depth: number
+  white: SideAnalysisSummary
+  black: SideAnalysisSummary
+}
+
 export interface GameResponse {
   id: string
   source: GameSource
@@ -110,6 +126,8 @@ export interface GameResponse {
   opening: OpeningResponse | null
   totalMoves: number
   playedAt: string
+  /** 분석 완료된 게임만 값이 있음 */
+  analysisSummary?: AnalysisSummaryResponse | null
 }
 
 export interface GameFilter {
