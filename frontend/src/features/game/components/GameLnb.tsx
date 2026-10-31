@@ -4,7 +4,7 @@ import { ContextMenu, type ContextMenuItem } from '@/shared/components/ContextMe
 import { useConfirm } from '@/shared/hooks/useConfirm'
 import { useFolders, useOpeningCounts } from '../api/queries'
 import { useCreateFolder, useDeleteFolder, useRenameFolder } from '../api/mutations'
-import { FolderNameDialog } from './FolderNameDialog'
+import { NameDialog } from './NameDialog'
 import type { FolderResponse } from '../types/game'
 import type { LnbSelection } from '../utils/gameFilters'
 
@@ -134,7 +134,7 @@ export function GameLnb({ selection, onSelect, selectedGameIds }: GameLnbProps) 
 
       {menu && <ContextMenu position={menu} items={menu.items} onClose={closeMenu} />}
 
-      <FolderNameDialog
+      <NameDialog
         open={dialog?.mode === 'create'}
         title="새 폴더"
         confirmLabel="만들기"
@@ -145,7 +145,7 @@ export function GameLnb({ selection, onSelect, selectedGameIds }: GameLnbProps) 
         }
         onClose={() => setDialog(null)}
       />
-      <FolderNameDialog
+      <NameDialog
         open={dialog?.mode === 'rename'}
         title="폴더 이름 변경"
         confirmLabel="저장"

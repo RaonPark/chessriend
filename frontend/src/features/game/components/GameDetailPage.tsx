@@ -54,7 +54,7 @@ export function GameDetailPage() {
         &larr; 게임 목록
       </Link>
 
-      <GameNicknameHeader gameId={game.id} nickname={game.nickname} memo={game.memo} />
+      <GameNicknameHeader nickname={game.nickname} />
 
       {hasMoves ? (
         // 대국자 바·보드·탭(기보·메모 / 경기 정보) — 경기 정보와 삭제는 "경기 정보" 탭에 있음

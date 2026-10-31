@@ -1,13 +1,17 @@
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 
-export interface ContextMenuItem {
+export interface ContextMenuAction {
+  type?: 'action'
   label: string
   onSelect: () => void
   danger?: boolean
   /** 지정하면 체크 항목(menuitemcheckbox)으로 표시 */
   checked?: boolean
 }
+
+/** 메뉴 항목: 실행 항목 / 구분선 / 구역 제목 (구분선·제목은 방향키 이동에서 건너뜀) */
+export type ContextMenuItem = ContextMenuAction | { type: 'separator' } | { type: 'heading'; label: string }
 
 interface ContextMenuProps {
   /** 화면 좌표 (보통 contextmenu 이벤트의 clientX / clientY) */
@@ -74,7 +78,18 @@ export function ContextMenu({ position, items, onClose, title }: ContextMenuProp
       className="fixed z-50 rounded-lg border border-amber-200 bg-white py-1 shadow-lg dark:border-gray-600 dark:bg-gray-800"
     >
       {title && <p className="px-3 pb-1 pt-1.5 text-[11px] font-semibold text-amber-700 dark:text-amber-400">{title}</p>}
-      {items.map((item) => (
+      {items.map((item, index) => {
+        if (item.type === 'separator') {
+          return <div key={`sep-${index}`} role="separator" className="my-1 border-t border-amber-100 dark:border-gray-700" />
+        }
+        if (item.type === 'heading') {
+          return (
+            <p key={`heading-${index}`} className="px-3 pb-1 pt-1.5 text-[11px] font-semibold text-amber-700 dark:text-amber-400">
+              {item.label}
+            </p>
+          )
+        }
+        return (
         <button
           key={item.label}
           type="button"
@@ -104,7 +119,8 @@ export function ContextMenu({ position, items, onClose, title }: ContextMenuProp
           )}
           {item.label}
         </button>
-      ))}
+        )
+      })}
     </div>,
     document.body,
   )

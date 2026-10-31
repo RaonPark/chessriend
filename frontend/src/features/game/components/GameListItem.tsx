@@ -4,9 +4,9 @@ import { ContextMenu } from '@/shared/components/ContextMenu'
 import { ChessKing } from '@/shared/components/ChessKing'
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog'
 import { useConfirm } from '@/shared/hooks/useConfirm'
-import { useAddGamesToFolder, useCreateFolder, useDeleteGame, useRemoveGamesFromFolder } from '../api/mutations'
+import { useAddGamesToFolder, useCreateFolder, useDeleteGame, useRemoveGamesFromFolder, useUpdateGameNote } from '../api/mutations'
 import { useFolders } from '../api/queries'
-import { FolderNameDialog } from './FolderNameDialog'
+import { NameDialog } from './NameDialog'
 import { TIME_CATEGORY_LABELS } from '../utils/timeCategory'
 import { getOwnerOutcome, getResultLabel, type OwnerOutcome } from '../utils/outcome'
 import type { AnalysisSummaryResponse, GameResponse, TimeCategory } from '../types/game'
@@ -49,6 +49,8 @@ export function GameListItem({ game, selected, onToggleSelect }: GameListItemPro
   // 우클릭 → 폴더에 추가/빼기 (폴더 목록은 메뉴를 열 때만 조회)
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null)
   const [newFolderOpen, setNewFolderOpen] = useState(false)
+  const [renameOpen, setRenameOpen] = useState(false)
+  const updateNote = useUpdateGameNote(game.id)
   const closeMenu = useCallback(() => setMenuPosition(null), [])
   const { data: folders } = useFolders({ enabled: menuPosition !== null })
   const addToFolder = useAddGamesToFolder()
@@ -84,10 +86,10 @@ export function GameListItem({ game, selected, onToggleSelect }: GameListItemPro
         e.preventDefault()
         setMenuPosition({ x: e.clientX, y: e.clientY })
       }}
-      className={`block rounded-lg border border-amber-200 bg-white p-4 transition hover:shadow-md dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-750`}
+      className={`block rounded-lg border border-amber-200 bg-white px-5 py-4 transition hover:shadow-md dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-750`}
     >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-3">
           {onToggleSelect && (
             <input
               type="checkbox"
@@ -97,9 +99,9 @@ export function GameListItem({ game, selected, onToggleSelect }: GameListItemPro
               className="h-4 w-4 shrink-0 rounded border-amber-300 accent-amber-700"
             />
           )}
-          <div className="text-left">
+          <div className="min-w-0 space-y-1.5 text-left">
             {(game.nickname || game.memo) && (
-              <p className="mb-0.5 flex items-center gap-2">
+              <p className="flex items-center gap-2">
                 {game.nickname && <span className="font-bold text-amber-900 dark:text-amber-200">{game.nickname}</span>}
                 {game.memo && (
                   <span
@@ -120,30 +122,35 @@ export function GameListItem({ game, selected, onToggleSelect }: GameListItemPro
               {game.black.name}
               {game.black.rating != null && <span className="ml-0.5 text-sm text-gray-500">({game.black.rating})</span>}
             </p>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               {game.opening?.name ?? '오프닝 정보 없음'}
               <span className="mx-1.5 text-amber-300">·</span>
               {TIME_CATEGORY_LABELS[game.timeControl.category as TimeCategory] ?? game.timeControl.category}
               <span className="mx-1.5 text-amber-300">·</span>
               {game.totalMoves}수
-              {game.analysisSummary && <AnalysisStats game={game} summary={game.analysisSummary} />}
-              {(game.folders ?? []).map((folder) => (
-                <span
-                  key={folder.id}
-                  className="ml-1.5 inline-flex items-center gap-1 rounded-md bg-amber-100 px-1.5 py-0.5 align-middle text-[11px] font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
-                >
-                  <span aria-hidden className="inline-block h-2 w-2.5 rounded-[2px] bg-amber-500" />
-                  {folder.name}
-                </span>
-              ))}
             </p>
+            {/* 분석 요약·폴더 태그는 항상 별도 줄 (길이에 따라 오프닝 줄에 붙었다 떨어졌다 하지 않게) */}
+            {(game.analysisSummary || (game.folders ?? []).length > 0) && (
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                {game.analysisSummary && <AnalysisStats game={game} summary={game.analysisSummary} />}
+                {(game.folders ?? []).map((folder) => (
+                  <span
+                    key={folder.id}
+                    className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
+                  >
+                    <span aria-hidden className="inline-block h-2 w-2.5 rounded-[2px] bg-amber-500" />
+                    {folder.name}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${style.className}`}>
+        <div className="flex shrink-0 items-center gap-3">
+          <span className={`whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${style.className}`}>
             {style.text}
           </span>
-          <span className="text-sm text-gray-400 dark:text-gray-500">
+          <span className="whitespace-nowrap text-sm text-gray-400 dark:text-gray-500">
             {formatDate(game.playedAt)}
           </span>
           <button
@@ -158,13 +165,16 @@ export function GameListItem({ game, selected, onToggleSelect }: GameListItemPro
       </div>
     </Link>
     <ConfirmDialog {...dialogProps} />
-    {menuPosition && folders && (
+    {menuPosition && (
       <ContextMenu
         position={menuPosition}
-        title="폴더에 추가"
         onClose={closeMenu}
         items={[
-          ...folders.map((folder) => {
+          { label: '게임 이름 변경', onSelect: () => setRenameOpen(true) },
+          { type: 'separator' },
+          { type: 'heading', label: '폴더에 추가' },
+          // 폴더 목록은 메뉴를 열 때 조회 — 도착하면 채워짐
+          ...(folders ?? []).map((folder) => {
             const checked = gameFolderIds.has(folder.id)
             return {
               label: folder.name,
@@ -177,7 +187,22 @@ export function GameListItem({ game, selected, onToggleSelect }: GameListItemPro
         ]}
       />
     )}
-    <FolderNameDialog
+    <NameDialog
+      open={renameOpen}
+      title="게임 이름 변경"
+      confirmLabel="저장"
+      fieldLabel="게임 이름"
+      maxLength={50}
+      initialName={game.nickname ?? ''}
+      placeholder="예: 첫 퀸 희생 승리"
+      hint="목록과 게임 화면 맨 위에 보여요 · 비우고 저장하면 이름을 지워요 · 최대 50자"
+      allowEmpty
+      isPending={updateNote.isPending}
+      // 이름·메모를 함께 저장하는 API라 기존 메모를 같이 보냄
+      onSubmit={(name) => updateNote.mutateAsync({ nickname: name, memo: game.memo ?? null })}
+      onClose={() => setRenameOpen(false)}
+    />
+    <NameDialog
       open={newFolderOpen}
       title="새 폴더"
       confirmLabel="만들기"
@@ -203,8 +228,7 @@ function AnalysisStats({ game, summary }: { game: GameResponse; summary: Analysi
 
   return (
     <>
-      <span className="mx-1.5 text-amber-300">·</span>
-      <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1 align-middle">
+      <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
         <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-medium text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
           분석됨
         </span>

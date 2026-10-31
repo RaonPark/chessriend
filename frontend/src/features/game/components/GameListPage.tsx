@@ -10,7 +10,7 @@ import { useAddGamesToFolder, useCreateFolder, useDeleteGames, useDeleteAllGames
 import { GameListItem } from './GameListItem'
 import { GameFilters } from './GameFilters'
 import { GameLnb } from './GameLnb'
-import { FolderNameDialog } from './FolderNameDialog'
+import { NameDialog } from './NameDialog'
 import { EMPTY_FILTERS, hasActiveFilters, type GameFilterValue, type LnbSelection } from '../utils/gameFilters'
 
 export function GameListPage() {
@@ -223,7 +223,7 @@ export function GameListPage() {
               </div>
 
               {/* 게임 목록 */}
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {data.content.map((game) => (
                   <GameListItem
                     key={game.id}
@@ -275,7 +275,7 @@ export function GameListPage() {
           ]}
         />
       )}
-      <FolderNameDialog
+      <NameDialog
         open={bulkNewFolderOpen}
         title="새 폴더"
         confirmLabel="만들기"
