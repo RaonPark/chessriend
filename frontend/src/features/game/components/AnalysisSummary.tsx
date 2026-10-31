@@ -1,5 +1,6 @@
-import { Fragment } from 'react'
+import { Fragment, useId, useState } from 'react'
 import type { GameAnalysis, MoveClassification, MoveResponse } from '../types/game'
+import { moveCpLoss } from '../utils/cpLoss'
 
 interface AnalysisSummaryProps {
   analysis: GameAnalysis
@@ -24,16 +25,25 @@ const BADGE_CONFIG = {
 export function AnalysisSummary({ analysis, moves, whiteName, blackName }: AnalysisSummaryProps) {
   const whiteCounts = emptyCounts()
   const blackCounts = emptyCounts()
+  // 평균 cp loss (ACPL) 계산용
+  const cpLoss = { white: { sum: 0, count: 0 }, black: { sum: 0, count: 0 } }
 
   for (const ev of analysis.evaluations) {
+    const isWhite = moves[ev.moveIndex]?.color === 'WHITE'
+    const side = isWhite ? cpLoss.white : cpLoss.black
+    side.sum += moveCpLoss(ev.evalBefore, ev.evalAfter, isWhite)
+    side.count++
+
     if (!ev.classification) continue
-    const move = moves[ev.moveIndex]
-    if (move?.color === 'WHITE') {
+    if (isWhite) {
       whiteCounts[ev.classification]++
     } else {
       blackCounts[ev.classification]++
     }
   }
+
+  const averageOf = ({ sum, count }: { sum: number; count: number }) =>
+    count > 0 ? String(Math.round(sum / count)) : '-'
 
   return (
     <div className="rounded-lg border border-amber-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
@@ -77,7 +87,66 @@ export function AnalysisSummary({ analysis, moves, whiteName, blackName }: Analy
             </Fragment>
           )
         })}
+
+        {/* 평균 centipawn loss */}
+        <div className="col-span-3 mt-1 border-t border-amber-100 dark:border-gray-700" />
+        <div className="flex items-center gap-1.5">
+          <span className="font-medium text-gray-700 dark:text-gray-300">cp loss</span>
+          <CpLossHelp />
+        </div>
+        <span
+          data-testid="acpl-white"
+          className="text-center font-mono font-medium tabular-nums text-gray-800 dark:text-gray-100"
+        >
+          {averageOf(cpLoss.white)}
+        </span>
+        <span
+          data-testid="acpl-black"
+          className="text-center font-mono font-medium tabular-nums text-gray-800 dark:text-gray-100"
+        >
+          {averageOf(cpLoss.black)}
+        </span>
       </div>
     </div>
+  )
+}
+
+/** cp loss 설명 툴팁 (호버/키보드 포커스로 표시) */
+function CpLossHelp() {
+  const [open, setOpen] = useState(false)
+  const tooltipId = useId()
+
+  return (
+    <span className="relative inline-flex">
+      <button
+        type="button"
+        aria-label="cp loss 설명"
+        aria-describedby={open ? tooltipId : undefined}
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-amber-300 text-[10px] font-bold leading-none text-amber-600 transition hover:bg-amber-50 dark:border-gray-500 dark:text-gray-300 dark:hover:bg-gray-700"
+      >
+        ?
+      </button>
+      {open && (
+        <span
+          id={tooltipId}
+          role="tooltip"
+          className="absolute left-0 top-full z-20 mt-1.5 w-64 rounded-lg border border-amber-200 bg-white p-3 text-left text-[11px] font-normal leading-relaxed text-gray-700 shadow-lg dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200"
+        >
+          <span className="mb-1 block font-semibold text-amber-700 dark:text-amber-400">Centipawn Loss (CPL)</span>
+          매 수마다 엔진이 찾은 최선수와 비교해 <b>평가 점수를 얼마나 잃었는지</b>를 나타냅니다.
+          1 centipawn = 폰 1/100개, 100이면 폰 하나만큼 손해를 본 셈입니다.
+          <span className="mt-1 block">
+            여기에 보이는 값은 플레이어별 <b>평균</b>(ACPL)이며, <b>낮을수록</b> 정확하게 둔 것입니다.
+          </span>
+          <span className="mt-1 block text-gray-500 dark:text-gray-400">
+            메이트·큰 평가 차이는 ±1000으로 제한해 계산합니다 (lichess 방식).
+          </span>
+        </span>
+      )}
+    </span>
   )
 }

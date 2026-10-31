@@ -101,3 +101,22 @@
 ### Key files
 - `features/game/utils/moveNumber.ts` — `formatNumberedMove`, `variationMovePly` (+ 테스트 5개)
 - `features/game/components/MoveList.tsx`, `CommentPanel.tsx`
+
+## 7. 분석 결과에 cp loss (평균 centipawn loss) 추가
+
+### What
+- 분석 결과 요약 표 아래에 `cp loss` 행 추가: 백/흑 각각의 **평균** centipawn loss (ACPL, 반올림)
+- `?` 버튼에 호버하거나 키보드로 포커스하면 설명 툴팁 표시 (네이티브 `title` 대신 커스텀 툴팁, `role="tooltip"` + `aria-describedby`)
+- 해당 색의 평가가 없으면 `-`
+
+### Why
+- lichess / chess.com과 같은 지표라서 익숙함. 총합은 게임 길이에 따라 달라지므로 평균을 씀
+- 백엔드에 저장된 `cpLoss`는 메이트를 ±10000cp(`MATE_SCORE`)로 환산한 값
+  → 메이트 하나만 놓쳐도 평균이 수백으로 튐.
+  그래서 lichess ACPL처럼 평가를 **±1000cp로 제한**해 `evalBefore`/`evalAfter`로부터 프론트에서 다시 계산
+  (`utils/cpLoss.ts`). 수 분류(Blunder 등)는 기존대로 백엔드의 Win% 기준이라 영향 없음
+
+### Key files
+- `features/game/utils/cpLoss.ts` — `moveCpLoss` (+ 테스트 6개)
+- `features/game/components/AnalysisSummary.tsx` — cp loss 행, `CpLossHelp` 툴팁
+- 테스트: `components/__tests__/AnalysisSummary.test.tsx` (5개)
