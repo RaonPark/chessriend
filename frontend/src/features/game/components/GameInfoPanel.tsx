@@ -1,4 +1,5 @@
 import { AnalysisSummary } from './AnalysisSummary'
+import { formatTimeControl } from '../utils/timeCategory'
 import type { GameAnalysis, GameDetailResponse, GameSource } from '../types/game'
 
 interface GameInfoPanelProps {
@@ -28,7 +29,7 @@ function formatDate(iso: string) {
 export function GameInfoPanel({ game, analysis, onDelete, isDeleting }: GameInfoPanelProps) {
   const rows: [string, string][] = [
     ['플랫폼', SOURCE_LABELS[game.source]],
-    ['시간 제한', `${game.timeControl.time} (${game.timeControl.category})`],
+    ['시간 제한', formatTimeControl(game.timeControl)],
     ['오프닝', game.opening ? `${game.opening.name}${game.opening.eco ? ` (${game.opening.eco})` : ''}` : '-'],
     ['총 수', `${game.totalMoves}수`],
     ['대국 날짜', formatDate(game.playedAt)],

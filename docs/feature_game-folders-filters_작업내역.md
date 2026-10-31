@@ -184,3 +184,31 @@
 - `CORRESPONDENCE`에는 실제 통신 체스 외에 다른 게임도 섞여 있어 "기타"가 더 정확함
   - 실제 통신 체스: 한 수에 하루~며칠, lichess Correspondence / chess.com Daily
   - 시간 정보가 없거나 해석하지 못한 PGN 게임 (`CreateGameFromPgnService.parseTimeControl`)
+
+## 8. 시간 분류: "일일 체스"와 "기타" 분리 + PGN 시간 정보 해석
+
+### What
+- `TimeCategory.OTHER`(기타) 추가
+  - CORRESPONDENCE는 **일일 체스**: lichess Correspondence / chess.com Daily
+  - OTHER는 시간 정보가 없거나 해석할 수 없는 게임
+- PGN 시간 해석을 서비스에서 도메인 `TimeControl.fromPgnTag(raw, event)`로 이동하고 형식 확장
+  - `600+5` 기본+증분, `180` 기본만, `*60` 모래시계
+  - `40/7200(:3600)` 수/초·구간제 → 첫 구간 기준 / `1/259200`처럼 한 수에 하루 이상 → 일일 체스
+  - `[Event]`에 Daily/Correspondence → 일일 체스 (그래서 `ParsedPgn.event` 추가)
+  - `-`, `?`, 없음, 해석 불가 → 기타
+  - 카테고리 추정(`TimeCategory.infer`)도 도메인으로 이동
+- **V6 마이그레이션**: 기존 PGN 게임 중 CORRESPONDENCE로 들어가 있던 것은 일일 체스 흔적(Event Daily/Correspondence 또는 `1/초`)이 없으면 OTHER로 이동
+  - 예전 파서가 `600+5` 형식만 읽었기 때문
+  - 로컬 DB에서는 시간 정보 없는 PGN 게임 1개가 해당
+- 가져오기 조건에 OTHER를 쓰면 400 (lichess/chess.com에는 해당 분류 없음)
+- 프론트
+  - `TIME_CATEGORY_LABELS`, `formatTimeControl` 공용 유틸 추가
+  - 필터: "일일 체스" + "기타"
+  - 목록·상세에서 영어 분류명 대신 한글 표시. 기타는 시간 없이 "기타"만
+
+### Key files
+- `game/domain/TimeControl.kt`, `ParsedPgn.kt`, `application/CreateGameFromPgnService.kt`
+- `adapter/out/chess/ChesslibAdapter.kt`(Event 추출), `LichessClient.kt`, `ChessComClient.kt`
+- `db/migration/V6__reclassify_pgn_time_category.sql`
+- `frontend/.../utils/timeCategory.ts`(신규), `GameFilters.tsx`, `GameListItem.tsx`, `GameInfoPanel.tsx`, `types/game.ts`
+- 테스트: `TimeControlTest`(+7), `CreateGameFromPgnServiceTest`(+1), `ChesslibAdapterTest`(Event), `timeCategory.test.ts`(2)

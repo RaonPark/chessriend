@@ -36,4 +36,47 @@ class TimeControlTest : DescribeSpec({
             tc.toString() shouldBe "10+5"
         }
     }
+
+    describe("fromPgnTag (PGN TimeControl 태그 해석)") {
+        fun tc(raw: String?, event: String? = null) = TimeControl.fromPgnTag(raw, event)
+
+        it("기본+증분 (600+5) → 시간으로 분류") {
+            val t = tc("600+5")
+            t.initialTime shouldBe 10.minutes
+            t.increment shouldBe 5.seconds
+            t.category shouldBe TimeCategory.RAPID
+        }
+
+        it("증분 없는 기본 시간 (180) → 블리츠") {
+            val t = tc("180")
+            t.initialTime shouldBe 3.minutes
+            t.increment shouldBe 0.seconds
+            t.category shouldBe TimeCategory.BLITZ
+        }
+
+        it("구간제 (40/7200:3600) → 첫 구간 기준 클래시컬") {
+            tc("40/7200:3600").category shouldBe TimeCategory.CLASSICAL
+        }
+
+        it("한 수당 하루 이상 (1/259200) → 일일 체스") {
+            tc("1/259200").category shouldBe TimeCategory.CORRESPONDENCE
+        }
+
+        it("모래시계 (*60) → 기본 60초로 분류") {
+            tc("*60").category shouldBe TimeCategory.BULLET
+        }
+
+        it("Event에 Daily/Correspondence가 있으면 일일 체스 (TimeControl이 없어도)") {
+            tc(null, "Let's Play! - Daily").category shouldBe TimeCategory.CORRESPONDENCE
+            tc("-", "Casual correspondence game").category shouldBe TimeCategory.CORRESPONDENCE
+        }
+
+        it("시간 정보 없음(-, ?, 빈 값, 해석 불가) → 기타") {
+            for (raw in listOf(null, "", "-", "?", "abc")) {
+                val t = tc(raw)
+                t.category shouldBe TimeCategory.OTHER
+                t.initialTime shouldBe 0.seconds
+            }
+        }
+    }
 })

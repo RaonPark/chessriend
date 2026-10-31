@@ -7,6 +7,7 @@ export type TimeCategory =
   | 'RAPID'
   | 'CLASSICAL'
   | 'CORRESPONDENCE'
+  | 'OTHER'
 
 export interface PlayerResponse {
   name: string

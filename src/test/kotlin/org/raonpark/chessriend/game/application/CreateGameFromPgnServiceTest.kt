@@ -31,6 +31,7 @@ class CreateGameFromPgnServiceTest : DescribeSpec({
         hasSetup: Boolean = false,
         result: String = "1-0",
         timeControl: String? = "600+5",
+        event: String? = "Casual",
     ) = ParsedPgn(
         whiteName = "Alice",
         whiteRating = 2600,
@@ -48,6 +49,7 @@ class CreateGameFromPgnServiceTest : DescribeSpec({
         moveComments = mapOf("0" to "best by test"),
         variations = listOf(Variation(startMoveIndex = 0, moves = listOf("c4"))),
         hasSetup = hasSetup,
+        event = event,
     )
 
     val singleGamePgn = """
@@ -76,6 +78,16 @@ class CreateGameFromPgnServiceTest : DescribeSpec({
             result.annotations.moveComments["0"] shouldBe "best by test"
             result.annotations.variations shouldHaveSize 1
             coVerify(exactly = 1) { gameRepository.save(any()) }
+        }
+
+        it("시간 정보가 없으면 '기타', Event가 Daily면 '일일 체스'로 저장한다") {
+            coEvery { gameRepository.save(any()) } answers { firstArg<Game>().copy(id = 1L) }
+
+            every { chessRules.parsePgn(any()) } returns parsed(timeControl = null)
+            service.createFromPgn(CreateGameFromPgnCommand(pgn = singleGamePgn)).timeControl.category shouldBe TimeCategory.OTHER
+
+            every { chessRules.parsePgn(any()) } returns parsed(timeControl = null, event = "Let's Play! - Daily")
+            service.createFromPgn(CreateGameFromPgnCommand(pgn = singleGamePgn)).timeControl.category shouldBe TimeCategory.CORRESPONDENCE
         }
 
         it("결과가 '*'이면 무승부로 둔다") {

@@ -125,6 +125,7 @@ class ChesslibAdapter : ChessRules {
             moveComments = moveComments,
             variations = variations,
             hasSetup = hasSetup,
+            event = Regex("""\[Event\s+"([^"]*)"\s*]""").find(pgn)?.groupValues?.get(1)?.takeIf { it.isNotBlank() },
         )
     }
 

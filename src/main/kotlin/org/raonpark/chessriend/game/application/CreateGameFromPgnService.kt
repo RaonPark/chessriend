@@ -9,7 +9,6 @@ import org.raonpark.chessriend.game.domain.Opening
 import org.raonpark.chessriend.game.domain.ParsedPgn
 import org.raonpark.chessriend.game.domain.Player
 import org.raonpark.chessriend.game.domain.Players
-import org.raonpark.chessriend.game.domain.TimeCategory
 import org.raonpark.chessriend.game.domain.TimeControl
 import org.raonpark.chessriend.game.port.`in`.CreateGameFromPgnCommand
 import org.raonpark.chessriend.game.port.`in`.CreateGameFromPgnUseCase
@@ -21,7 +20,6 @@ import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.UUID
-import kotlin.time.Duration.Companion.seconds
 
 private val log = KotlinLogging.logger {}
 
@@ -44,7 +42,7 @@ class CreateGameFromPgnService(
             throw IllegalArgumentException("표준 시작 포지션이 아닌 PGN([SetUp]/[FEN])은 아직 지원하지 않습니다.")
         }
 
-        val timeControl = parseTimeControl(parsed.timeControl)
+        val timeControl = TimeControl.fromPgnTag(parsed.timeControl, parsed.event)
         val game = Game(
             id = null,
             source = GameSource.PGN,
@@ -78,29 +76,6 @@ class CreateGameFromPgnService(
             "1-0", "0-1", "1/2-1/2" -> GameResult.fromPgnResult(result)
             else -> GameResult.DRAW
         }
-
-    /** "600+5" 형식만 해석. 그 외/없음이면 시간 정보 없는 통신 체스로 둔다. */
-    private fun parseTimeControl(raw: String?): TimeControl {
-        if (raw != null && raw.matches(Regex("""\d+\+\d+"""))) {
-            val parts = raw.split("+")
-            val initial = parts[0].toLong()
-            val increment = parts[1].toLong()
-            return TimeControl(initial.seconds, increment.seconds, inferCategory(initial, increment))
-        }
-        return TimeControl(0.seconds, 0.seconds, TimeCategory.CORRESPONDENCE)
-    }
-
-    /** lichess 식 추정: 예상 소요(base + 40*inc)로 카테고리 판정. */
-    private fun inferCategory(initialSeconds: Long, incrementSeconds: Long): TimeCategory {
-        val estimated = initialSeconds + 40 * incrementSeconds
-        return when {
-            estimated < 30 -> TimeCategory.ULTRABULLET
-            estimated < 180 -> TimeCategory.BULLET
-            estimated < 480 -> TimeCategory.BLITZ
-            estimated < 1500 -> TimeCategory.RAPID
-            else -> TimeCategory.CLASSICAL
-        }
-    }
 
     private fun parseDate(date: String?): Instant? {
         if (date == null) return null

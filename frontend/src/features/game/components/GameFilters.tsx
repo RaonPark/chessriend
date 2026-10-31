@@ -1,20 +1,15 @@
 import type { GameOutcomeFilter, GameSource, RatingBand, TimeCategory } from '../types/game'
 import type { GameFilterValue } from '../utils/gameFilters'
+import { TIME_CATEGORY_LABELS } from '../utils/timeCategory'
 
 const SOURCES: { value: GameSource; label: string }[] = [
   { value: 'LICHESS', label: 'Lichess' },
   { value: 'CHESS_COM', label: 'Chess.com' },
 ]
 
-const TIME_CATEGORIES: { value: TimeCategory; label: string }[] = [
-  { value: 'ULTRABULLET', label: '울트라불릿' },
-  { value: 'BULLET', label: '불릿' },
-  { value: 'BLITZ', label: '블리츠' },
-  { value: 'RAPID', label: '래피드' },
-  { value: 'CLASSICAL', label: '클래시컬' },
-  // 통신 체스(lichess Correspondence / chess.com Daily) + 시간 정보가 없거나 해석 못 한 PGN 게임
-  { value: 'CORRESPONDENCE', label: '기타' },
-]
+const TIME_CATEGORIES: { value: TimeCategory; label: string }[] = (
+  ['ULTRABULLET', 'BULLET', 'BLITZ', 'RAPID', 'CLASSICAL', 'CORRESPONDENCE', 'OTHER'] as const
+).map((value) => ({ value, label: TIME_CATEGORY_LABELS[value] }))
 
 const OUTCOMES: { value: GameOutcomeFilter; label: string }[] = [
   { value: 'WIN', label: '승리' },

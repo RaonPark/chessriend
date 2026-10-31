@@ -7,8 +7,9 @@ import { useConfirm } from '@/shared/hooks/useConfirm'
 import { useAddGamesToFolder, useCreateFolder, useDeleteGame, useRemoveGamesFromFolder } from '../api/mutations'
 import { useFolders } from '../api/queries'
 import { FolderNameDialog } from './FolderNameDialog'
+import { TIME_CATEGORY_LABELS } from '../utils/timeCategory'
 import { getOwnerOutcome, getResultLabel, type OwnerOutcome } from '../utils/outcome'
-import type { AnalysisSummaryResponse, GameResponse } from '../types/game'
+import type { AnalysisSummaryResponse, GameResponse, TimeCategory } from '../types/game'
 
 interface GameListItemProps {
   game: GameResponse
@@ -109,7 +110,7 @@ export function GameListItem({ game, selected, onToggleSelect }: GameListItemPro
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               {game.opening?.name ?? '오프닝 정보 없음'}
               <span className="mx-1.5 text-amber-300">·</span>
-              {game.timeControl.category}
+              {TIME_CATEGORY_LABELS[game.timeControl.category as TimeCategory] ?? game.timeControl.category}
               <span className="mx-1.5 text-amber-300">·</span>
               {game.totalMoves}수
               {game.analysisSummary && <AnalysisStats game={game} summary={game.analysisSummary} />}
