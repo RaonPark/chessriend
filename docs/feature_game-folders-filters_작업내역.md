@@ -239,3 +239,18 @@
 - `frontend/.../utils/cpLoss.ts`
 - `db/migration/V7__fix_checkmate_move_classification.sql`
 - 테스트: `GameAnalyzerTest`(+1, 백·흑), `GameAnalysisSummaryTest`(+1), `cpLoss.test.ts`(+1)
+
+## 10. 기보 기호 표시 (!! / ?? / ? / ?!)
+
+### What
+- 수 목록에서 분석 분류에 따라 수 옆에 기보 기호 표시
+  - Brilliant `!!`, Blunder `??`, Mistake `?`, Inaccuracy `?!`
+  - 예전에는 Brilliant만 `!!`
+- 대국자 바: Blunder·Mistake만 보이던 것을 **네 분류 모두 기호로 표시** (`!! 0 ?? 1 ? 0 ?! 2 cp loss 40`)
+  - 공간 문제로 두 개만 넣었던 것을 기호로 줄여서 전부 들어가게 함
+  - 기호에 마우스를 올리면 이름(title), 화면 낭독기는 aria-label("Blunder 1")
+- 공용 `MOVE_SYMBOLS` 유틸 (기호·이름·색)
+
+### Key files
+- `frontend/.../utils/moveSymbols.ts` (신규), `MoveList.tsx`, `PlayerBar.tsx`
+- 테스트: `moveSymbols.test.ts`, `MoveList.test.tsx`(+1), `PlayerBar.test.tsx`(수정)

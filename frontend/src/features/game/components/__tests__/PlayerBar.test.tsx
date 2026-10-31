@@ -13,18 +13,21 @@ describe('PlayerBar', () => {
     expect(within(bar).getByText('승리 (1-0)')).toBeInTheDocument()
   })
 
-  it('분석 요약이 있으면 Blunder·Mistake·cp loss를 표시한다', () => {
+  it('분석 요약이 있으면 네 분류를 기보 기호로, cp loss와 함께 표시한다', () => {
     render(<PlayerBar color="black" name="bob" rating={null} badge={null} stats={STATS} />)
     const bar = screen.getByTestId('player-bar-black')
-    expect(within(bar).getByText('Blunder').parentElement).toHaveTextContent('Blunder2')
-    expect(within(bar).getByText('Mistake').parentElement).toHaveTextContent('Mistake1')
+    // STATS: brilliant 0, blunder 2, mistake 1, inaccuracy 3
+    expect(within(bar).getByLabelText('Brilliant 0')).toHaveTextContent('!!0')
+    expect(within(bar).getByLabelText('Blunder 2')).toHaveTextContent('??2')
+    expect(within(bar).getByLabelText('Mistake 1')).toHaveTextContent('?1')
+    expect(within(bar).getByLabelText('Inaccuracy 3')).toHaveTextContent('?!3')
     expect(screen.getByTestId('player-acpl-black')).toHaveTextContent('42')
     expect(within(bar).getByRole('button', { name: 'cp loss 설명' })).toBeInTheDocument()
   })
 
   it('분석 전에는 요약을 표시하지 않는다', () => {
     render(<PlayerBar color="black" name="bob" rating={1400} badge={null} stats={null} />)
-    expect(screen.queryByText('Blunder')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/Blunder/)).not.toBeInTheDocument()
     expect(screen.queryByText(/cp loss/)).not.toBeInTheDocument()
   })
 })

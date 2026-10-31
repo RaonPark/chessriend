@@ -3,6 +3,7 @@ import { ContextMenu, type ContextMenuItem } from '@/shared/components/ContextMe
 import { useBoardStore, selectHasUnsavedVariationMoves } from '../stores/boardStore'
 import type { MoveClassification, VariationResponse } from '../types/game'
 import { formatNumberedMove, variationMovePly } from '../utils/moveNumber'
+import { MOVE_SYMBOLS } from '../utils/moveSymbols'
 
 export function MoveList() {
   const moves = useBoardStore((s) => s.mainlineMoves)
@@ -242,8 +243,13 @@ function MoveCell({ move, isActive, isBranchPoint, hasComment, classification, g
       }`}
     >
       <span>{move.san}</span>
-      {classification === 'brilliant' && (
-        <span className="text-[10px] font-bold text-cyan-600 dark:text-cyan-400" title="Brilliant!!">!!</span>
+      {classification && (
+        <span
+          className={`text-[11px] font-bold ${MOVE_SYMBOLS[classification].className}`}
+          title={MOVE_SYMBOLS[classification].label}
+        >
+          {MOVE_SYMBOLS[classification].symbol}
+        </span>
       )}
       {hasComment && (
         <span className="text-[10px] text-amber-500 dark:text-amber-600" title="메모 있음">&#9998;</span>
