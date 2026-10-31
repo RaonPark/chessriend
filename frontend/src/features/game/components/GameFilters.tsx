@@ -1,4 +1,4 @@
-import type { GameOutcomeFilter, GameSource, RatingBand, RatingBasis, TimeCategory } from '../types/game'
+import type { GameOutcomeFilter, GameSource, RatingBand, TimeCategory } from '../types/game'
 import type { GameFilterValue } from '../utils/gameFilters'
 
 const SOURCES: { value: GameSource; label: string }[] = [
@@ -44,13 +44,7 @@ export function GameFilters({ value, onChange }: GameFiltersProps) {
       <FilterRow label="플랫폼" options={SOURCES} selected={value.source} onSelect={(source) => set({ source })} />
       <FilterRow label="시간" options={TIME_CATEGORIES} selected={value.timeCategory} onSelect={(timeCategory) => set({ timeCategory })} />
       <FilterRow label="결과" options={OUTCOMES} selected={value.outcome} onSelect={(outcome) => set({ outcome })} />
-      <FilterRow
-        label="레이팅"
-        options={RATING_BANDS}
-        selected={value.ratingBand}
-        onSelect={(ratingBand) => set({ ratingBand })}
-        prefix={<RatingBasisToggle value={value.ratingBasis} onChange={(ratingBasis) => set({ ratingBasis })} />}
-      />
+      <FilterRow label="상대 레이팅" options={RATING_BANDS} selected={value.ratingBand} onSelect={(ratingBand) => set({ ratingBand })} />
     </div>
   )
 }
@@ -60,15 +54,13 @@ interface FilterRowProps<T extends string> {
   options: { value: T; label: string }[]
   selected: T | undefined
   onSelect: (value: T | undefined) => void
-  prefix?: React.ReactNode
 }
 
-function FilterRow<T extends string>({ label, options, selected, onSelect, prefix }: FilterRowProps<T>) {
+function FilterRow<T extends string>({ label, options, selected, onSelect }: FilterRowProps<T>) {
   const all: { value: T | undefined; label: string }[] = [{ value: undefined, label: '전체' }, ...options]
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <span className="w-14 shrink-0 text-xs font-semibold text-amber-700 dark:text-amber-400">{label}</span>
-      {prefix}
+      <span className="w-16 shrink-0 text-xs font-semibold text-amber-700 dark:text-amber-400">{label}</span>
       <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-1.5">
         {all.map((option) => {
           const checked = selected === option.value
@@ -90,35 +82,6 @@ function FilterRow<T extends string>({ label, options, selected, onSelect, prefi
           )
         })}
       </div>
-    </div>
-  )
-}
-
-/** 레이팅 기준 전환: 상대 / 나 */
-function RatingBasisToggle({ value, onChange }: { value: RatingBasis; onChange: (v: RatingBasis) => void }) {
-  const options: { value: RatingBasis; label: string; ariaLabel: string }[] = [
-    { value: 'OPPONENT', label: '상대', ariaLabel: '상대 레이팅' },
-    { value: 'ME', label: '나', ariaLabel: '내 레이팅' },
-  ]
-  return (
-    <div role="radiogroup" aria-label="레이팅 기준" className="mr-1 flex gap-0.5 rounded-lg bg-amber-100 p-0.5 dark:bg-gray-700">
-      {options.map((o) => (
-        <button
-          key={o.value}
-          type="button"
-          role="radio"
-          aria-checked={value === o.value}
-          aria-label={o.ariaLabel}
-          onClick={() => onChange(o.value)}
-          className={`rounded-md px-2 py-0.5 text-[11px] transition ${
-            value === o.value
-              ? 'bg-white font-semibold text-amber-800 shadow-sm dark:bg-gray-800 dark:text-amber-300'
-              : 'font-medium text-amber-700 hover:bg-amber-50 dark:text-gray-400 dark:hover:bg-gray-600'
-          }`}
-        >
-          {o.label}
-        </button>
-      ))}
     </div>
   )
 }

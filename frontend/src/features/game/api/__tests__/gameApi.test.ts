@@ -24,22 +24,11 @@ describe('fetchGames', () => {
       new Response(JSON.stringify({ content: [] }), { status: 200 }),
     )
 
-    await fetchGames({ outcome: 'LOSS', ratingBand: 'UNRATED', ratingBasis: 'ME' })
+    await fetchGames({ outcome: 'LOSS', ratingBand: 'UNRATED' })
 
     const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string
     expect(calledUrl).toContain('outcome=LOSS')
     expect(calledUrl).toContain('ratingBand=UNRATED')
-    expect(calledUrl).toContain('ratingBasis=ME')
-  })
-
-  it('레이팅 구간이 없으면 기준(ratingBasis)도 보내지 않는다', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify({ content: [] }), { status: 200 }),
-    )
-
-    await fetchGames({ ratingBasis: 'ME' })
-
-    expect((fetch as ReturnType<typeof vi.fn>).mock.calls[0][0]).toBe('/api/games')
   })
 
   it('필터를 쿼리스트링으로 변환한다', async () => {

@@ -137,7 +137,7 @@ class GamePersistenceAdapter(
         criteria.source?.let { condition = condition.and(GAMES.SOURCE.eq(it.name)) }
         criteria.timeCategory?.let { condition = condition.and(GAMES.TIME_CATEGORY.eq(it.name)) }
         criteria.outcome?.let { condition = condition.and(outcomeCondition(it)) }
-        criteria.ratingBand?.let { condition = condition.and(ratingCondition(it, criteria.ratingBasis)) }
+        criteria.ratingBand?.let { condition = condition.and(opponentRatingCondition(it)) }
         criteria.opening?.let { condition = condition.and(GAMES.OPENING_NAME.eq(it)) }
         return condition
     }
@@ -152,15 +152,11 @@ class GamePersistenceAdapter(
         }
     }
 
-    private fun ratingCondition(band: RatingBand, basis: RatingBasis): Condition {
-        // 기준 쪽 레이팅: 상대 = 소유자 반대편, 나 = 소유자 쪽. 소유자가 없으면 레이팅 조건에 걸리지 않음
-        val (whenOwnerWhite, whenOwnerBlack) = when (basis) {
-            RatingBasis.OPPONENT -> GAMES.BLACK_RATING to GAMES.WHITE_RATING
-            RatingBasis.ME -> GAMES.WHITE_RATING to GAMES.BLACK_RATING
-        }
+    private fun opponentRatingCondition(band: RatingBand): Condition {
+        // 상대 레이팅 = 소유자 반대편. 소유자가 없으면 상대를 정할 수 없어 레이팅 조건에 걸리지 않음
         val rating: Field<Int?> = DSL.case_()
-            .`when`(ownerIsWhite, whenOwnerWhite)
-            .`when`(ownerIsBlack, whenOwnerBlack)
+            .`when`(ownerIsWhite, GAMES.BLACK_RATING)
+            .`when`(ownerIsBlack, GAMES.WHITE_RATING)
         val hasOwnerSide = ownerIsWhite.or(ownerIsBlack)
         if (band == RatingBand.UNRATED) return hasOwnerSide.and(rating.isNull)
 

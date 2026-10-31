@@ -4,7 +4,7 @@
 시안: https://www.figma.com/design/2l64N2RGEDFCWoxP1J6B70/?node-id=9-386
 
 ## 결정 사항 (A안 시안 기준)
-- 레이팅 필터: 상대/나 전환 가능, 기본은 **상대** 레이팅
+- 레이팅 필터: **상대 레이팅** 기준 (처음엔 상대/나 전환 토글을 넣었으나 사용자 요청으로 제거 → #1-1)
 - 결과 필터: **소유자 관점**. 소유자가 없는 게임(PGN 등)은 승·패에 걸리지 않고 무승부만 결과로 판단
 - 레이팅 필터: 소유자가 없는 게임은 "상대/나"를 정할 수 없어 걸리지 않음 (레이팅 없음 포함)
 - 폴더: 게임 하나가 여러 폴더에 속할 수 있음 / 오프닝별 묶음은 오프닝 이름 기준
@@ -51,3 +51,12 @@
 - `GameSearchCriteria.kt`, `GamePersistenceAdapter.kt`(`countByOpening`, 조건 추가)
 - `GameRepository.kt`, `GetGameUseCase.kt`, `GetGameService.kt`, `GameController.kt`, `GameResponse.kt`(`OpeningCountResponse`)
 - 테스트: `GamePersistenceAdapterTest.Openings`(2), `GetGameServiceTest`(+1), `GameControllerTest`(+1)
+
+## 1-1. 레이팅 필터를 상대 레이팅으로 고정
+
+### What
+- 상대/나 전환 토글과 `RatingBasis`(백엔드 enum, `ratingBasis` 파라미터, 프론트 타입)를 제거
+- 레이팅 구간은 항상 **상대(소유자 반대편) 레이팅** 기준. 필터 줄 이름도 "상대 레이팅"으로 변경
+
+### Why
+- 사용자 피드백: 상대/나 전환이 굳이 필요 없음 → 상대 레이팅으로 고정 (상대 수준별 복기가 주 용도)

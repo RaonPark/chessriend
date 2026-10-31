@@ -9,7 +9,6 @@ import org.raonpark.chessriend.game.domain.TimeCategory
 import org.raonpark.chessriend.game.domain.GameSearchCriteria
 import org.raonpark.chessriend.game.domain.OwnerOutcome
 import org.raonpark.chessriend.game.domain.RatingBand
-import org.raonpark.chessriend.game.domain.RatingBasis
 import org.raonpark.chessriend.game.port.`in`.CreateGameFromPgnUseCase
 import org.raonpark.chessriend.game.port.`in`.GetGameAnalysisUseCase
 import org.raonpark.chessriend.game.port.`in`.GetGameUseCase
@@ -37,7 +36,6 @@ class GameController(
         @RequestParam(required = false) timeCategory: TimeCategory?,
         @RequestParam(required = false) outcome: OwnerOutcome?,
         @RequestParam(required = false) ratingBand: RatingBand?,
-        @RequestParam(defaultValue = "OPPONENT") ratingBasis: RatingBasis,
         @RequestParam(required = false) opening: String?,
     ): PagedGameResponse {
         val criteria = GameSearchCriteria(
@@ -45,7 +43,6 @@ class GameController(
             timeCategory = timeCategory,
             outcome = outcome,
             ratingBand = ratingBand,
-            ratingBasis = ratingBasis,
             opening = opening,
         )
         val result = getGameUseCase.getGames(page, size, criteria)

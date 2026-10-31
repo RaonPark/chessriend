@@ -258,15 +258,7 @@ class GamePersistenceAdapterTest {
         }
 
         @Test
-        fun `내 레이팅 기준으로 바꿀 수 있다`() = runTest {
-            seed()
-            val me = { band: RatingBand -> GameSearchCriteria(ratingBand = band, ratingBasis = RatingBasis.ME) }
-            assertEquals(listOf("2"), search(me(RatingBand.FROM_1200_TO_1499)))
-            assertEquals(listOf("1"), search(me(RatingBand.FROM_1500_TO_1799)))
-        }
-
-        @Test
-        fun `레이팅 없음은 기준 쪽 레이팅이 null인 게임 (소유자 없는 게임은 제외)`() = runTest {
+        fun `레이팅 없음은 상대 레이팅이 null인 게임 (소유자 없는 게임은 제외)`() = runTest {
             seed()
             assertEquals(listOf("3"), search(GameSearchCriteria(ratingBand = RatingBand.UNRATED)))
         }

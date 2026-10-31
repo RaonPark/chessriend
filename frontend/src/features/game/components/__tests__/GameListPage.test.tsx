@@ -148,23 +148,21 @@ describe('GameListPage', () => {
       expect(screen.getByRole('radio', { name: '패배' })).toHaveAttribute('aria-checked', 'true')
     })
 
-    it('레이팅 구간을 고르면 기본은 상대 레이팅 기준으로 조회한다', async () => {
+    it('상대 레이팅 구간을 고르면 ratingBand로 조회한다', async () => {
       const urls = recordRequests()
       renderWithProviders(<GameListPage />)
       await userEvent.click(await screen.findByRole('radio', { name: '1500–1799' }))
 
       await waitFor(() => expect(urls.at(-1)?.searchParams.get('ratingBand')).toBe('FROM_1500_TO_1799'))
-      expect(urls.at(-1)?.searchParams.get('ratingBasis')).toBe('OPPONENT')
+      expect(screen.getByRole('radiogroup', { name: '상대 레이팅' })).toBeInTheDocument()
     })
 
-    it('"나" 기준으로 바꾸고 "레이팅 없음"을 고를 수 있다', async () => {
+    it('"레이팅 없음"을 고를 수 있다', async () => {
       const urls = recordRequests()
       renderWithProviders(<GameListPage />)
-      await userEvent.click(await screen.findByRole('radio', { name: '내 레이팅' }))
-      await userEvent.click(screen.getByRole('radio', { name: '레이팅 없음' }))
+      await userEvent.click(await screen.findByRole('radio', { name: '레이팅 없음' }))
 
       await waitFor(() => expect(urls.at(-1)?.searchParams.get('ratingBand')).toBe('UNRATED'))
-      expect(urls.at(-1)?.searchParams.get('ratingBasis')).toBe('ME')
     })
 
     it('필터를 쓰면 조건에 맞는 게임 수와 초기화 버튼을 보여주고, 초기화하면 조건이 사라진다', async () => {

@@ -6,9 +6,8 @@ data class GameSearchCriteria(
     val timeCategory: TimeCategory? = null,
     /** 소유자 관점 결과. 소유자가 없는 게임은 WIN/LOSS에 걸리지 않음 (DRAW는 결과만 봄) */
     val outcome: OwnerOutcome? = null,
+    /** 상대(소유자 반대편) 레이팅 구간. 소유자가 없는 게임은 상대를 정할 수 없어 걸리지 않음 */
     val ratingBand: RatingBand? = null,
-    /** 레이팅 구간을 누구 기준으로 볼지. 소유자가 없는 게임은 레이팅 조건에 걸리지 않음 */
-    val ratingBasis: RatingBasis = RatingBasis.OPPONENT,
     /** 오프닝 이름 (정확히 일치) */
     val opening: String? = null,
 )
@@ -17,8 +16,6 @@ data class GameSearchCriteria(
 data class OpeningCount(val name: String, val count: Long)
 
 enum class OwnerOutcome { WIN, LOSS, DRAW }
-
-enum class RatingBasis { OPPONENT, ME }
 
 /** 레이팅 구간. [min]/[max]는 포함 범위, null이면 열린 구간. [UNRATED]는 레이팅이 없는 경우 */
 enum class RatingBand(val min: Int?, val max: Int?) {

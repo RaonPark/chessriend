@@ -142,17 +142,14 @@ export type RatingBand =
   | 'FROM_2100'
   | 'UNRATED'
 
-/** 레이팅 구간을 누구 기준으로 볼지 */
-export type RatingBasis = 'OPPONENT' | 'ME'
-
 export interface GameFilter {
   page?: number
   size?: number
   source?: GameSource
   timeCategory?: TimeCategory
   outcome?: GameOutcomeFilter
+  /** 상대 레이팅 구간 */
   ratingBand?: RatingBand
-  ratingBasis?: RatingBasis
 }
 
 export interface ImportParams {
