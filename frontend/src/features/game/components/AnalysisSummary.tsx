@@ -78,10 +78,10 @@ export function AnalysisSummary({ analysis, moves, whiteName, blackName }: Analy
                 <span className={`inline-block h-2 w-2 rounded-full ${config.dotClass}`} />
                 <span className={`font-medium ${config.textClass}`}>{config.label}</span>
               </div>
-              <span className="text-center font-mono font-medium tabular-nums text-gray-800 dark:text-gray-100">
+              <span className="text-center font-medium tabular-nums text-gray-800 dark:text-gray-100">
                 {whiteCounts[type]}
               </span>
-              <span className="text-center font-mono font-medium tabular-nums text-gray-800 dark:text-gray-100">
+              <span className="text-center font-medium tabular-nums text-gray-800 dark:text-gray-100">
                 {blackCounts[type]}
               </span>
             </Fragment>
@@ -96,13 +96,13 @@ export function AnalysisSummary({ analysis, moves, whiteName, blackName }: Analy
         </div>
         <span
           data-testid="acpl-white"
-          className="text-center font-mono font-medium tabular-nums text-gray-800 dark:text-gray-100"
+          className="text-center font-medium tabular-nums text-gray-800 dark:text-gray-100"
         >
           {averageOf(cpLoss.white)}
         </span>
         <span
           data-testid="acpl-black"
-          className="text-center font-mono font-medium tabular-nums text-gray-800 dark:text-gray-100"
+          className="text-center font-medium tabular-nums text-gray-800 dark:text-gray-100"
         >
           {averageOf(cpLoss.black)}
         </span>

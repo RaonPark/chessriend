@@ -140,3 +140,15 @@
 - `features/game/stores/boardStore.ts` — `selectHasUnsavedVariationMoves`, `makeMove`, `saveCurrentVariation`, `getAnnotationsSnapshot`
 - `features/game/components/MoveList.tsx`, `CommentPanel.tsx`
 - 테스트: `boardStore.test.ts` (6개), `CommentPanel.test.tsx` (1개)
+
+## 9. 기본 글꼴 Pretendard 적용
+
+### What
+- `index.html`에서 Pretendard Variable(dynamic subset, jsdelivr `v1.3.9` 고정)을 로드
+- `index.css`의 Tailwind `@theme`에서 `--font-sans`를 Pretendard로 지정. 로드 전이나 실패 시에는 시스템 글꼴로 대체
+- 분석 요약 숫자의 `font-mono` 제거 → Pretendard + `tabular-nums`(고정폭 숫자)로 정렬 유지
+- PGN 붙여넣기 textarea(`PgnImportForm`)는 코드 성격의 입력이라 `font-mono` 유지
+
+### Why
+- npm `pretendard` 패키지는 `pnpm add` 시 `invalid array length` OOM으로 설치 실패 (패키지가 모든 폰트 포맷을 포함해 매우 큼)
+  → 공식 문서에서 권장하는 CDN dynamic subset으로 대체 (페이지에서 쓰는 글자만 내려받음)

@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* 기본 글꼴: Pretendard (index.html에서 로드). 로드 전/실패 시 시스템 글꼴로 대체 */
+@theme {
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto,
+    "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+}
+
 body {
   margin: 0;
 }
