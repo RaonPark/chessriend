@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef } from 'react'
 import { useSettingsStore } from '../stores/settingsStore'
+import type { ThemePreference } from '../utils/theme'
 
 interface SettingsDialogProps {
   open: boolean
@@ -57,19 +58,53 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
 function SettingsPanel() {
   const showBestMoveArrow = useSettingsStore((s) => s.showBestMoveArrow)
   const setShowBestMoveArrow = useSettingsStore((s) => s.setShowBestMoveArrow)
+  const theme = useSettingsStore((s) => s.theme)
+  const setTheme = useSettingsStore((s) => s.setTheme)
 
   return (
-    <section className="rounded-xl border border-amber-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900/40">
-      <h3 className="mb-3 text-xs font-semibold text-amber-700 dark:text-amber-400">보드</h3>
-      <ToggleRow
-        label="엔진 최선수 화살표"
-        description="Stockfish가 찾은 현재 포지션의 최선수를 보드에 파란 화살표로 표시합니다."
-        checked={showBestMoveArrow}
-        onChange={setShowBestMoveArrow}
-      />
-    </section>
+    <div className="space-y-3">
+      <section className="rounded-xl border border-amber-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900/40">
+        <h3 className="mb-3 text-xs font-semibold text-amber-700 dark:text-amber-400">화면</h3>
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">테마</p>
+          <div role="radiogroup" aria-label="테마" className="flex gap-0.5 rounded-lg bg-amber-100 p-0.5 dark:bg-gray-700">
+            {THEME_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                role="radio"
+                aria-checked={theme === option.value}
+                onClick={() => setTheme(option.value)}
+                className={`rounded-md px-3 py-1 text-xs transition ${
+                  theme === option.value
+                    ? 'bg-white font-semibold text-amber-800 shadow-sm dark:bg-gray-900 dark:text-amber-300'
+                    : 'font-medium text-amber-700 hover:bg-amber-50 dark:text-gray-300 dark:hover:bg-gray-600'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+      <section className="rounded-xl border border-amber-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900/40">
+        <h3 className="mb-3 text-xs font-semibold text-amber-700 dark:text-amber-400">보드</h3>
+        <ToggleRow
+          label="엔진 최선수 화살표"
+          description="Stockfish가 찾은 현재 포지션의 최선수를 보드에 파란 화살표로 표시합니다."
+          checked={showBestMoveArrow}
+          onChange={setShowBestMoveArrow}
+        />
+      </section>
+    </div>
   )
 }
+
+const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
+  { value: 'system', label: '시스템' },
+  { value: 'light', label: '라이트' },
+  { value: 'dark', label: '다크' },
+]
 
 interface ToggleRowProps {
   label: string

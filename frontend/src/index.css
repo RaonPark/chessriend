@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* dark: 변형을 OS 설정 대신 <html class="dark"> 기준으로 (설정의 화면 테마 — useThemeSync) */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* 기본 글꼴: Pretendard (index.html에서 로드). 로드 전/실패 시 시스템 글꼴로 대체 */
 @theme {
   --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto,

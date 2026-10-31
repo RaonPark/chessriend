@@ -11,6 +11,18 @@
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
     />
     <title>frontend</title>
+    <script>
+      // 테마 깜빡임 방지: React가 뜨기 전에 저장된 테마를 적용 (src/features/settings/utils/theme.ts와 같은 규칙)
+      (function () {
+        try {
+          var state = (JSON.parse(localStorage.getItem('chessriend-settings') || '{}').state) || {}
+          var theme = state.theme || 'system'
+          var dark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+          document.documentElement.classList.toggle('dark', dark)
+          document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
+        } catch (e) {}
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -104,3 +104,25 @@
 - 테스트
   - `FolderTest`(3), `FolderServiceTest`(8)
   - `FolderPersistenceAdapterTest`(7, Testcontainers), `FolderControllerTest`(3, API 통합)
+
+## 4. 화면 테마 설정 (시스템 / 라이트 / 다크)
+
+### What
+- 설정 다이얼로그에 "화면 > 테마" 추가 (기본: 시스템). 선택 즉시 적용, localStorage에 저장
+- Tailwind `dark:` 변형을 OS 설정(`prefers-color-scheme`) 기준에서 **`<html class="dark">` 기준**으로 변경 (`index.css`의 `@custom-variant dark`)
+- `useThemeSync`(Layout에서 호출)
+  - 설정값 → `<html>`의 `dark` 클래스와 `color-scheme` 반영
+  - "시스템"이면 OS 설정 변경(`matchMedia` change)도 따라감
+- 깜빡임 방지: `index.html` 인라인 스크립트가 React보다 먼저 저장된 테마를 적용 (새로고침 시 라이트로 잠깐 보였다 바뀌는 현상 방지)
+
+### Why
+- 사용자 요청: OS 설정과 무관하게 앱 테마를 직접 고르고 싶음
+- 브라우저 확인
+  - 다크 선택 즉시 적용, 새로고침 후에도 유지
+  - 시스템 모드에서 OS를 다크로 바꾸면 바로 다크로 바뀜
+
+### Key files
+- `features/settings/utils/theme.ts`(`resolveTheme`, `applyTheme`), `hooks/useThemeSync.ts`
+- `stores/settingsStore.ts`(`theme`), `components/SettingsDialog.tsx`
+- `app/Layout.tsx`, `index.css`, `index.html`
+- 테스트: `theme.test.ts`(3), `SettingsDialog.test.tsx`(+1)

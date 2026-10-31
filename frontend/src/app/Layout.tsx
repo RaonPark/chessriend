@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { SettingsDialog } from '@/features/settings/components/SettingsDialog'
+import { useThemeSync } from '@/features/settings/hooks/useThemeSync'
 
 const NAV_ITEMS = [
   { to: '/games', label: '내 게임' },
@@ -9,6 +10,7 @@ const NAV_ITEMS = [
 
 export function Layout() {
   const location = useLocation()
+  useThemeSync()
   // 설정은 페이지 이동 없이 다이얼로그로 (복기 중에도 보드 상태 유지)
   const [settingsOpen, setSettingsOpen] = useState(false)
 

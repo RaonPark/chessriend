@@ -20,7 +20,8 @@ function renderLayout() {
 describe('설정 다이얼로그', () => {
   beforeEach(() => {
     localStorage.clear()
-    useSettingsStore.setState({ showBestMoveArrow: false })
+    useSettingsStore.setState({ showBestMoveArrow: false, theme: 'system' })
+    document.documentElement.classList.remove('dark')
   })
 
   it('헤더의 설정 버튼으로 현재 페이지를 떠나지 않고 연다', async () => {
@@ -53,5 +54,20 @@ describe('설정 다이얼로그', () => {
     await userEvent.click(screen.getByRole('button', { name: '설정 닫기' }))
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('화면 테마는 기본 "시스템"이고, 다크를 고르면 바로 적용·저장된다', async () => {
+    renderLayout()
+    await userEvent.click(screen.getByRole('button', { name: '설정' }))
+
+    expect(screen.getByRole('radio', { name: '시스템' })).toHaveAttribute('aria-checked', 'true')
+    await userEvent.click(screen.getByRole('radio', { name: '다크' }))
+
+    expect(useSettingsStore.getState().theme).toBe('dark')
+    expect(document.documentElement).toHaveClass('dark')
+    expect(localStorage.getItem('chessriend-settings')).toContain('"theme":"dark"')
+
+    await userEvent.click(screen.getByRole('radio', { name: '라이트' }))
+    expect(document.documentElement).not.toHaveClass('dark')
   })
 })
