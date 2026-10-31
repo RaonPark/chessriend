@@ -9,18 +9,22 @@
 
 | 파일 | 역할 |
 | --- | --- |
-| `Game.kt` | 핵심 애그리게이트(엔티티). `id`, 소스, 플레이어, `moves`, 결과, 시간통제, 오프닝, PGN, `annotations`. `totalMoves`/`lastPosition` 계산 프로퍼티, `movesBy/moveAt` 헬퍼 |
+| `Game.kt` | 핵심 애그리게이트(엔티티). `id`, 소스, 플레이어, `moves`, 결과, 시간통제, 오프닝, PGN, `annotations`, `note`(애칭·메모). `totalMoves`/`lastPosition` 계산 프로퍼티, `movesBy/moveAt` 헬퍼 |
 | `Move.kt` | 단일 수: `number`, `color`, `san`, `fen`, `timeSpent?`, `comment?` |
 | `Player.kt` | `Player`(이름·레이팅) + `Players`(백/흑 쌍, `byColor()`) |
 | `Color.kt` | enum `WHITE`/`BLACK` + `opposite()` |
 | `GameResult.kt` | enum `WHITE_WIN`/`BLACK_WIN`/`DRAW` + PGN 결과 문자열 변환 |
-| `TimeControl.kt` | `TimeControl`(초기시간·증분·카테고리, `fromString()`) + enum `TimeCategory`(ULTRABULLET…CORRESPONDENCE) |
+| `TimeControl.kt` | `TimeControl`(초기시간·증분·카테고리, `fromString()`, PGN 태그 해석 `fromPgnTag(raw, event)`) + enum `TimeCategory`(ULTRABULLET…CORRESPONDENCE(일일 체스), OTHER(기타)) + `TimeCategory.infer`(기본+40×증분으로 분류) |
 | `Opening.kt` | ECO 코드 + 이름 |
 | `GameSource.kt` | enum `LICHESS`/`CHESS_COM`/`PGN` |
-| `Annotation.kt` | `GameAnnotation`(수 코멘트 맵 + 변형선), `Variation`, 분석 값객체(`GameAnalysisData`, `MoveEvaluationData`, `EvalScore`) |
-| `ParsedPgn.kt` | PGN 파싱 중간 결과(태그·수·코멘트·변형선·SetUp 여부). `ChessRules.parsePgn`의 반환 타입 |
+| `Annotation.kt` | `GameAnnotation`(수 코멘트 맵 + 변형선 + 포지션별 화살표 `moveArrows`), `Variation`, `BoardArrow`(칸·hex 색 검증), 분석 값객체(`GameAnalysisData`, `MoveEvaluationData`, `EvalScore`) |
+| `GameNote.kt` | 게임 애칭(≤50자)·메모(≤2000자). `of()`로 trim·빈 값 → null |
+| `Folder.kt` | 사용자 폴더(이름 trim, 1~30자, `named()`) + `FolderSummary`(폴더 + 게임 수) |
+| `GameSearchCriteria.kt` | 게임 목록 검색 조건(플랫폼·시간·결과 `OwnerOutcome`·상대 레이팅 `RatingBand`·오프닝·폴더) + `OpeningCount` |
+| `ParsedPgn.kt` | PGN 파싱 중간 결과(태그·Event·수·코멘트·변형선·SetUp 여부). `ChessRules.parsePgn`의 반환 타입 |
 | `analysis/GameAnalyzer.kt` | **object(순수 함수)**. 포지션 평가 배열 + 수 목록 → 수별 분류 계산. 프론트 `computeClassifications`와 1:1 |
-| `analysis/MoveClassifier.kt` | **object(순수 함수)**. 기대 승률(Win%) 손실 기반 Blunder/Mistake/Inaccuracy 분류 + Brilliant(희생) 판정. lichess 승률 계수·Brilliant 임계값(2.0%p) |
+| `analysis/MoveClassifier.kt` | **object(순수 함수)**. 기대 승률(Win%) 손실 기반 Blunder/Mistake/Inaccuracy 분류 + Brilliant(희생) 판정. lichess 승률 계수·Brilliant 임계값(2.0%p). `evalAfterMoveToCp`: 수 직후 `mate 0`(부호 없음)은 방금 둔 쪽이 메이트시킨 것으로 해석 |
+| `analysis/GameAnalysisSummary.kt` | 분석 → 백·흑별 분류 개수 + 평균 cp loss(±1000cp 제한). 게임 목록의 "분석됨" 요약 |
 | `analysis/AnalysisProgress.kt` | `sealed interface`: `Progress(current, total)` / `Completed(analysis)`. SSE 스트림 이벤트 |
 | `analysis/PieceKind.kt` | enum(PAWN…KING). 분석 로직과 chesslib 결합도 분리용 |
 
@@ -41,5 +45,5 @@
 ## 변경 시 주의사항
 
 - **순수성 유지**: 외부 라이브러리 import 금지. 체스 규칙이 필요하면 도메인이 아니라 `port/out/ChessRules`를 통해 어댑터에 위임.
-- **분석 로직 동기화**: `GameAnalyzer`/`MoveClassifier`는 프론트 `utils/classification.ts`와 동일 알고리즘이어야 한다(승률 계수·임계값·기물 가치). 한쪽만 바꾸면 분류가 어긋난다.
+- **분석 로직 동기화**: 수 분류는 백엔드(`GameAnalyzer`/`MoveClassifier`)에서만 계산한다(프론트 `utils/classification.ts`의 `computeClassifications`는 현재 미사용). 평균 cp loss는 백엔드 `GameAnalysisSummary`와 프론트 `utils/cpLoss.ts`·`analysisStats.ts`가 같은 규칙(±1000 제한, 수 직후 `mate 0` 처리)이어야 목록과 상세 화면 값이 일치한다.
 - **불변 유지**: 새 필드는 `val` + `copy()`. 가변 컬렉션 노출 금지.

@@ -9,10 +9,11 @@
 | 파일 | 구현 UseCase | 핵심 동작 |
 | --- | --- | --- |
 | `ImportGameService.kt` | `ImportGameUseCase` | 소스에 맞는 `ChessGameClient` 선택 → `Flow<Game>` 중복 제거(`existsBySourceGameId`) + `max` 제한 → 저장. Flow 취소가 상류 WebClient까지 전파 |
-| `CreateGameFromPgnService.kt` | `CreateGameFromPgnUseCase` | PGN 문자열 → `ChessRules.parsePgn` → `TimeControl` 추정 → `Game` 생성·저장. 복수 게임/`SetUp`·FEN 태그는 거절 |
-| `GetGameService.kt` | `GetGameUseCase` | 조회(없으면 `GameNotFoundException`)·삭제·일괄/전체 삭제·페이지 조회(offset/limit, `PagedResult`)·주석 업데이트 |
+| `CreateGameFromPgnService.kt` | `CreateGameFromPgnUseCase` | PGN 문자열 → `ChessRules.parsePgn` → `TimeControl.fromPgnTag`(TimeControl·Event 태그) → `Game` 생성·저장. 복수 게임/`SetUp`·FEN 태그는 거절 |
+| `GetGameService.kt` | `GetGameUseCase` | 조회(없으면 `GameNotFoundException`)·삭제·일괄/전체 삭제·검색 조건 페이지 조회(`GameSearchCriteria`, `PagedResult`)·오프닝별 게임 수·주석/애칭·메모 업데이트 |
 | `RunGameAnalysisService.kt` | `RunGameAnalysisUseCase` | **분석 오케스트레이션**(아래) |
-| `GetGameAnalysisService.kt` | `GetGameAnalysisUseCase` | `getAnalysis`(없으면 예외) / `findAnalysis`(없으면 null) 두 계약 제공 |
+| `GetGameAnalysisService.kt` | `GetGameAnalysisUseCase` | `getAnalysis`(없으면 예외) / `findAnalysis`(없으면 null) 두 계약 + `findSummaries`(목록용 `GameAnalysisSummary` 일괄) |
+| `FolderService.kt` | `ManageFolderUseCase` | 폴더 생성(+게임 넣기)·이름 변경·삭제(이름 중복 → `DuplicateFolderNameException` 409, 없음 → `FolderNotFoundException` 404), 게임 넣기/빼기, 게임별 폴더 조회 |
 | `SaveGameAnalysisService.kt` | `SaveGameAnalysisUseCase` | 게임 존재 확인 후 `GameAnalysisRepository`에 위임 저장 |
 
 ## 주요 흐름 — `RunGameAnalysisService`
@@ -28,12 +29,12 @@
 ## 데이터 접근
 
 - 직접 SQL/jOOQ 없음 — 전부 `port/out` 인터페이스 경유(`GameRepository`, `GameAnalysisRepository`, `ChessGameClient`, `ChessEngine`, `ChessRules`).
-- **트랜잭션**: `@Transactional` 미사용. 현재 UseCase는 단일 저장 또는 원자적 UPSERT 위주라 명시적 트랜잭션 경계가 없다. 한 UseCase에서 다중 쓰기 일관성이 필요해지면 트랜잭션 경계를 추가해야 한다.
+- **트랜잭션**: 대부분 UseCase는 단일 저장 또는 원자적 UPSERT라 명시적 경계가 없다. 여러 쿼리를 묶어야 하는 `FolderService`의 생성(폴더 + 게임 넣기)·이름 변경·삭제는 `@Transactional`(R2DBC 트랜잭션 매니저, `suspend` 함수 지원).
 - **비동기**: 순차 작업은 평범한 `suspend fun`, 스트리밍은 `Flow`. 병렬이 필요하면 `coroutineScope { async {} }`(현재는 미사용).
 
 ## 예외 처리
 
-- 서비스는 `shared/exception`의 커스텀 예외를 **throw**한다(`GameNotFoundException`, `GameAnalysisNotFoundException`, `ConflictException` 등). `ResponseEntity` 반환 금지 — HTTP 매핑은 `GlobalExceptionHandler`가 담당.
+- 서비스는 `shared/exception`의 커스텀 예외를 **throw**한다(`GameNotFoundException`, `GameAnalysisNotFoundException`, `FolderNotFoundException`, `DuplicateFolderNameException` 등). `ResponseEntity` 반환 금지 — HTTP 매핑은 `GlobalExceptionHandler`가 담당.
 
 ## 변경 시 주의사항
 

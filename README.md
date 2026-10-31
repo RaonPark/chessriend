@@ -1,274 +1,119 @@
-# Chessriend
+# Chessriend ♞
 
-chess.com / lichess.org에서 자신의 게임을 PGN으로 가져와 **분석하고, 메모를 작성**할 수 있는 체스 리뷰 앱.
-"내 게임이니까 더 애정을 가질 수 있게" 만드는 것이 핵심 철학이다.
+**내가 둔 체스 게임을 가져와 엔진으로 분석하고, 생각을 남기며 복기하는 앱.**
 
----
+Lichess · Chess.com에서 둔 게임이나 PGN으로 된 고전 명국을 불러와, 한 수 한 수 다시 짚어 보고 메모와 화살표로 그때의 생각을 기록할 수 있습니다.
+"내 게임이니까 더 애정을 가질 수 있게" — 그냥 엔진 점수를 보는 데서 끝나지 않고, **내 게임을 내 언어로 정리해 두는 것**이 목표입니다.
 
-## 주요 기능
-
-- **게임 가져오기**: Lichess / Chess.com 사용자명으로 게임을 가져오거나, PGN을 직접 붙여넣어 게임 생성 (SSE 실시간 스트리밍)
-- **엔진 분석**: Stockfish로 수별 평가(centipawn) + Blunder / Mistake / Inaccuracy / Brilliant 분류
-  - 백엔드 Stockfish(UCI 프로세스 풀): 게임 전체 일괄 분석
-  - 프론트 Stockfish(브라우저 WASM): 사용자가 만든 변형선 실시간 평가
-- **리뷰 / 메모**: 수별 코멘트, 변형선(variation) 작성·저장, 평가 막대(eval bar)
-- **게임 목록**: 플랫폼·시간 카테고리 필터, 페이지네이션, 일괄 삭제
+> 개발·실행·API 등 기술 문서는 [`src/README.md`](src/README.md)에 있습니다.
 
 ---
 
-## 기술 스택
+## 이런 걸 할 수 있어요
 
-| 영역 | 스택 |
+### 1. 내 게임 가져오기
+
+- **Lichess / Chess.com**: 닉네임만 입력하면 최근 게임(10 / 50 / 100 / 200경기)이나 원하는 기간(연·월)의 게임을 가져옵니다. 가져오는 진행 상황이 실시간으로 보여요.
+- **PGN 붙여넣기**: 대회 기보나 고전 명국(예: Anderssen vs Dufresne의 *Evergreen Game*)도 PGN을 붙여넣어 바로 복기할 수 있습니다. PGN 안의 코멘트와 변형선도 함께 들어옵니다.
+  - PGN의 `TimeControl` 태그를 읽어 시간 종류를 분류합니다 — `600+5`(10분 + 5초), `180`(3분), `40/7200:3600`(구간제), `1/259200`(한 수 3일 = 일일 체스). `Event`에 *Daily* / *Correspondence*가 있으면 일일 체스, 시간 정보가 없으면 **기타**로 둡니다.
+
+### 2. 게임 목록 정리하기
+
+- **한눈에 보는 분석 결과**: 분석을 마친 게임에는 `분석됨` 표시와 함께 **내 평균 cp loss · Blunder · Mistake 수**가 나옵니다.
+- **필터**
+  - 플랫폼 (Lichess / Chess.com)
+  - 시간: 울트라불릿 · 불릿 · 블리츠 · 래피드 · 클래시컬 · **일일 체스** · 기타
+  - 결과: **내 기준** 승리 · 패배 · 무승부
+  - **상대 레이팅**: ~1199 / 1200–1499 / 1500–1799 / 1800–2099 / 2100+ / 레이팅 없음
+- **왼쪽 메뉴**
+  - **내 폴더** — "시실리안 연구", "블리츠 패배 복기"처럼 직접 폴더를 만들어 게임을 모읍니다. 한 게임을 여러 폴더에 넣을 수 있어요. 게임을 **우클릭**하거나, 여러 개를 골라 **"폴더에 추가"**.
+  - **오프닝별** — 같은 오프닝으로 둔 게임을 자동으로 묶어 줍니다. 내가 어떤 오프닝을 자주 두고, 어디서 자주 무너지는지 보기 좋아요.
+- **게임 애칭 · 게임 메모**: "첫 퀸 희생 승리" 같은 이름을 붙이고, 게임 전체에 대한 메모를 남길 수 있습니다.
+
+### 3. 복기하기
+
+- **대국자 바**: lichess / chess.com처럼 보드 위아래에 대국자가 표시됩니다. 내가 흑이면 보드도 흑 시점. 각 대국자의 결과와 `!! ?? ? ?!` 개수, 평균 cp loss가 함께 보여요.
+- **보드**
+  - 기물을 누르면 **둘 수 있는 칸**이 표시되고, 클릭 또는 드래그로 둡니다.
+  - **평가 막대**와 Stockfish 실시간 평가.
+  - 키보드: `←` `→` 한 수씩 · `↑` 처음 · `↓` 끝 · `Esc` 변형선 나가기
+- **화살표로 생각 남기기**: 우클릭 드래그로 화살표를 그립니다 (기본 주황 · `Shift` 초록 · `Ctrl/⌘` 빨강). 포지션마다 저장돼서 다음에 열어도 그대로 있어요.
+- **엔진 최선수 화살표** (설정에서 켜기): Stockfish가 찾은 최선수를 파란 화살표로 보여줍니다. 먼저 스스로 생각해 보고 싶다면 꺼 두세요(기본: 꺼짐).
+- **변형선 — "이렇게 뒀다면?"**
+  - 기보와 다른 수를 두면 변형선이 시작되고, 엔진이 바로 평가합니다. 기보와 같은 수를 두면 그냥 기보를 따라 진행해요.
+  - 변형선을 저장하고, 나중에 이어서 둘 수 있습니다. 필요 없으면 **우클릭 → 삭제**.
+  - 수 번호가 함께 표시됩니다 (`2.Nf3`, `2...Bc5`).
+- **메모**: 수마다, 변형선의 수마다, 그리고 게임 전체에 메모를 남길 수 있습니다.
+
+### 4. 엔진 분석
+
+"게임 분석"을 누르면 Stockfish(깊이 18)가 모든 수를 평가하고 분류합니다. 분석 결과는 저장되어 다시 계산하지 않아요. 수 분류와 메모·변형선은 분석 후에 사용할 수 있습니다.
+
+### 5. 설정
+
+헤더의 **설정**에서 복기 중에도 바로 바꿀 수 있습니다.
+
+- **화면 테마**: 시스템 / 라이트 / 다크
+- **엔진 최선수 화살표**: 켜기 / 끄기
+
+---
+
+## 분석 결과 읽는 법
+
+### 수 분류와 기보 기호
+
+평가 점수(센티폰)를 **기대 승률(Win%)**로 바꿔, 그 수를 둔 뒤 승률이 얼마나 떨어졌는지로 판정합니다 (lichess와 같은 방식). 이미 크게 이기고 있거나 지고 있을 때는 점수 차이가 커도 승률 변화가 작아서, 점수만으로 판단하는 것보다 실제 체감에 가깝습니다.
+
+| 기호 | 분류 | 기준 |
+|:---:|------|------|
+| `!!` | **Brilliant** (훌륭한 수) | 기물을 희생에 놓았는데도(더 싼 기물에게 방어 없이 노출) 승률 손실이 2%p 미만 |
+| `?!` | **Inaccuracy** (부정확) | 승률 10%p 이상 손실 |
+| `?` | **Mistake** (실수) | 승률 20%p 이상 손실 |
+| `??` | **Blunder** (큰 실수) | 승률 30%p 이상 손실 |
+
+체크메이트로 게임을 끝낸 수는 항상 최선수로 봅니다.
+
+### cp loss (평균 센티폰 손실)
+
+- **센티폰(centipawn)** = 폰 1/100개. 100이면 폰 하나만큼의 손해입니다.
+- **cp loss**는 매 수마다 엔진의 최선수와 비교해 평가가 얼마나 떨어졌는지를 **평균**낸 값입니다 (ACPL). **낮을수록 정확하게 둔 것**입니다.
+- 메이트처럼 극단적인 평가는 ±1000으로 제한해 계산합니다 (lichess 방식) — 한 수 때문에 평균이 폭주하지 않도록.
+- 예: *Evergreen Game*(1852)에서 이긴 Anderssen은 30, 진 Dufresne은 70.
+
+---
+
+## 체스 용어
+
+| 용어 | 뜻 |
+|------|----|
+| **PGN** | Portable Game Notation — 체스 기보를 적는 표준 텍스트 형식. 대국자·결과·시간 같은 태그와 수순, 코멘트, 변형선을 담습니다 |
+| **FEN** | Forsyth–Edwards Notation — 한 순간의 보드 상태를 한 줄로 적는 형식 |
+| **변형선 (Variation)** | 실제 기보와 다른 "만약 이렇게 뒀다면"의 수순 |
+| **평가 (Evaluation)** | 엔진이 판단한 포지션의 유불리. `+1.5`는 백이 폰 1.5개만큼 유리, `M3`은 3수 안에 메이트 |
+| **일일 체스 (Daily / Correspondence)** | 한 수에 하루~며칠씩 생각할 수 있는 장기 대국 |
+| **ECO** | 오프닝 분류 코드 (예: `C52` Evans Gambit) |
+
+---
+
+## 시작하기
+
+Docker, Stockfish, JDK 25, pnpm이 필요합니다.
+
+```bash
+docker compose up -d postgres                       # DB
+./gradlew flywayMigrate generateJooq && ./gradlew bootRun   # 백엔드  → http://localhost:8081
+cd frontend && pnpm install && pnpm dev             # 프론트   → http://localhost:5173
+```
+
+자세한 설정, 테스트, API는 [`src/README.md`](src/README.md)를 보세요.
+
+---
+
+## 문서
+
+| 문서 | 내용 |
 |------|------|
-| **Backend** | Kotlin 2.3.20, Spring Boot 4.0.5 (Java 25), WebFlux + Coroutines |
-| **Database** | PostgreSQL 17, R2DBC(논블로킹) + jOOQ(타입세이프 SQL) + Flyway(마이그레이션) |
-| **Frontend** | React 19, TypeScript 6, Vite 8, Tailwind CSS v4 |
-| **Chess** | chesslib(백엔드 SAN→FEN·희생 판정), chess.js + react-chessboard(프론트), Stockfish(UCI / WASM) |
-| **State** | React Query(서버 상태), Zustand(클라이언트 보드 상태) |
-| **Observability** | Micrometer + Prometheus(메트릭), Loki(로그), Tempo(트레이스, OTLP), Grafana |
-| **Build** | Gradle 9.4.1 (Kotlin DSL), pnpm 10 |
-| **Test** | Kotest + MockK + Testcontainers(백엔드), Vitest + MSW + Testing Library(프론트) |
-
----
-
-## 아키텍처 개요
-
-백엔드는 **헥사고날 아키텍처(Ports & Adapters)**. 의존 방향은 항상 바깥 → 안쪽이며, `domain`은 외부 의존성 zero.
-
-```
-Adapter  →  Port  →  Application  →  Domain
-(바깥쪽)                              (안쪽)
-```
-
-현재 도메인은 `game` 단일 바운디드 컨텍스트 + 공통 코드 `shared`로 구성된다.
-
-```
-src/main/kotlin/org/raonpark/chessriend/
-├── game/
-│   ├── domain/            # 엔티티·값객체(순수 Kotlin) + analysis/ 분류 로직   → README
-│   ├── application/       # UseCase 구현 (@Service)                            → README
-│   ├── port/
-│   │   ├── in/            # UseCase 인터페이스
-│   │   └── out/           # Repository·Client·Engine·Rules 인터페이스          → README
-│   └── adapter/
-│       ├── in/web/        # REST Controller (suspend / Flow SSE)
-│       └── out/
-│           ├── persistence/  # R2DBC + jOOQ 영속성
-│           ├── client/       # Lichess / Chess.com API 클라이언트
-│           ├── engine/       # Stockfish UCI 프로세스 풀
-│           └── chess/        # chesslib 어댑터(PGN 파싱·FEN 재구성)            → README (adapter/)
-└── shared/                # config, exception, id(Snowflake), domain(PagedResult)  → README
-```
-
-설계 배경은 [`docs/architecture.md`](docs/architecture.md) 참고.
-
-### 패키지별 README
-
-| 패키지 | 내용 |
-|--------|------|
-| [`game/domain`](src/main/kotlin/org/raonpark/chessriend/game/domain/README.md) | 엔티티·값객체, 수 분류 로직(`GameAnalyzer`, `MoveClassifier`) |
-| [`game/application`](src/main/kotlin/org/raonpark/chessriend/game/application/README.md) | UseCase 구현, 분석 오케스트레이션, 트랜잭션·코루틴 흐름 |
-| [`game/port`](src/main/kotlin/org/raonpark/chessriend/game/port/README.md) | in/out 포트 인터페이스 목록과 계약 |
-| [`game/adapter`](src/main/kotlin/org/raonpark/chessriend/game/adapter/README.md) | Controller, 영속성, 외부 API, 엔진, 체스 규칙 어댑터 |
-| [`shared`](src/main/kotlin/org/raonpark/chessriend/shared/README.md) | 전역 예외 처리, Snowflake ID, jOOQ DSLContext 설정 |
-
-프론트엔드 구조는 [`frontend/README.md`](frontend/README.md) 참고.
-
----
-
-## 데이터 접근 방식
-
-### jOOQ + R2DBC 조합
-
-- **단순 CRUD** → Spring Data `CoroutineCrudRepository` (`R2dbcGameRepository`)
-- **복잡한 쿼리**(동적 WHERE, 페이지네이션, UPSERT) → **jOOQ DSL로 타입세이프 SQL 작성 → R2DBC `DatabaseClient`로 실행**
-  - 이유: 스키마 변경을 컴파일 타임에 잡기 위함. raw SQL은 런타임에야 터진다.
-
-```kotlin
-// jOOQ DSL → SQL 문자열 → R2DBC 실행 (GamePersistenceAdapter.bindQuery)
-val sql = query.getSQL(ParamType.NAMED)
-databaseClient.sql(sql).bind(index, value)...
-// JSONB 컬럼은 jOOQ JSONB → io.r2dbc.postgresql.codec.Json 으로 변환 후 바인딩
-```
-
-- **JSONB**: `games.moves`, `games.annotations`, `game_analyses.evaluations`는 JSONB. Jackson으로 직렬화 후 `Json.of(...)`로 바인딩.
-- **트랜잭션**: 별도 `@Transactional` 미사용 — 대부분 단일 쿼리/원자적 UPSERT. 다중 쿼리 일관성이 필요해지면 명시적 트랜잭션 경계 추가 필요.
-- **blocking 없음**: 데이터 접근 계층은 전부 논블로킹(R2DBC). `Dispatchers.IO`는 Stockfish 프로세스 I/O에서만 사용.
-
-### jOOQ 코드 생성
-
-생성물은 **gitignore**되며, 라이브 DB 스키마에서 생성한다. 따라서 DB가 떠 있고 마이그레이션이 적용된 상태여야 한다.
-
-```bash
-docker compose up -d postgres   # DB 기동
-./gradlew flywayMigrate          # 마이그레이션 적용
-./gradlew generateJooq           # build/generated-src/jooq/main 에 생성 (패키지: org.raonpark.chessriend.jooq)
-```
-
-스키마 변경(`db/migration/V*.sql` 추가) → `flywayMigrate` → `generateJooq` 순서가 깨지면 `GAMES` 등 참조가 컴파일에 실패한다.
-
----
-
-## 실행 방법
-
-### 사전 준비
-
-1. **Docker** — PostgreSQL(+ 선택적으로 모니터링 스택)
-2. **Stockfish** — 백엔드 일괄 분석용 바이너리. macOS: `brew install stockfish` (기본 경로 `/opt/homebrew/bin/stockfish`). 다른 경로면 `CHESS_ENGINE_PATH` 지정.
-3. **JDK 25**, **pnpm 10**
-
-### 1) 인프라 기동
-
-```bash
-docker compose up -d postgres                 # DB만
-# 또는 모니터링 포함 전체:
-docker compose up -d
-```
-
-### 2) 백엔드
-
-```bash
-./gradlew flywayMigrate && ./gradlew generateJooq   # 최초 1회(또는 스키마 변경 시)
-./gradlew bootRun                                    # http://localhost:8081
-```
-
-### 3) 프론트엔드
-
-```bash
-cd frontend
-pnpm install
-pnpm dev          # http://localhost:5173 — /api 요청은 8081로 프록시
-```
-
----
-
-## 빌드 방법
-
-```bash
-# 백엔드 (실행 가능 jar)
-./gradlew build
-
-# 프론트엔드 (tsc 타입체크 + Vite 번들 → frontend/dist)
-cd frontend && pnpm build
-```
-
----
-
-## 테스트 방법
-
-```bash
-# 백엔드 — Kotest + MockK, persistence/엔진 테스트는 Testcontainers(Docker 필요)
-./gradlew test
-./gradlew jacocoTestReport     # build/reports/jacoco/test/html
-
-# 프론트엔드 — Vitest + MSW(API 모킹) + Testing Library
-cd frontend
-pnpm test            # watch
-pnpm test:run        # 1회 실행
-pnpm test:coverage
-```
-
-CI(`.github/workflows/ci.yml`)는 push/PR(`main`) 시 백엔드(JDK 25, Flyway→jOOQ→test→JaCoCo)와 프론트(Node 22, test→coverage→build)를 각각 실행하고 PR에 커버리지 코멘트를 단다.
-
----
-
-## 환경 설정
-
-루트 `.env`(예시: `.env.example`)와 `application.yml`을 사용한다(`spring-dotenv`로 `.env` 로드).
-
-| 변수 | 기본값 | 용도 |
-|------|--------|------|
-| `LICHESS_API_TOKEN` | (없음) | Lichess API 토큰. 없으면 미인증(분당 20회 제한) |
-| `CHESS_ENGINE_PATH` | `/opt/homebrew/bin/stockfish` | 백엔드 Stockfish 바이너리 경로 |
-| `CHESS_ENGINE_DEPTH` | `18` | 분석 깊이 (프론트 `constants.ts`의 `ANALYSIS_DEPTH`와 동기 유지) |
-| `CHESS_ENGINE_POOL_SIZE` | `2` | 동시 분석 프로세스 수 |
-| `CHESS_ENGINE_THREADS` / `CHESS_ENGINE_HASH_MB` / `CHESS_ENGINE_TIMEOUT_MS` | `1` / `128` / `15000` | 프로세스당 스레드·해시·포지션 타임아웃 |
-| `POSTGRES_*` | `chessriend` / `localhost:5432` | DB 접속(docker-compose 기본값과 동일) |
-
-> `.env`에는 시크릿이 들어갈 수 있으므로 커밋 금지(`.gitignore` 등록됨). 훅 `bash-guard.sh`가 `.env` 읽기를 차단한다.
-
-### 포트 / 서비스 요약
-
-| 서비스 | 포트 | 비고 |
-|--------|------|------|
-| Backend (Spring) | 8081 | `application.yml: server.port` |
-| Frontend (Vite) | 5173 | `/api` → 8081 프록시 |
-| PostgreSQL | 5432 | db/user/pass 모두 `chessriend` |
-| Grafana | 3000 | admin / admin |
-| Prometheus | 9090 | |
-| Loki | 3100 | 로그 (logback `Loki4jAppender`, `test` 프로파일 제외) |
-| Tempo | 3200 / 4317 / 4318 | 트레이스(OTLP gRPC/HTTP) |
-
----
-
-## REST API 요약
-
-| 메서드 | 경로 | 설명 |
-|--------|------|------|
-| `GET` | `/api/games` | 게임 목록(쿼리: `page`, `size`, `source`, `timeCategory`) |
-| `GET` | `/api/games/{id}` | 게임 상세(수순 + 주석 + 분석 포함) |
-| `POST` | `/api/games/from-pgn` | PGN 문자열로 게임 생성 |
-| `GET` | `/api/games/import` | 외부 API 게임 가져오기 — **SSE**(`text/event-stream`). 쿼리: `source`, `username`, `max`, 등 |
-| `PUT` | `/api/games/{id}/annotations` | 수별 코멘트·변형선 저장 |
-| `DELETE` | `/api/games/{id}` · `/batch` · `/all` | 개별 / 일괄 / 전체 삭제 |
-| `POST` | `/api/games/{gameId}/analysis` | 분석 결과 저장 |
-| `GET` | `/api/games/{gameId}/analysis` | 분석 결과 조회 |
-| `GET` | `/api/games/{gameId}/analysis/run` | 백엔드 Stockfish 분석 실행 — **SSE**(`progress` / `complete` 이벤트) |
-
-OpenAPI UI: springdoc(`/swagger-ui.html`).
-
----
-
-## AI Assisted Development (Claude Code)
-
-이 저장소는 Claude Code로 개발되며, 규칙·가드레일이 파일로 명시되어 있다.
-
-- **[`CLAUDE.md`](CLAUDE.md)** — 프로젝트 헌장: 기술 스택, 헥사고날 규칙, 도메인 기능 개발 체크리스트, 동작 규칙(가정 명시, 검증 가능한 목표로 변환 등).
-- **[`.claude/rules/`](.claude/rules/)** — 파일 타입별로 자동 로드되는 컨벤션(frontmatter `paths`):
-  - `kotlin.md`(널 안전·코루틴·로깅), `spring.md`(WebFlux·DI·예외), `database.md`(jOOQ+R2DBC), `react.md`, `ui.md`(네이티브 UI 금지·amber 테마), `playwright.md`(E2E 시나리오), `docs.md`(작업내역 문서화).
-- **`.claude/hooks/`** — 가드/자동화 훅 7종(`.claude/settings.local.json`에 연결):
-  | 훅 | 이벤트 | 역할 |
-  |----|--------|------|
-  | `bash-guard.sh` | PreToolUse(Bash) | `rm -rf`·force push·`.env` 읽기 등 위험 명령 차단/확인 |
-  | `flyway-guard.sh` | Pre+PostToolUse | 병합된 마이그레이션 수정 차단 + `generateJooq` 리마인드 |
-  | `domain-deps-check.sh` | PostToolUse | `domain/`에 Spring/jOOQ/R2DBC 등 import 시 경고(헥사고날 보호) |
-  | `kotlin-conventions.sh` | PostToolUse | `.block()`·`GlobalScope`·`@Autowired` 필드주입·`!!`·`ResponseEntity` 등 차단 |
-  | `eslint-check.sh` | PostToolUse | 편집한 프론트 파일 ESLint |
-  | `tsc-check.sh` | Stop | 턴 종료 시 프론트 타입체크 1회 |
-  | `notify.sh` | Notification/Stop | macOS 데스크톱 알림 |
-- **[`.claude/skills/new-domain.md`](.claude/skills/new-domain.md)** — 헥사고날 6레이어 + 엔티티/리포지토리/어댑터/Flyway/테스트/작업내역을 한 번에 스캐폴딩하는 커스텀 스킬.
-- **MCP 서버**(`.claude/settings.local.json`) — `postgres`(로컬 DB 질의), `serena`(LSP 기반 코드 분석, Kotlin·TypeScript).
-
----
-
-## 문서 최신화 정책
-
-- 모든 작업은 `docs/{브랜치명}_작업내역.md`에 **What / Why / 주요 변경 파일**을 남긴다([`.claude/rules/docs.md`](.claude/rules/docs.md)).
-- 아키텍처 변경 시 [`docs/architecture.md`](docs/architecture.md)도 갱신한다.
-- README 누락/노후를 감지하는 보조 스크립트가 `.claude/hooks/readme-check.sh`로 제공된다(기본 비활성, 아래 참고).
-
-### (선택) README 점검 훅
-
-`.claude/hooks/readme-check.sh`는 도메인/포트/어댑터 소스를 편집할 때 **해당 패키지에 README가 없거나 루트 README가 비어 있으면 경고만** 출력한다(차단하지 않음, 새 의존성 없음). 활성화하려면 `.claude/settings.local.json`의 `PostToolUse`(matcher `Edit|Write`) 배열에 추가한다:
-
-```json
-{ "type": "command", "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/readme-check.sh", "timeout": 10 }
-```
-
----
-
-## 디렉터리 요약
-
-```
-chessriend/
-├── src/                  # 백엔드 (Kotlin)
-│   ├── main/kotlin/...   # game/ + shared/  (패키지별 README 있음)
-│   ├── main/resources/   # application.yml, db/migration/V1~V4, logback-spring.xml
-│   └── test/kotlin/...   # Kotest + Testcontainers
-├── frontend/             # React + TS (frontend/README.md)
-├── monitoring/           # prometheus / loki / tempo / grafana 설정
-├── docs/                 # 작업내역·설계 문서
-├── .claude/              # CLAUDE 규칙·훅·스킬
-├── docker-compose.yml    # postgres + 모니터링 스택
-└── build.gradle.kts
-```
+| [`src/README.md`](src/README.md) | 기술 스택, 아키텍처, 실행·빌드·테스트, 환경 설정, REST API |
+| [`frontend/README.md`](frontend/README.md) | 프론트엔드 구조 |
+| [`docs/architecture.md`](docs/architecture.md) | 설계 배경 |
+| [`docs/`](docs/) | 기능별 작업 내역 |
