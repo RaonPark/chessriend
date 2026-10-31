@@ -6,4 +6,9 @@ export const gameKeys = {
   list: (filters: GameFilter) => [...gameKeys.lists(), filters] as const,
   details: () => [...gameKeys.all, 'detail'] as const,
   detail: (id: string) => [...gameKeys.details(), id] as const,
+  openings: () => [...gameKeys.all, 'openings'] as const,
+}
+
+export const folderKeys = {
+  all: ['folders'] as const,
 }

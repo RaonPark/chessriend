@@ -1,8 +1,12 @@
+import { useCallback, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { ContextMenu } from '@/shared/components/ContextMenu'
 import { ChessKing } from '@/shared/components/ChessKing'
 import { ConfirmDialog } from '@/shared/components/ConfirmDialog'
 import { useConfirm } from '@/shared/hooks/useConfirm'
-import { useDeleteGame } from '../api/mutations'
+import { useAddGamesToFolder, useCreateFolder, useDeleteGame, useRemoveGamesFromFolder } from '../api/mutations'
+import { useFolders } from '../api/queries'
+import { FolderNameDialog } from './FolderNameDialog'
 import { getOwnerOutcome, getResultLabel, type OwnerOutcome } from '../utils/outcome'
 import type { AnalysisSummaryResponse, GameResponse } from '../types/game'
 
@@ -12,20 +16,19 @@ interface GameListItemProps {
   onToggleSelect?: () => void
 }
 
-const OUTCOME_STYLES: Record<OwnerOutcome, { text: string; className: string; border: string }> = {
-  win: { text: '승리', className: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200', border: 'border-l-green-500' },
-  loss: { text: '패배', className: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200', border: 'border-l-red-500' },
-  draw: { text: '무승부', className: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200', border: 'border-l-amber-500' },
+const OUTCOME_STYLES: Record<OwnerOutcome, { text: string; className: string }> = {
+  win: { text: '승리', className: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
+  loss: { text: '패배', className: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' },
+  draw: { text: '무승부', className: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200' },
 }
 
 // 소유자 없는 게임(PGN 등): 승/패 대신 중립 결과 라벨 + amber 스타일.
-function resolveStyle(game: GameResponse): { text: string; className: string; border: string } {
+function resolveStyle(game: GameResponse): { text: string; className: string } {
   const outcome = getOwnerOutcome(game)
   if (outcome) return OUTCOME_STYLES[outcome]
   return {
     text: getResultLabel(game.result),
     className: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
-    border: 'border-l-amber-500',
   }
 }
 
@@ -41,6 +44,16 @@ export function GameListItem({ game, selected, onToggleSelect }: GameListItemPro
   const style = resolveStyle(game)
   const deleteMutation = useDeleteGame()
   const { confirm, dialogProps } = useConfirm()
+
+  // 우클릭 → 폴더에 추가/빼기 (폴더 목록은 메뉴를 열 때만 조회)
+  const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null)
+  const [newFolderOpen, setNewFolderOpen] = useState(false)
+  const closeMenu = useCallback(() => setMenuPosition(null), [])
+  const { data: folders } = useFolders({ enabled: menuPosition !== null })
+  const addToFolder = useAddGamesToFolder()
+  const removeFromFolder = useRemoveGamesFromFolder()
+  const createFolder = useCreateFolder()
+  const gameFolderIds = new Set((game.folders ?? []).map((f) => f.id))
 
   async function handleDelete(e: React.MouseEvent) {
     e.preventDefault()
@@ -66,7 +79,11 @@ export function GameListItem({ game, selected, onToggleSelect }: GameListItemPro
     <>
     <Link
       to={`/games/${game.id}`}
-      className={`block rounded-lg border border-amber-200 border-l-4 ${style.border} bg-white p-4 transition hover:shadow-md dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-750`}
+      onContextMenu={(e) => {
+        e.preventDefault()
+        setMenuPosition({ x: e.clientX, y: e.clientY })
+      }}
+      className={`block rounded-lg border border-amber-200 bg-white p-4 transition hover:shadow-md dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-750`}
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -96,6 +113,15 @@ export function GameListItem({ game, selected, onToggleSelect }: GameListItemPro
               <span className="mx-1.5 text-amber-300">·</span>
               {game.totalMoves}수
               {game.analysisSummary && <AnalysisStats game={game} summary={game.analysisSummary} />}
+              {(game.folders ?? []).map((folder) => (
+                <span
+                  key={folder.id}
+                  className="ml-1.5 inline-flex items-center gap-1 rounded-md bg-amber-100 px-1.5 py-0.5 align-middle text-[11px] font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
+                >
+                  <span aria-hidden className="inline-block h-2 w-2.5 rounded-[2px] bg-amber-500" />
+                  {folder.name}
+                </span>
+              ))}
             </p>
           </div>
         </div>
@@ -118,6 +144,33 @@ export function GameListItem({ game, selected, onToggleSelect }: GameListItemPro
       </div>
     </Link>
     <ConfirmDialog {...dialogProps} />
+    {menuPosition && folders && (
+      <ContextMenu
+        position={menuPosition}
+        title="폴더에 추가"
+        onClose={closeMenu}
+        items={[
+          ...folders.map((folder) => {
+            const checked = gameFolderIds.has(folder.id)
+            return {
+              label: folder.name,
+              checked,
+              onSelect: () =>
+                (checked ? removeFromFolder : addToFolder).mutate({ folderId: folder.id, gameIds: [game.id] }),
+            }
+          }),
+          { label: '+ 새 폴더…', onSelect: () => setNewFolderOpen(true) },
+        ]}
+      />
+    )}
+    <FolderNameDialog
+      open={newFolderOpen}
+      title="새 폴더"
+      confirmLabel="만들기"
+      isPending={createFolder.isPending}
+      onSubmit={(name) => createFolder.mutateAsync({ name, gameIds: [game.id] })}
+      onClose={() => setNewFolderOpen(false)}
+    />
     </>
   )
 }

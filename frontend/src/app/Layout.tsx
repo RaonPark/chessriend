@@ -18,7 +18,7 @@ export function Layout() {
     <div className="min-h-screen bg-amber-50 dark:bg-gray-900">
       {/* Header */}
       <header className="border-b border-amber-200 bg-amber-900 dark:border-amber-800 dark:bg-gray-950">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <Link to="/" className="flex items-center gap-2 text-xl font-bold text-amber-50">
             <span className="text-2xl">&#9822;</span>
             Chessriend
@@ -49,7 +49,7 @@ export function Layout() {
       </header>
 
       {/* Main */}
-      <main className="mx-auto max-w-5xl px-6 py-8">
+      <main className="mx-auto max-w-6xl px-6 py-8">
         <Outlet />
       </main>
 

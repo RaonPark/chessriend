@@ -9,6 +9,12 @@ export interface GameFilterValue {
   ratingBand?: RatingBand
 }
 
+/** LNB에서 고른 범위 */
+export type LnbSelection =
+  | { type: 'all' }
+  | { type: 'folder'; id: string; name: string }
+  | { type: 'opening'; name: string }
+
 export const EMPTY_FILTERS: GameFilterValue = {}
 
 export function hasActiveFilters(f: GameFilterValue): boolean {

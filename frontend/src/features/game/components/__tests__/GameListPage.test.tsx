@@ -186,4 +186,49 @@ describe('GameListPage', () => {
       expect(screen.queryByText('아직 가져온 게임이 없습니다.')).not.toBeInTheDocument()
     })
   })
+
+  describe('LNB · 폴더', () => {
+    const FOLDERS = [{ id: 'f1', name: '시실리안 연구', gameCount: 2 }]
+
+    function setup() {
+      const urls: URL[] = []
+      let added: unknown
+      server.use(
+        http.get('/api/games', ({ request }) => { urls.push(new URL(request.url)); return HttpResponse.json(createPagedResponse(games, { totalElements: 3 })) }),
+        http.get('/api/folders', () => HttpResponse.json(FOLDERS)),
+        http.get('/api/games/openings', () => HttpResponse.json([{ name: 'Sicilian Defense', count: 5 }])),
+        http.post('/api/folders/f1/games', async ({ request }) => { added = await request.json(); return new HttpResponse(null, { status: 204 }) }),
+      )
+      renderWithProviders(<GameListPage />)
+      return { urls, getAdded: () => added }
+    }
+
+    it('LNB에서 폴더를 고르면 folderId로 조회하고 제목이 폴더 이름이 된다', async () => {
+      const { urls } = setup()
+      await userEvent.click(await screen.findByRole('button', { name: /시실리안 연구\s*2/ }))
+
+      await waitFor(() => expect(urls.at(-1)?.searchParams.get('folderId')).toBe('f1'))
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('시실리안 연구')
+    })
+
+    it('LNB에서 오프닝을 고르면 opening으로 조회한다', async () => {
+      const { urls } = setup()
+      await userEvent.click(await screen.findByRole('button', { name: /Sicilian Defense\s*5/ }))
+
+      await waitFor(() => expect(urls.at(-1)?.searchParams.get('opening')).toBe('Sicilian Defense'))
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Sicilian Defense')
+    })
+
+    it('게임을 선택하고 "폴더에 추가"로 한 번에 넣는다', async () => {
+      const { getAdded } = setup()
+      const checkboxes = await screen.findAllByRole('checkbox')
+      // [0] = 전체 선택, [1..] = 게임
+      await userEvent.click(checkboxes[1])
+      await userEvent.click(checkboxes[2])
+      await userEvent.click(screen.getByRole('button', { name: '폴더에 추가' }))
+      await userEvent.click(await screen.findByRole('menuitem', { name: '시실리안 연구' }))
+
+      await waitFor(() => expect(getAdded()).toEqual(['1', '2']))
+    })
+  })
 })

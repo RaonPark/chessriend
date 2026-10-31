@@ -1,6 +1,6 @@
 import { apiFetch, ApiError } from '@/shared/api/apiClient'
 import type { PagedResponse } from '@/shared/types/api'
-import type { AnnotationRequest, CreateGameFromPgnRequest, GameAnalysis, GameDetailResponse, GameFilter, GameResponse, ImportParams } from '../types/game'
+import type { AnnotationRequest, CreateGameFromPgnRequest, GameAnalysis, GameDetailResponse, GameFilter, GameResponse, ImportParams, OpeningCount } from '../types/game'
 
 export async function fetchGames(filters: GameFilter = {}): Promise<PagedResponse<GameResponse>> {
   const params = new URLSearchParams()
@@ -10,6 +10,8 @@ export async function fetchGames(filters: GameFilter = {}): Promise<PagedRespons
   if (filters.timeCategory) params.set('timeCategory', filters.timeCategory)
   if (filters.outcome) params.set('outcome', filters.outcome)
   if (filters.ratingBand) params.set('ratingBand', filters.ratingBand)
+  if (filters.opening) params.set('opening', filters.opening)
+  if (filters.folderId) params.set('folderId', filters.folderId)
 
   const query = params.toString()
   return apiFetch(`/api/games${query ? `?${query}` : ''}`)
@@ -88,4 +90,9 @@ export function createImportEventSource(params: ImportParams): EventSource {
   if (params.rated != null) query.set('rated', String(params.rated))
 
   return new EventSource(`/api/games/import?${query}`)
+}
+
+/** LNB "오프닝별": 오프닝 이름별 게임 수 (많은 순) */
+export async function fetchOpeningCounts(): Promise<OpeningCount[]> {
+  return apiFetch('/api/games/openings')
 }

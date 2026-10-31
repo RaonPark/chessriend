@@ -126,3 +126,48 @@
 - `stores/settingsStore.ts`(`theme`), `components/SettingsDialog.tsx`
 - `app/Layout.tsx`, `index.css`, `index.html`
 - 테스트: `theme.test.ts`(3), `SettingsDialog.test.tsx`(+1)
+
+## 5. LNB + 폴더 화면 (프론트)
+
+### What
+- **`GameLnb`** (목록 왼쪽, 데스크톱에서 sticky)
+  - 모든 게임 / 내 폴더(게임 수, "+"·"+ 새 폴더") / 오프닝별(8개까지, 더보기)
+  - 폴더 ⋯ 버튼 또는 우클릭 → 이름 변경 / 폴더 삭제 (삭제 확인 창: 게임은 "모든 게임"에 남는다고 안내)
+  - 선택 중인 폴더를 지우면 "모든 게임"으로, 이름을 바꾸면 제목도 갱신
+- **`FolderNameDialog`**: 새 폴더 / 이름 변경 공용 창
+  - 빈 이름이면 버튼 비활성, 최대 30자
+  - 409 → "같은 이름의 폴더가 이미 있어요." (창 유지)
+  - 선택한 게임이 있으면 "선택한 게임 N개를 이 폴더에 넣기"(기본 체크)
+- **목록 줄 (`GameListItem`)**
+  - 폴더 태그 표시
+  - 우클릭 → "폴더에 추가" 체크 메뉴: 들어 있는 폴더는 체크, 누르면 넣기/빼기. "+ 새 폴더…"로 만들면서 넣기
+  - 폴더 목록은 메뉴를 열 때만 조회
+- **목록 화면 (`GameListPage`)**
+  - 2단 배치 (LNB + 본문)
+  - 제목이 선택에 따라 "내 게임" / 폴더 이름 / 오프닝 이름 + 게임 수로 바뀜
+  - 선택 툴바 "폴더에 추가" → 폴더 메뉴 (+ 새 폴더…)
+  - **"전체 삭제"는 필터 없이 "모든 게임"을 볼 때만 노출**: 폴더를 보다가 누르면 폴더만 지워질 거라 오해할 수 있는데, 실제로는 모든 게임을 지움
+  - 빈 폴더 안내 문구 추가
+- **공용 `ContextMenu`** 확장: `checked`(menuitemcheckbox), `title`
+- 레이아웃 최대 너비 `max-w-5xl` → `max-w-6xl` (LNB 공간, 시안 A 폭)
+- 접근성: LNB 항목 이름과 게임 수 사이 공백 → "Opening 1 20"으로 읽힘 (붙이면 "Opening 120")
+- 테스트용 기본 목 핸들러
+  - `/api/folders`, `/api/games/openings` 추가
+  - openings는 `/api/games/:id`보다 먼저 등록
+
+## 6. 게임 줄 왼쪽 색 띠(accent rail) 제거
+
+### What
+- 목록 줄 왼쪽의 승·패·무 색 띠(`border-l-4`)를 제거. 결과는 오른쪽 배지로 표시
+
+### Why
+- 사용자 요청
+
+### Key files
+- `features/game/components/GameLnb.tsx`, `FolderNameDialog.tsx` (신규)
+- `GameListItem.tsx`, `GameListPage.tsx`
+- `api/folderApi.ts` (신규), `api/queries.ts`(`useFolders`, `useOpeningCounts`), `api/mutations.ts`(폴더 변경 훅 — 폴더 목록·게임 목록 캐시 함께 무효화)
+- `api/queryKeys.ts`, `types/game.ts`, `utils/gameFilters.ts`(`LnbSelection`)
+- `shared/components/ContextMenu.tsx`, `app/Layout.tsx`
+- `test/mocks/handlers.ts`
+- 테스트: `GameLnb.test.tsx`(7), `GameListItem.test.tsx`(+3), `GameListPage.test.tsx`(+3)

@@ -128,6 +128,25 @@ export interface GameResponse {
   playedAt: string
   /** 분석 완료된 게임만 값이 있음 */
   analysisSummary?: AnalysisSummaryResponse | null
+  /** 이 게임이 들어 있는 폴더들 */
+  folders?: FolderTag[]
+}
+
+export interface FolderTag {
+  id: string
+  name: string
+}
+
+export interface FolderResponse {
+  id: string
+  name: string
+  gameCount: number
+}
+
+/** LNB "오프닝별" 묶음 */
+export interface OpeningCount {
+  name: string
+  count: number
 }
 
 /** 결과 필터 (소유자 관점) */
@@ -150,6 +169,10 @@ export interface GameFilter {
   outcome?: GameOutcomeFilter
   /** 상대 레이팅 구간 */
   ratingBand?: RatingBand
+  /** 오프닝 이름 (LNB 오프닝별) */
+  opening?: string
+  /** 폴더 (LNB 내 폴더) */
+  folderId?: string
 }
 
 export interface ImportParams {

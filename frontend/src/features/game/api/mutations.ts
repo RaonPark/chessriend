@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createGameFromPgn, deleteGame, deleteGames, deleteAllGames, submitAnalysis, updateAnnotations } from './gameApi'
-import { gameKeys } from './queryKeys'
+import { folderKeys, gameKeys } from './queryKeys'
+import { addGamesToFolder, createFolder, deleteFolder, removeGamesFromFolder, renameFolder } from './folderApi'
 import type { AnnotationRequest, CreateGameFromPgnRequest, GameAnalysis } from '../types/game'
 
 export function useDeleteGame() {
@@ -66,5 +67,54 @@ export function useSubmitAnalysis(gameId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: gameKeys.detail(gameId) })
     },
+  })
+}
+
+// 폴더 변경은 폴더 목록(게임 수)과 게임 목록(폴더 태그·폴더 필터 결과)에 모두 영향
+function useInvalidateFolders() {
+  const queryClient = useQueryClient()
+  return () => {
+    queryClient.invalidateQueries({ queryKey: folderKeys.all })
+    queryClient.invalidateQueries({ queryKey: gameKeys.lists() })
+  }
+}
+
+export function useCreateFolder() {
+  const invalidate = useInvalidateFolders()
+  return useMutation({
+    mutationFn: ({ name, gameIds }: { name: string; gameIds?: string[] }) => createFolder(name, gameIds),
+    onSuccess: invalidate,
+  })
+}
+
+export function useRenameFolder() {
+  const invalidate = useInvalidateFolders()
+  return useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) => renameFolder(id, name),
+    onSuccess: invalidate,
+  })
+}
+
+export function useDeleteFolder() {
+  const invalidate = useInvalidateFolders()
+  return useMutation({
+    mutationFn: (id: string) => deleteFolder(id),
+    onSuccess: invalidate,
+  })
+}
+
+export function useAddGamesToFolder() {
+  const invalidate = useInvalidateFolders()
+  return useMutation({
+    mutationFn: ({ folderId, gameIds }: { folderId: string; gameIds: string[] }) => addGamesToFolder(folderId, gameIds),
+    onSuccess: invalidate,
+  })
+}
+
+export function useRemoveGamesFromFolder() {
+  const invalidate = useInvalidateFolders()
+  return useMutation({
+    mutationFn: ({ folderId, gameIds }: { folderId: string; gameIds: string[] }) => removeGamesFromFolder(folderId, gameIds),
+    onSuccess: invalidate,
   })
 }
