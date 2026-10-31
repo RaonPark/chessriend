@@ -38,6 +38,7 @@ class GameController(
         @RequestParam(required = false) outcome: OwnerOutcome?,
         @RequestParam(required = false) ratingBand: RatingBand?,
         @RequestParam(defaultValue = "OPPONENT") ratingBasis: RatingBasis,
+        @RequestParam(required = false) opening: String?,
     ): PagedGameResponse {
         val criteria = GameSearchCriteria(
             source = source,
@@ -45,6 +46,7 @@ class GameController(
             outcome = outcome,
             ratingBand = ratingBand,
             ratingBasis = ratingBasis,
+            opening = opening,
         )
         val result = getGameUseCase.getGames(page, size, criteria)
         // 페이지의 게임들 분석 요약을 한 번에 조회 (N+1 방지)
@@ -59,6 +61,11 @@ class GameController(
             hasPrevious = result.hasPrevious,
         )
     }
+
+    /** LNB "오프닝별" 묶음: 오프닝 이름별 게임 수 (많은 순) */
+    @GetMapping("/openings")
+    suspend fun getOpeningCounts(): List<OpeningCountResponse> =
+        getGameUseCase.getOpeningCounts().map { OpeningCountResponse(it.name, it.count) }
 
     @GetMapping("/{id}")
     suspend fun getGame(@PathVariable id: Long): GameDetailResponse {

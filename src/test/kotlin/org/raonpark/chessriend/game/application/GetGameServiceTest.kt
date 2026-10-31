@@ -106,4 +106,13 @@ class GetGameServiceTest : DescribeSpec({
             result.totalPages shouldBe 0
         }
     }
+
+    describe("getOpeningCounts") {
+        it("저장소의 오프닝별 게임 수를 그대로 돌려준다") {
+            val counts = listOf(OpeningCount("Sicilian Defense", 14), OpeningCount("Ruy Lopez", 9))
+            coEvery { gameRepository.countByOpening() } returns counts
+
+            service.getOpeningCounts() shouldBe counts
+        }
+    }
 })

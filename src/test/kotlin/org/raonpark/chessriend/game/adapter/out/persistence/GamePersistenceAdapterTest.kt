@@ -280,4 +280,36 @@ class GamePersistenceAdapterTest {
             assertEquals(1, countFlt(criteria))
         }
     }
+
+    @Nested
+    inner class Openings {
+        // DB 공유 → 테스트마다 고유한 오프닝 이름을 써서 그 결과만 비교
+        private val tag = java.util.UUID.randomUUID().toString().take(6)
+        private fun opening(name: String) = Opening("A00", "$name $tag")
+
+        @Test
+        fun `오프닝 이름별 게임 수를 많은 순으로 센다 (오프닝 없는 게임 제외)`() = runTest {
+            val base = createGame("unused")
+            repeat(3) { adapter.save(base.copy(sourceGameId = "op-$tag-s$it", opening = opening("Sicilian"))) }
+            adapter.save(base.copy(sourceGameId = "op-$tag-r", opening = opening("Ruy")))
+            adapter.save(base.copy(sourceGameId = "op-$tag-n", opening = null))
+
+            val mine = adapter.countByOpening().filter { it.name.endsWith(tag) }
+
+            assertEquals(listOf(OpeningCount("Sicilian $tag", 3), OpeningCount("Ruy $tag", 1)), mine)
+        }
+
+        @Test
+        fun `오프닝 이름으로 목록을 거른다`() = runTest {
+            val base = createGame("unused")
+            adapter.save(base.copy(sourceGameId = "op-$tag-a", opening = opening("Italian")))
+            adapter.save(base.copy(sourceGameId = "op-$tag-b", opening = opening("French")))
+
+            val criteria = GameSearchCriteria(opening = "Italian $tag")
+            val found = adapter.findAll(0, 100, criteria).toList().map { it.sourceGameId }
+
+            assertEquals(listOf("op-$tag-a"), found)
+            assertEquals(1L, adapter.count(criteria))
+        }
+    }
 }

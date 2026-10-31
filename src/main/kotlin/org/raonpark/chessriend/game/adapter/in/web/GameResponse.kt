@@ -74,6 +74,8 @@ data class SideAnalysisSummaryResponse(
     }
 }
 
+data class OpeningCountResponse(val name: String, val count: Long)
+
 data class PlayerResponse(
     val name: String,
     val rating: Int?,

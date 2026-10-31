@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.toList
 import org.raonpark.chessriend.game.domain.GameAnnotation
 import org.raonpark.chessriend.game.domain.Game
 import org.raonpark.chessriend.game.domain.GameSearchCriteria
+import org.raonpark.chessriend.game.domain.OpeningCount
 import org.raonpark.chessriend.game.port.`in`.GetGameUseCase
 import org.raonpark.chessriend.game.port.out.GameRepository
 import org.raonpark.chessriend.shared.domain.PagedResult
@@ -42,6 +43,8 @@ class GetGameService(
         gameRepository.updateAnnotations(id, annotations)
         log.debug { "annotations updated: gameId=$id" }
     }
+
+    override suspend fun getOpeningCounts(): List<OpeningCount> = gameRepository.countByOpening()
 
     override suspend fun getGames(
         page: Int,

@@ -110,6 +110,21 @@ class GamePersistenceAdapter(
             .awaitSingle()
     }
 
+    override suspend fun countByOpening(): List<OpeningCount> {
+        val gameCount = DSL.count().`as`("game_count")
+        val query = dsl.select(GAMES.OPENING_NAME, gameCount)
+            .from(GAMES)
+            .where(GAMES.OPENING_NAME.isNotNull)
+            .groupBy(GAMES.OPENING_NAME)
+            .orderBy(gameCount.desc(), GAMES.OPENING_NAME.asc())
+
+        return bindQuery(query)
+            .map { row, _ -> OpeningCount(row.get("opening_name", String::class.java)!!, row.get("game_count", Long::class.java)!!) }
+            .all()
+            .collectList()
+            .awaitSingle()
+    }
+
     // 소유자가 백/흑인지: 이름과 owner_username을 대소문자 무시 비교 (owner가 빈 문자열이면 둘 다 false)
     private val ownerIsWhite: Condition =
         GAMES.OWNER_USERNAME.ne("").and(DSL.lower(GAMES.WHITE_NAME).eq(DSL.lower(GAMES.OWNER_USERNAME)))
@@ -123,6 +138,7 @@ class GamePersistenceAdapter(
         criteria.timeCategory?.let { condition = condition.and(GAMES.TIME_CATEGORY.eq(it.name)) }
         criteria.outcome?.let { condition = condition.and(outcomeCondition(it)) }
         criteria.ratingBand?.let { condition = condition.and(ratingCondition(it, criteria.ratingBasis)) }
+        criteria.opening?.let { condition = condition.and(GAMES.OPENING_NAME.eq(it)) }
         return condition
     }
 

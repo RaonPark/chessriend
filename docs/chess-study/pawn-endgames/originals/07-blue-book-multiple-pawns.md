@@ -19,31 +19,23 @@ This eBook is for the use of anyone anywhere in the United States and most other
 
 ## KING AND TWO PAWNS AGAINST KING AND PAWN. Diagram 34.
 
- 
-
 First, suppose White moves:—
 
- 
-
 ```text
- | 
+ |
 WHITE. | BLACK.
 1. K. to Q's 4th. | 1. K. to Q's 3d.
 2. K. to Q's 3d. | 2. K. to Q's 2d.
 3. K. to K's 3d. | 3. K. to K's 2d.
 4. K. to Q's 4th. | 4. K. to Q's 3d.
 5. K. to K's 4th. | 5. K. to K's 3d.
-And the game must be drawn. | 
+And the game must be drawn. |
 ```
-
- 
 
 But suppose Black have to play:—
 
- 
-
 ```text
- | 
+ |
 WHITE. | BLACK.
  | 1. K. to Q's 3d.
 2. P. to K. B's 5th. | 2. K. to K's 2d.
@@ -61,56 +53,42 @@ WHITE. | BLACK.
 14. K. to B's 7th. | 14. K. to R's sq.
 15. K. to Kt's 6th. | 15. K. to Kt's sq.
 16. K. to R's 6th. | 16. K. to R's sq.
-17. P. to Kt's 6th. | 
-And wins. | 
+17. P. to Kt's 6th. |
+And wins. |
 ```
-
- 
 
 ## KING AND TWO PAWNS AGAINST KING AND TWO PAWNS. Diagram 35.
 
- 
-
 ```text
- | 
+ |
 WHITE. | BLACK.
 1. K. to his 3d. | 1. K. to his 4th.
 2. K. to B's 3d. | 2. K. to B's 4th.
 3. K. to Kt's 3d. | 3. K. to K's 4th.
 4. K. to Kt's 4th. | 4. K. to B's 3d.
 5. K. to Kt's 3d. | 5. K. to K's 4th.
-And the game is drawn. | 
+And the game is drawn. |
 ```
 
-  
-
 ```text
- | 
-If Black move, he plays:— | 
+ |
+If Black move, he plays:— |
  | 1. K. to his 4th.
 2. K. to his 3d. | 2. K. to Q's 4th.
-(Were he to move K. to B's 4th , you would win by 3. K. to Q's 4th .) | 
+(Were he to move K. to B's 4th , you would win by 3. K. to Q's 4th .) |
 3. K. to B's 3d. | 3. K. to his 4th.
 4. K. to Kt's 3d. | 4. K. to his 3d.
 5. K. to Kt's 4th. | 5. K. to B's 3d.
 ```
 
- 
-
 And by continuing to play thus, Black may always draw the game.
-
- 
 
 ## KING AND TWO PAWNS AGAINST KING AND THREE PAWNS. Diagram 36.
 
- 
-
 With or without the move Black wins.  First, with the move,—
 
- 
-
 ```text
- | 
+ |
 WHITE. | BLACK.
  | 1. P. to K. Kt's 6th.
 2. P. to R's 3d, or (A.) | 2. K. to Q's 5th.
@@ -122,71 +100,53 @@ WHITE. | BLACK.
 8. K. to Kt's sq. | 8. K. to his 7th.
 9. K. to R's sq. | 9. P. to B's 6th.
 10. P. takes P. | 10. K. to B's 7th.
-Winning. | 
+Winning. |
 ```
-
- 
 
 (A.)
 
- 
-
 ```text
- | 
+ |
 2. P. takes P. | 2. R. P. takes P.
 3. K. to B's sq. | 3. K. to his 6th.
 4. K. to his sq. | 4. K. to Q's 6th.
 5. K. to B's sq. | 5. K. to Q's 7th.
 6. K. to Kt's sq. | 6. K. to his 7th.
 7. K. to R's sq. | 7. P. to B's 6th.
-And wins. | 
+And wins. |
 ```
-
- 
 
 Next, if White move first he must equally lose.
 
- 
-
 ```text
- | 
+ |
 WHITE. | BLACK.
 1. K. to B's 2d. | 1. P. to Kt's 6th. (ch.)
 2. K. to Kt's sq. | 2. K. to his 6th.
 3. K. to R's sq. | 3. P. to B's 6th.
 4. P. takes B. P. | 4. K. to B's 7th, &c.
-Winning. | 
+Winning. |
 ```
-
-   
 
 ## KING AGAINST THREE PASSED PAWNS. Diagram 37.
 
- 
-
 ```text
- | 
+ |
 WHITE. | BLACK.
  | 1. P. to B's 4th.
 2. K. to Kt's 2d. | 2. P. to R's 4th.
 3. K. to Kt's 3d. | 3. P. to Kt's 4th.
 4. K. to Kt's 2d. | 4. P. to B's 5th.
 5. K. to B's 3d. | 5. P. to R's 5th.
-6. K. to Kt's 4th. | 
+6. K. to Kt's 4th. |
 ```
-
- 
 
 And wins; because whatever Pawn is moved, the King takes it.
 
- 
-
 ## KING AND THREE PASSED PAWNS AGAINST KING AND THREE PASSED PAWNS. Diagram 38.
 
- 
-
 ```text
- | 
+ |
 WHITE. | BLACK.
  | 1. K. to Q's 2d.
 2. P. to R's 4th. | 2. K. to Q. B's 3d.
@@ -204,11 +164,7 @@ WHITE. | BLACK.
 14. K. to Kt's 3d. | 14. Is obliged to move his King, and one of the White Pawns will Queen.
 ```
 
- 
-
 [[TABLE OF CONTENTS]](https://www.gutenberg.org/files/16377/16377-h/16377-h.htm#contents)
-
-  
 
 ---
 
@@ -235,4 +191,3 @@ WHITE. | BLACK.
 ### Diagram 38
 
 ![원문 도해: pg246_d38.gif](../assets/staunton-pg246_d38.gif)
-

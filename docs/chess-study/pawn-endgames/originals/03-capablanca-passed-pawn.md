@@ -17,54 +17,32 @@ This eBook is for the use of anyone anywhere in the United States and most other
 
 ## 11. OBTAINING A PASSED PAWN
 
- 
-
 When three or more Pawns are opposed to each other in some such position as the one in Example 24, there is always a chance for one side or the other of obtaining a passed Pawn.
-
- 
 
 [![원문 도해: Fig25.jpg](../assets/capablanca-Fig25.jpg)](https://www.gutenberg.org/files/33870/33870-h/images/Fig25.jpg)
 
- 
-
 **Example 24.**—In the above position the way of obtaining a passed Pawn is to advance the centre Pawn.
-
- 
 
 ```text
  | 1. P - Kt 6 | R P × P
 If B P × P; P - R 6,
  | 2. P - B 6 | P × B P
- | 3. P - R 6 | 
+ | 3. P - R 6 |
 ```
 
- 
-
 and as in this case the White Pawn is nearer to Queen than any of the Black Pawns, White will win. Now if it had been Black's move Black could play
-
- 
 
 ```text
  | 1. ........ | P - Kt 3
  | 2. B P × P | B P × P
 ```
 
- 
-
 It would not be advisable to try to obtain a passed Pawn because the White Pawns would be nearer to Queen than the single Black Pawn.
-
- 
 
 ```text
  | 3. P × P | P × P
 ```
 
- 
-
 and the game properly played would be a draw. The student should work this out for himself.
-
- 
-
- 
 
 ---

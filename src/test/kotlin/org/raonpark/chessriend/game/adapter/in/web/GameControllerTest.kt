@@ -71,6 +71,17 @@ class GameControllerTest {
     }
 
     @Test
+    fun `오프닝별 게임 수를 조회한다 (게임 ID 경로와 충돌하지 않음)`() {
+        webTestClient.get().uri("/api/games/openings")
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$[0].name").isEqualTo("Sicilian Defense")
+            .jsonPath("$[0].count").isEqualTo(14)
+            .jsonPath("$[1].name").isEqualTo("Ruy Lopez")
+    }
+
+    @Test
     fun `ID로 게임을 조회한다`() {
         webTestClient.get()
             .uri("/api/games/1")
@@ -180,6 +191,10 @@ class GameControllerTest {
                 totalPages = 1,
             )
             coEvery { mock.getGame(1L) } returns testGame
+            coEvery { mock.getOpeningCounts() } returns listOf(
+                OpeningCount("Sicilian Defense", 14),
+                OpeningCount("Ruy Lopez", 9),
+            )
             coEvery { mock.getGame(999L) } throws
                 org.raonpark.chessriend.shared.exception.GameNotFoundException(999L)
             return mock

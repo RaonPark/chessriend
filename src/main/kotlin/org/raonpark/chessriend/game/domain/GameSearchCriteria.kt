@@ -9,7 +9,12 @@ data class GameSearchCriteria(
     val ratingBand: RatingBand? = null,
     /** 레이팅 구간을 누구 기준으로 볼지. 소유자가 없는 게임은 레이팅 조건에 걸리지 않음 */
     val ratingBasis: RatingBasis = RatingBasis.OPPONENT,
+    /** 오프닝 이름 (정확히 일치) */
+    val opening: String? = null,
 )
+
+/** 오프닝 이름별 게임 수 (LNB "오프닝별" 묶음) */
+data class OpeningCount(val name: String, val count: Long)
 
 enum class OwnerOutcome { WIN, LOSS, DRAW }
 

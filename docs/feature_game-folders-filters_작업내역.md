@@ -38,3 +38,16 @@
   - `GamePersistenceAdapterTest.SearchCriteria`(5, Testcontainers. 테스트마다 고유 접두어로 데이터 격리)
   - 기존 호출부를 조건 객체로 변경
   - `GameListPage.test.tsx`(+5), `gameApi.test.ts`(+2)
+
+## 2. 오프닝별 묶음 (백엔드)
+
+### What
+- `GET /api/games/openings`: 오프닝 이름별 게임 수 (많은 순, 같으면 이름순, 오프닝 없는 게임 제외) → LNB "오프닝별" 목록
+  - 컨트롤러 테스트로 `/{id}` 경로와 충돌하지 않음을 확인
+- 검색 조건 `opening`(오프닝 이름 정확히 일치) 추가 → `GET /api/games?opening=...`
+- 도메인 `OpeningCount`, `GameRepository.countByOpening`, `GetGameUseCase.getOpeningCounts`
+
+### Key files
+- `GameSearchCriteria.kt`, `GamePersistenceAdapter.kt`(`countByOpening`, 조건 추가)
+- `GameRepository.kt`, `GetGameUseCase.kt`, `GetGameService.kt`, `GameController.kt`, `GameResponse.kt`(`OpeningCountResponse`)
+- 테스트: `GamePersistenceAdapterTest.Openings`(2), `GetGameServiceTest`(+1), `GameControllerTest`(+1)

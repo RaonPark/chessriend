@@ -7,7 +7,7 @@
 - 파일: [originals/01-capablanca-pawn-promotion.md](originals/01-capablanca-pawn-promotion.md)
 - 원문: https://www.gutenberg.org/files/33870/33870-h/33870-h.htm#page9
 - 원문 HTML SHA-256: `bb7675344d48cdcb2cba196401be173b700f08569c455e12a940f4fb0f8411ce`
-- 발췌 Markdown SHA-256: `5c6f569ac753148f44cb5bcc7620c452ca5ab49469754759750a5572d1b02cf3`
+- 발췌 Markdown SHA-256: `8f832e2bcfad7df60f2db79922659c43868ab8c07f116dfe3a966248c18bffd1`
 
 - 도해: [assets/capablanca-Fig5.jpg](assets/capablanca-Fig5.jpg)
   - 출처: https://www.gutenberg.org/files/33870/33870-h/images/Fig5.jpg
@@ -21,7 +21,7 @@
 - 파일: [originals/02-capablanca-pawn-endings.md](originals/02-capablanca-pawn-endings.md)
 - 원문: https://www.gutenberg.org/files/33870/33870-h/33870-h.htm#page13
 - 원문 HTML SHA-256: `bb7675344d48cdcb2cba196401be173b700f08569c455e12a940f4fb0f8411ce`
-- 발췌 Markdown SHA-256: `f7475f49bff2af135ca47c86aa11c973a374028a851d15ecb5b7948ea2567963`
+- 발췌 Markdown SHA-256: `46720234261f61ca75abead43de3d6e5f73ad680934f409290ef0cf6e5646c00`
 
 - 도해: [assets/capablanca-Fig7.jpg](assets/capablanca-Fig7.jpg)
   - 출처: https://www.gutenberg.org/files/33870/33870-h/images/Fig7.jpg
@@ -41,7 +41,7 @@
 - 파일: [originals/03-capablanca-passed-pawn.md](originals/03-capablanca-passed-pawn.md)
 - 원문: https://www.gutenberg.org/files/33870/33870-h/33870-h.htm#page40
 - 원문 HTML SHA-256: `bb7675344d48cdcb2cba196401be173b700f08569c455e12a940f4fb0f8411ce`
-- 발췌 Markdown SHA-256: `14f86a722ca13e5b9582a5ccd7775a70aa3cea2391dbba9a9c00fcc601dc7e78`
+- 발췌 Markdown SHA-256: `7888d809d6ad9bb115ea0c48d2f9e953b321676d39f1ed2cae02189688a4abe8`
 
 - 도해: [assets/capablanca-Fig25.jpg](assets/capablanca-Fig25.jpg)
   - 출처: https://www.gutenberg.org/files/33870/33870-h/images/Fig25.jpg
@@ -52,7 +52,7 @@
 - 파일: [originals/04-capablanca-promotion-race.md](originals/04-capablanca-promotion-race.md)
 - 원문: https://www.gutenberg.org/files/33870/33870-h/33870-h.htm#page41
 - 원문 HTML SHA-256: `bb7675344d48cdcb2cba196401be173b700f08569c455e12a940f4fb0f8411ce`
-- 발췌 Markdown SHA-256: `3245343482a9e559cb928ba016e9bc516761322ce3dbb19b9b5c391f64f7cef2`
+- 발췌 Markdown SHA-256: `551f1bbe306145d1569dbf0202a0aef8530be1bfe841942a9479c493fb9246db`
 
 - 도해: [assets/capablanca-Fig26.jpg](assets/capablanca-Fig26.jpg)
   - 출처: https://www.gutenberg.org/files/33870/33870-h/images/Fig26.jpg
@@ -63,7 +63,7 @@
 - 파일: [originals/05-capablanca-opposition.md](originals/05-capablanca-opposition.md)
 - 원문: https://www.gutenberg.org/files/33870/33870-h/33870-h.htm#page43
 - 원문 HTML SHA-256: `bb7675344d48cdcb2cba196401be173b700f08569c455e12a940f4fb0f8411ce`
-- 발췌 Markdown SHA-256: `a996b894c26f35ae136aeb985180268323e43f32bd627f4875b48172c5c093f2`
+- 발췌 Markdown SHA-256: `a429dbcadbda922b6ef5a73559ec72ea6a151d01fab08f17f960e073c18be0d2`
 
 - 도해: [assets/capablanca-Fig27.jpg](assets/capablanca-Fig27.jpg)
   - 출처: https://www.gutenberg.org/files/33870/33870-h/images/Fig27.jpg
@@ -86,7 +86,7 @@
 - 파일: [originals/06-blue-book-king-and-pawn.md](originals/06-blue-book-king-and-pawn.md)
 - 원문: https://www.gutenberg.org/files/16377/16377-h/16377-h.htm#Pg_219
 - 원문 HTML SHA-256: `397cd3d816b6e685d30d3d7cfb36627cff415c754cc8f4e455c24da652d3c21e`
-- 발췌 Markdown SHA-256: `ca821fb4748d58e0efeaf687e1f6f16241168a8e562c00577d571f6a18dd90e0`
+- 발췌 Markdown SHA-256: `a7fcef3c195e963c5c4ca7bef2966164d458074d218c9a2ca1f9eca7d234296f`
 
 - 도해: [assets/staunton-pg221_d06.gif](assets/staunton-pg221_d06.gif)
   - 출처: https://www.gutenberg.org/files/16377/16377-h/images/pg221_d06.gif
@@ -109,7 +109,7 @@
 - 파일: [originals/07-blue-book-multiple-pawns.md](originals/07-blue-book-multiple-pawns.md)
 - 원문: https://www.gutenberg.org/files/16377/16377-h/16377-h.htm#Pg_242
 - 원문 HTML SHA-256: `397cd3d816b6e685d30d3d7cfb36627cff415c754cc8f4e455c24da652d3c21e`
-- 발췌 Markdown SHA-256: `3891912d318d14991c3ecf32ad711279ff32e070634fa68cdce70f53ef7b53f7`
+- 발췌 Markdown SHA-256: `b319e4b65ebbfc5771515d485b0b0d2a70d6bc1e81379dc5ff0e5e1aeda33de7`
 
 - 도해: [assets/staunton-pg244_d34.gif](assets/staunton-pg244_d34.gif)
   - 출처: https://www.gutenberg.org/files/16377/16377-h/images/pg244_d34.gif
