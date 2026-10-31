@@ -86,3 +86,18 @@
 - `features/game/stores/boardStore.ts` — `saveCurrentVariation`
 - `features/game/components/CommentPanel.tsx` — 저장 전 변형선 분기, 색 테마
 - 테스트: `CommentPanel.test.tsx` (저장 전 변형선 3개, 기존 "변형선 모드 미표시" 테스트 대체), `boardStore.test.ts` (중복 저장 방지)
+
+## 6. 변형선 수 번호 표시
+
+### What
+- 변형선의 각 수 앞에 수 번호를 표시: 백 `2.Nf3`, 흑 `2...Bc5`
+  - 적용 위치: 현재 변형선(인라인), 저장된 변형선 줄, 메모 패널 라벨(`변형선 · 2...Nc6`)
+- 버튼(칩)마다 수가 따로 나뉘어 있어서, 흑 수에도 매번 `N...`을 붙여 칩 하나만 봐도 몇 번째 수인지 알 수 있게 함
+
+### Why / 계산
+- 변형선은 메인라인 `startMoveIndex` 수 이후 포지션에서 시작 → j번째 수의 ply = `startMoveIndex + 1 + j`
+- 수 번호 = `⌊ply / 2⌋ + 1`, ply가 짝수면 백(`.`), 홀수면 흑(`...`)
+
+### Key files
+- `features/game/utils/moveNumber.ts` — `formatNumberedMove`, `variationMovePly` (+ 테스트 5개)
+- `features/game/components/MoveList.tsx`, `CommentPanel.tsx`

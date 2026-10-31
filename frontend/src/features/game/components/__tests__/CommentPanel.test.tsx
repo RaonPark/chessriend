@@ -101,7 +101,7 @@ describe('CommentPanel', () => {
     it('메모 입력을 표시하고, 저장하면 변형선도 함께 저장된다는 안내를 보여준다', () => {
       renderPanel()
 
-      expect(screen.getByText('새 변형선 · d5')).toBeInTheDocument()
+      expect(screen.getByText('새 변형선 · 1...d5')).toBeInTheDocument()
       expect(screen.getByText('메모를 저장하면 변형선도 함께 저장됩니다')).toBeInTheDocument()
     })
 

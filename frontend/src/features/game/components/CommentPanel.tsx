@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useBoardStore } from '../stores/boardStore'
+import { formatNumberedMove, variationMovePly } from '../utils/moveNumber'
 
 interface CommentPanelProps {
   onPersist?: () => void
@@ -13,6 +14,7 @@ export function CommentPanel({ onPersist, isPersisting }: CommentPanelProps = {}
   const variationIndex = useBoardStore((s) => s.variationIndex)
   const variationMoves = useBoardStore((s) => s.variationMoves)
   const activeVariationIndex = useBoardStore((s) => s.activeVariationIndex)
+  const variationStartIndex = useBoardStore((s) => s.variationStartIndex)
   const moveComments = useBoardStore((s) => s.moveComments)
   const savedVariations = useBoardStore((s) => s.savedVariations)
   const setMoveComment = useBoardStore((s) => s.setMoveComment)
@@ -30,15 +32,17 @@ export function CommentPanel({ onPersist, isPersisting }: CommentPanelProps = {}
   let savedComment = ''
   let moveLabel = ''
   let canComment = false
+  const variationMoveLabel = () =>
+    formatNumberedMove(variationMovePly(variationStartIndex, variationIndex), variationMoves[variationIndex])
 
   if (isInSavedVariation && variationIndex >= 0) {
     // 저장된 변형선 수의 메모
     const variation = savedVariations[activeVariationIndex]
     savedComment = variation?.moveComments?.[String(variationIndex)] ?? ''
-    moveLabel = `변형선 · ${variationMoves[variationIndex]}`
+    moveLabel = `변형선 · ${variationMoveLabel()}`
     canComment = true
   } else if (isInDraftVariation && variationIndex >= 0) {
-    moveLabel = `새 변형선 · ${variationMoves[variationIndex]}`
+    moveLabel = `새 변형선 · ${variationMoveLabel()}`
     canComment = true
   } else if (!isInVariation && currentIndex >= 0) {
     // 메인라인 수의 메모

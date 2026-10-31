@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useBoardStore } from '../stores/boardStore'
 import type { MoveClassification, VariationResponse } from '../types/game'
+import { formatNumberedMove, variationMovePly } from '../utils/moveNumber'
 
 export function MoveList() {
   const moves = useBoardStore((s) => s.mainlineMoves)
@@ -154,7 +155,7 @@ export function MoveList() {
                                 : 'text-indigo-700 hover:bg-indigo-100 dark:text-indigo-300 dark:hover:bg-indigo-900/30'
                             }`}
                           >
-                            <span>{san}</span>
+                            <span>{formatNumberedMove(variationMovePly(variationStartIndex, i), san)}</span>
                             {hasVarComment && (
                               <span className="text-[10px] text-indigo-400 dark:text-indigo-500" title="메모 있음">&#9998;</span>
                             )}
@@ -240,7 +241,7 @@ function SavedVariationLine({ variation, onEnter, onDelete }: {
       >
         {variation.moves.map((san, i) => (
           <span key={i} className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 hover:bg-emerald-100 dark:hover:bg-emerald-900/30">
-            {san}
+            {formatNumberedMove(variationMovePly(variation.startMoveIndex, i), san)}
             {variation.moveComments?.[String(i)] && (
               <span className="text-[10px] text-emerald-500" title="메모 있음">&#9998;</span>
             )}
