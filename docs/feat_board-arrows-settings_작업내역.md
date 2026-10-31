@@ -248,3 +248,22 @@
 ### Key files
 - `features/game/stores/boardStore.ts`, `features/game/components/MoveList.tsx`, `src/test/setup.ts`
 - 테스트: `boardStore.test.ts`(+3), `MoveList.test.tsx`(+1)
+
+## 15. 기보와 같은 수는 변형선으로 만들지 않기 + 메모 한글 입력 안정화
+
+### What
+- **기보와 같은 수**: 메인라인에서 다음 기보 수와 같은 수를 두면 변형선을 만들지 않고 기보를 따라 한 수 앞으로 이동
+  - 단순 이동이라 분석 전에도 동작
+  - 변형선 안에서 다음 수와 같은 수를 두는 경우는 기존(#8)과 같이 한 수 앞으로
+- **메모 한글 깨짐("ㄱㅏㄴㅏ")** 원인 후보 제거
+  - 메모 textarea를 비제어(uncontrolled, `defaultValue` + ref)로 변경 → 입력 중 리렌더(엔진 평가로 잦음)가 일어나도 React가 입력칸 값을 다시 쓰지 않음. 저장 시 ref로 최종 값을 읽음
+  - 한글 조합 중(`isComposing`)에 누른 Ctrl+Enter / Esc는 무시 → 마지막 글자 누락이나 조합 깨짐 방지
+
+### Why
+- 사용자 보고: 메모 칸에서 가끔 자모가 분리됨. CDP IME 시뮬레이션으로는 재현 안 됨
+  - 대신 "리렌더 시 React가 DOM 값을 상태값으로 덮어쓰는" 동작을 테스트로 확인 → 비제어로 원인 자체를 제거
+  - 실제 macOS 한글 입력기 동작과 완전히 같은 검증은 아님 → 계속 발생하면 추가 조사 필요
+
+### Key files
+- `features/game/stores/boardStore.ts` (`makeMove`), `features/game/components/CommentPanel.tsx`
+- 테스트: `boardStore.test.ts`(+4, 기존 e2-e4 분기 테스트 2개를 d2-d4로 수정), `CommentPanel.test.tsx`(+4)

@@ -449,7 +449,7 @@ describe('boardStore — 화살표', () => {
   })
 
   it('저장 전 변형선의 화살표는 변형선 저장 시 함께 저장된다', () => {
-    getState().makeMove('e2', 'e4') // 시작 포지션에서 분기
+    getState().makeMove('d2', 'd4') // 시작 포지션에서 분기 (기보 1.e4와 다른 수)
     getState().toggleArrow(G1F3)
     expect(selectCurrentArrows(getState())).toEqual([G1F3])
 
@@ -459,10 +459,10 @@ describe('boardStore — 화살표', () => {
   })
 
   it('변형선을 나가면 저장 전 화살표는 버려진다', () => {
-    getState().makeMove('e2', 'e4')
+    getState().makeMove('d2', 'd4')
     getState().toggleArrow(G1F3)
     getState().exitVariation()
-    getState().makeMove('d2', 'd4')
+    getState().makeMove('c2', 'c4')
 
     expect(selectCurrentArrows(getState())).toEqual([])
   })
@@ -575,5 +575,41 @@ describe('boardStore — deleteCurrentVariation', () => {
     expect(getState().savedVariations).toHaveLength(2)
     expect(getState().isInVariation).toBe(false)
     expect(getState().annotationsDirty).toBe(false)
+  })
+})
+
+describe('boardStore — 기보와 같은 수', () => {
+  beforeEach(() => {
+    getState().loadMoves(SAMPLE_MOVES) // 1.e4 e5 2.Nf3 Nc6 3.Bb5
+    getState().setAnalysis(DUMMY_ANALYSIS)
+  })
+
+  it('메인라인에서 다음 기보 수와 같은 수를 두면 변형선을 만들지 않고 한 수 앞으로 간다', () => {
+    getState().goToMove(0) // 1.e4 이후
+    const ok = getState().makeMove('e7', 'e5')
+
+    expect(ok).toBe(true)
+    expect(getState().isInVariation).toBe(false)
+    expect(getState().currentIndex).toBe(1)
+    expect(getState().currentFen).toBe(getState().mainlineFens[2])
+  })
+
+  it('시작 포지션에서 첫 기보 수(1.e4)를 둬도 메인라인으로 간다', () => {
+    getState().makeMove('e2', 'e4')
+    expect(getState().isInVariation).toBe(false)
+    expect(getState().currentIndex).toBe(0)
+  })
+
+  it('분석 전이어도 기보와 같은 수는 그대로 진행된다 (단순 이동이므로)', () => {
+    getState().clearAnalysis()
+    getState().goToMove(1)
+    expect(getState().makeMove('g1', 'f3')).toBe(true)
+    expect(getState().currentIndex).toBe(2)
+  })
+
+  it('기보와 다른 수는 기존처럼 변형선을 만든다', () => {
+    getState().goToMove(0)
+    getState().makeMove('d7', 'd5')
+    expect(getState().isInVariation).toBe(true)
   })
 })

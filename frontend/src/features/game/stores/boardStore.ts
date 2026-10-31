@@ -266,6 +266,15 @@ export const useBoardStore = create<BoardState>((set, get) => ({
 
     const newFen = chess.fen()
 
+    // 메인라인에서 다음 기보 수와 같은 수 → 변형선을 만들지 않고 기보를 따라 한 수 앞으로 (분석 전에도 가능)
+    if (!isInVariation) {
+      const { mainlineMoves, mainlineFens } = get()
+      if (mainlineMoves[currentIndex + 1]?.san === result.san) {
+        set({ currentIndex: currentIndex + 1, currentFen: mainlineFens[currentIndex + 2] })
+        return true
+      }
+    }
+
     if (isInVariation) {
       // 변형선의 다음 수와 같은 수 → 새로 만들지 않고 한 수 앞으로
       if (variationMoves[variationIndex + 1] === result.san) {
