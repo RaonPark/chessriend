@@ -18,9 +18,10 @@ adapter/
 
 | 파일 | 내용 |
 | --- | --- |
-| `GameController.kt` | `/api/games` — 목록/상세/PGN생성/주석/삭제 + `GET /import`(SSE, `text/event-stream`) |
+| `GameController.kt` | `/api/games` — 목록(검색 조건: 결과·상대 레이팅·오프닝·폴더 등, 분석 요약·폴더 태그 포함)/상세/PGN생성/주석/애칭·메모(`PUT /{id}/note`)/삭제 + `GET /openings`(오프닝별 게임 수) + `GET /import`(SSE, `text/event-stream`) |
 | `GameAnalysisController.kt` | `/api/games/{gameId}/analysis` — 저장/조회 + `GET /run`(SSE: `progress`/`complete`) |
-| `GameResponse.kt` | 모든 요청/응답 DTO 모음 (`GameResponse`, `GameDetailResponse`, `PagedGameResponse`, `AnnotationRequest`, `GameAnalysis*`, `CreateGameFromPgnRequest` 등) |
+| `FolderController.kt` | `/api/folders` — 목록(게임 수)/생성(201)/이름 변경/삭제(204) + `/{id}/games` 넣기·빼기. DTO(`CreateFolderRequest`, `FolderResponse` 등) 포함 |
+| `GameResponse.kt` | 게임 요청/응답 DTO 모음 (`GameResponse`, `GameDetailResponse`, `PagedGameResponse`, `AnnotationRequest`, `BoardArrowDto`, `AnalysisSummaryResponse`, `GameNoteRequest/Response`, `OpeningCountResponse`, `GameAnalysis*`, `CreateGameFromPgnRequest` 등) |
 
 - 컨트롤러는 `suspend fun`으로 DTO를 직접 반환(또는 스트리밍은 `Flow<ServerSentEvent<Any>>`). **`Mono`/`ResponseEntity`/try-catch 금지** — 예외는 `shared`의 `GlobalExceptionHandler`가 매핑.
 - 변환 규약: Domain→DTO는 `companion object { fun from() }`, DTO→Domain은 `fun toDomain()`/`toCommand()`.
@@ -29,18 +30,22 @@ adapter/
 
 | 파일 | 내용 |
 | --- | --- |
-| `GameEntity.kt` | `@Table("games")` + `Persistable<Long>`. `moves`/`annotations`는 JSONB(`io.r2dbc.postgresql.codec.Json`). `isNewEntity`로 INSERT/UPDATE 구분 |
+| `GameEntity.kt` | `@Table("games")` + `Persistable<Long>`. `moves`/`annotations`는 JSONB(`io.r2dbc.postgresql.codec.Json`), `nickname`/`memo`. `isNewEntity`로 INSERT/UPDATE 구분 |
 | `R2dbcGameRepository.kt` | `CoroutineCrudRepository` + 커스텀(`existsBySourceGameId`, `deleteAllByIdIn`) — 단순 CRUD |
-| `GamePersistenceAdapter.kt` | 복잡 쿼리: jOOQ DSL로 동적 WHERE/페이지네이션 작성 → `DatabaseClient`로 실행(`bindQuery`). Domain↔Entity·JSONB 직렬화(Jackson) |
-| `GameAnalysisPersistenceAdapter.kt` | `game_analyses` UPSERT(`onConflict(GAME_ID).doUpdate()`), 조회/존재/삭제 |
+| `GamePersistenceAdapter.kt` | 복잡 쿼리: `GameSearchCriteria` → jOOQ 조건(소유자 쪽 판별, 상대 레이팅 `CASE`, 폴더 서브쿼리), 페이지네이션, 오프닝별 집계 → `DatabaseClient`로 실행(`bindQuery`). Domain↔Entity·JSONB 직렬화(Jackson) |
+| `GameAnalysisPersistenceAdapter.kt` | `game_analyses` UPSERT(`onConflict(GAME_ID).doUpdate()`), 조회/일괄 조회(`IN`)/존재/삭제 |
+| `FolderPersistenceAdapter.kt` | `folders`/`game_folders`. 게임 넣기는 `INSERT ... SELECT ... ON CONFLICT DO NOTHING`(없는·중복 게임 무시), 유니크 위반 → `DuplicateFolderNameException` |
 
 **jOOQ → R2DBC 패턴**(`GamePersistenceAdapter.bindQuery`):
 ```kotlin
 val sql = query.getSQL(ParamType.NAMED)          // jOOQ가 타입세이프하게 SQL 생성
 var spec = databaseClient.sql(sql)
 query.params.entries.forEachIndexed { i, (_, p) ->
-    val v = if (p.value is JSONB) Json.of((p.value as JSONB).data()) else p.value  // JSONB → R2DBC Json
-    spec = spec.bind(i, v)
+    spec = when (val v = p.value) {
+        null -> spec.bindNull(i, p.type)              // 값 지우기(SET col = NULL)
+        is JSONB -> spec.bind(i, Json.of(v.data()))   // JSONB → R2DBC Json
+        else -> spec.bind(i, v)
+    }
 }
 ```
 
@@ -78,7 +83,7 @@ StockfishEngineAdapter → StockfishEnginePool → UciStockfishProcess × N → 
 
 ## 데이터 접근 요약
 
-- jOOQ 사용: `GamePersistenceAdapter`, `GameAnalysisPersistenceAdapter` (동적 WHERE·페이지네이션·UPSERT).
+- jOOQ 사용: `GamePersistenceAdapter`, `GameAnalysisPersistenceAdapter`, `FolderPersistenceAdapter` (동적 WHERE·페이지네이션·집계·UPSERT).
 - R2DBC 사용: `R2dbcGameRepository`(CRUD), `DatabaseClient`(jOOQ 실행). 전부 논블로킹.
 - `Dispatchers.IO`는 **엔진 프로세스 I/O에서만** 사용(DB 접근엔 사용하지 않음).
 

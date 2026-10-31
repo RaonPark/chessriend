@@ -22,9 +22,9 @@
 
 | 예외 | HTTP | 로그 레벨 |
 | --- | --- | --- |
-| `NotFoundException`(↳ `GameNotFoundException`, `GameAnalysisNotFoundException`) | 404 | debug |
+| `NotFoundException`(↳ `GameNotFoundException`, `GameAnalysisNotFoundException`, `FolderNotFoundException`) | 404 | debug |
 | `IllegalArgumentException` | 400 | debug |
-| `ConflictException` | 409 | warn |
+| `ConflictException`(↳ `DuplicateFolderNameException`) | 409 | warn |
 | `ExternalApiRateLimitException` | 429 | warn |
 | `ExternalApiUserNotFoundException` | 404 | — |
 | `ExternalApiException` | 502 | error |

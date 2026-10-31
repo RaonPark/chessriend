@@ -13,19 +13,21 @@
 | --- | --- | --- |
 | `ImportGameUseCase` | `importGames(source, criteria): Flow<Game>` | 외부 API에서 게임 가져와 저장(스트리밍) |
 | `CreateGameFromPgnUseCase` | `createFromPgn(command): Game` (`suspend`) | PGN 붙여넣기로 게임 생성. `CreateGameFromPgnCommand` 입력 |
-| `GetGameUseCase` | `getGame`, `getGames(page,size,source?,timeCategory?)`, `deleteGame`/`deleteGames`/`deleteAllGames`, `updateAnnotations` | 조회·페이징·삭제·주석 갱신 |
-| `GetGameAnalysisUseCase` | `getAnalysis(gameId)`, `findAnalysis(gameId)` | 분석 조회(strict / nullable) |
+| `GetGameUseCase` | `getGame`, `getGames(page, size, criteria: GameSearchCriteria)`, `getOpeningCounts`, `deleteGame`/`deleteGames`/`deleteAllGames`, `updateAnnotations`, `updateNote(id, nickname, memo)` | 조회·검색·페이징·삭제·주석·애칭/메모 갱신 |
+| `GetGameAnalysisUseCase` | `getAnalysis(gameId)`, `findAnalysis(gameId)`, `findSummaries(gameIds)` | 분석 조회(strict / nullable) + 목록용 요약 일괄 조회 |
+| `ManageFolderUseCase` | `getFolders`, `createFolder(name, gameIds)`, `renameFolder`, `deleteFolder`, `addGames`/`removeGames`, `findFoldersOfGames(gameIds)` | 폴더 관리 + 목록의 폴더 태그 |
 | `RunGameAnalysisUseCase` | `runAnalysis(gameId): Flow<AnalysisProgress>` | 백엔드 Stockfish 분석 실행(진행률 스트림) |
 | `SaveGameAnalysisUseCase` | `saveAnalysis(gameId, analysis): GameAnalysisData` (`suspend`) | 분석 결과 저장 |
 
-> 페이징/필터 입력은 `GameFetchCriteria`(username, since/until, max, timeCategory, rated, color, vs) 등 포트와 같은 위치의 DTO를 사용한다.
+> 가져오기 조건은 `GameFetchCriteria`(username, since/until, max, timeCategory, rated, color, vs), 목록 검색 조건은 도메인 `GameSearchCriteria`를 사용한다.
 
 ## port/out (외부 의존 인터페이스)
 
 | 인터페이스 | 대표 메서드 | 구현 어댑터 |
 | --- | --- | --- |
-| `GameRepository` | `save`, `findById`, `findAll(...): Flow<Game>`, `count`, `existsBySourceGameId`, `updateAnnotations`, `delete*` | `persistence/GamePersistenceAdapter` |
-| `GameAnalysisRepository` | `save(gameId, analysis)`, `findByGameId`, `existsByGameId`, `deleteByGameId` | `persistence/GameAnalysisPersistenceAdapter` |
+| `GameRepository` | `save`, `findById`, `findAll(offset, limit, criteria): Flow<Game>`, `count(criteria)`, `countByOpening`, `existsBySourceGameId`, `updateAnnotations`, `updateNote`, `delete*` | `persistence/GamePersistenceAdapter` |
+| `GameAnalysisRepository` | `save(gameId, analysis)`, `findByGameId`, `findByGameIds(ids)`, `existsByGameId`, `deleteByGameId` | `persistence/GameAnalysisPersistenceAdapter` |
+| `FolderRepository` | `insert`, `findById`, `existsByName(name, excludeId)`, `findAllWithCounts`, `rename`, `delete`, `addGames`/`removeGames`, `findFoldersByGameIds` | `persistence/FolderPersistenceAdapter` |
 | `ChessGameClient` | `fetchGames(criteria): Flow<Game>`, `source: GameSource` | `client/LichessClient`, `client/ChessComClient` |
 | `ChessRules` | `parsePgn(pgn): ParsedPgn`, `reconstructFens(sans)`, `analyzeMove(fen, san): MoveContext?` | `chess/ChesslibAdapter` |
 | `ChessEngine` | `evaluate(fen, depth): EvalScore` (`suspend`) | `engine/StockfishEngineAdapter` |

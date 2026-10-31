@@ -31,18 +31,23 @@ src/
 │   ├── providers.tsx       # React Query QueryClient + RouterProvider
 │   ├── router.tsx          # 라우트 정의
 │   └── Layout.tsx          # 헤더/네비/푸터 (amber 체스 테마)
-├── features/game/          # 게임 도메인 (단일 feature)
-│   ├── api/                # HTTP·SSE 호출, React Query 훅, 쿼리키
-│   ├── components/         # 페이지 + 보드/리뷰 UI
+├── features/game/          # 게임: 목록·가져오기·복기·폴더
+│   ├── api/                # HTTP·SSE 호출(gameApi, folderApi), React Query 훅, 쿼리키
+│   ├── components/         # 페이지 + 보드/복기 UI + 목록 LNB·필터
 │   ├── hooks/              # useStockfish, useBatchAnalysis, useGameImport
 │   ├── stores/             # boardStore (Zustand)
 │   ├── types/game.ts       # 도메인 타입
-│   ├── utils/              # classification, outcome
+│   ├── utils/              # 분석 요약·cp loss·기보 기호·화살표·수 번호·필터·시간 분류 등
 │   ├── constants.ts        # ANALYSIS_DEPTH 등
 │   └── index.ts            # 배럴 export
+├── features/settings/      # 브라우저별 설정 (헤더 "설정" 다이얼로그)
+│   ├── components/         # SettingsDialog
+│   ├── hooks/              # useThemeSync (테마 → <html class="dark">)
+│   ├── stores/             # settingsStore (Zustand persist → localStorage)
+│   └── utils/              # theme (resolveTheme, applyTheme)
 ├── shared/                 # 공용
 │   ├── api/apiClient.ts    # fetch 래퍼 + ApiError
-│   ├── components/         # Dropdown, ConfirmDialog, LoadingSpinner, ErrorMessage, ChessKing
+│   ├── components/         # Dropdown, ConfirmDialog, ContextMenu(우클릭 메뉴), LoadingSpinner, ErrorMessage, ChessKing
 │   ├── hooks/useConfirm.ts # Promise 기반 확인 다이얼로그
 │   └── types/api.ts        # PagedResponse 등
 └── test/                   # vitest setup, MSW 핸들러, test-utils
@@ -55,9 +60,11 @@ src/
 | 경로 | 컴포넌트 | 설명 |
 |------|----------|------|
 | `/` | → `/games` 리다이렉트 | |
-| `/games` | `GameListPage` | 목록·필터·페이지네이션·일괄 삭제 |
-| `/games/:id` | `GameDetailPage` → `GameViewer` | 보드·기보·분석·메모 |
+| `/games` | `GameListPage` | LNB(내 폴더·오프닝별) + 필터 + 목록·페이지네이션·일괄 삭제/폴더에 추가 |
+| `/games/:id` | `GameDetailPage` → `GameViewer` | 애칭 + 대국자 바·보드 + 기보·메모 / 경기 정보 탭 |
 | `/import` | `ImportPage` | 온라인 가져오기 + PGN 붙여넣기 |
+
+설정은 페이지가 아니라 헤더의 **"설정" 다이얼로그**(`SettingsDialog`)다 — 복기 중에도 보드 상태를 잃지 않고 열 수 있다.
 
 ---
 
@@ -66,20 +73,25 @@ src/
 ### 서버 상태 — React Query
 
 - 모든 서버 데이터는 `useQuery` / `useMutation`(`features/game/api/`)으로 다룬다.
-- 쿼리키 팩토리는 `queryKeys.ts`에 중앙화(`gameKeys.list(filters)`, `gameKeys.detail(id)`).
-- 뮤테이션 성공 시 관련 키를 무효화(삭제 → `gameKeys.lists()`, 주석/분석 → `gameKeys.detail(id)`).
+- 쿼리키 팩토리는 `queryKeys.ts`에 중앙화(`gameKeys.list(filters)`, `gameKeys.detail(id)`, `gameKeys.openings()`, `folderKeys.all`).
+- 뮤테이션 성공 시 관련 키를 무효화(삭제 → `gameKeys.lists()`, 주석/분석/애칭·메모 → `gameKeys.detail(id)`, 폴더 변경 → `folderKeys.all` + `gameKeys.lists()`).
 
 ### 클라이언트 상태 — Zustand (`stores/boardStore.ts`)
 
 보드 뷰 상태 전용. **개별 셀렉터로만 구독**한다(`useBoardStore((s) => s.currentFen)`) — 전체 store 구독은 불필요한 리렌더를 유발.
 
-관리하는 4개 영역:
+관리하는 영역:
 - **메인라인**: `mainlineMoves`, `mainlineFens`, `currentIndex`, `currentFen`
-- **변형선**: `isInVariation`, `variationMoves/Fens`, `variationStartIndex` (드래그로 분기 탐색)
+- **변형선**: `isInVariation`, `variationMoves/Fens`, `variationStartIndex`, `activeVariationIndex`(저장된 변형선 안이면 그 인덱스)
 - **주석**: `moveComments`, `savedVariations`, `annotationsDirty`
+- **화살표**: `moveArrows`(메인라인), 저장된 변형선의 `moveArrows`, `draftVariationArrows`(저장 전 변형선) — `selectCurrentArrows`
 - **분석**: 백엔드 `analysis`, 수별 `classificationByMove`
 
-`makeMove(from, to)`는 chess.js로 합법수 검증 후, 분석 완료 상태면 변형선을 생성한다.
+`makeMove(from, to)`는 chess.js로 합법수 검증 후,
+- 메인라인에서 다음 기보 수와 같으면 **변형선 없이 한 수 앞으로**(분석 전에도),
+- 다르면 분석 완료 상태일 때 변형선을 생성한다. 저장된 변형선 중간에서 다른 수를 두면 원본은 두고 새 변형선으로 분기한다.
+
+설정은 별도 `settingsStore`(엔진 최선수 화살표, 화면 테마)로 localStorage에 저장한다.
 
 ---
 
@@ -89,7 +101,8 @@ src/
 - `gameApi.ts`가 엔드포인트별 함수 + **EventSource(SSE)** 두 종을 제공:
   - `GET /api/games/{id}/analysis/run` — 백엔드 분석 진행률/결과
   - `GET /api/games/import?source=...` — 가져오기 스트림
-- `queries.ts`(`useGames`, `useGame`), `mutations.ts`(삭제·주석·분석 저장).
+- `folderApi.ts`: 폴더 목록·생성·이름 변경·삭제·게임 넣기/빼기.
+- `queries.ts`(`useGames`, `useGame`, `useFolders`, `useOpeningCounts`), `mutations.ts`(삭제·주석·분석·애칭/메모 저장, 폴더 변경).
 
 ---
 
@@ -110,24 +123,34 @@ src/
 
 | 컴포넌트 | 역할 |
 |----------|------|
-| `GameListPage` / `GameListItem` | 목록·필터·페이지네이션·선택 삭제 / 카드 |
+| `GameListPage` | LNB + 필터 + 목록·페이지네이션·선택 삭제·"폴더에 추가" |
+| `GameLnb` | 모든 게임 / 내 폴더(생성·이름 변경·삭제) / 오프닝별 |
+| `GameFilters` | 플랫폼·시간·결과·상대 레이팅 필터 + 필터 초기화 |
+| `GameListItem` | 목록 카드 — 애칭·메모 표시, 분석 요약, 폴더 태그, 우클릭 폴더 메뉴 |
+| `FolderNameDialog` | 새 폴더 / 이름 변경 (중복 409 안내) |
 | `ImportPage` / `PgnImportForm` | 온라인 가져오기 + PGN 붙여넣기 폼 |
-| `GameDetailPage` | 플레이어·결과·메타 정보 + `GameViewer` 마운트 |
-| `GameViewer` | **핵심 컨테이너** — 보드/기보/분석/메모 조립, 분석 SSE 트리거, 캐시 무효화 |
-| `GameBoard` | react-chessboard 래퍼(드래그 → `makeMove`) |
-| `MoveList` | 2열 기보, 변형선 삽입·저장 목록, 분류 배지 |
+| `GameDetailPage` | 애칭(`GameNicknameHeader`) + `GameViewer` 마운트 (수 없는 게임은 대국자 바 + 경기 정보만) |
+| `GameViewer` | **핵심 컨테이너** — 대국자 바·보드·탭(기보·메모 / 경기 정보) 조립, 분석 SSE 트리거, 엔진 최선수 |
+| `PlayerBar` | 보드 위·아래 대국자 바 — 결과 배지, `!! ?? ? ?!` 개수, 평균 cp loss |
+| `GameBoard` | react-chessboard 래퍼 — 둘 수 있는 칸 표시, 클릭/드래그로 두기, 우클릭 드래그 화살표, 엔진 최선수 화살표 |
+| `MoveList` | 2열 기보(기보 기호), 변형선 표시·저장·우클릭 삭제, 수 번호 |
 | `EvalBar` | 백/흑 승률 막대 |
-| `AnalysisProgress` / `AnalysisSummary` | 분석 진행률 / 진영별 실수 집계 |
-| `CommentPanel` | 수별 코멘트 편집(분석 후 활성) |
-| `BoardControls` | 처음/이전/다음/끝 + 메모 저장 |
+| `AnalysisProgress` / `AnalysisSummary` | 분석 진행률 / 진영별 분류·평균 cp loss 표(설명 툴팁) |
+| `CommentPanel` | 수별 메모 편집(분석 후 활성, 저장 전 변형선은 메모 저장 시 변형선도 저장) |
+| `GameInfoPanel` | "경기 정보" 탭 — 게임 메모(`GameMemoSection`)·메타·분석 표·게임 삭제 |
+| `GameNote` | `GameNicknameHeader`(애칭) / `GameMemoSection`(게임 메모) |
+| `BoardControls` | 처음/이전/다음/끝 + 키보드 단축키(다이얼로그·메뉴 안 입력은 무시) |
 
 ---
 
 ## 타입 / 유틸
 
 - **타입**: `features/game/types/game.ts`(`GameSource`, `TimeCategory`, `MoveClassification`, `GameAnalysis`, `MoveEvaluation`, `VariationResponse` 등), 공용 `shared/types/api.ts`(`PagedResponse<T>`).
-- **`utils/classification.ts`**: `evalToCp`, `winPercent`(시그모이드), `classifyMove`(승률 손실 기준 Blunder/Mistake/Inaccuracy), `detectBrilliant`(희생 + 승률 손실 < 2%p), `computeClassifications`.
-- **`utils/outcome.ts`**: `getOwnerOutcome`(소유자 기준 승/패/무), `getResultLabel`.
+- **`utils/classification.ts`**: `evalToCp`, `winPercent`(시그모이드), `classifyMove`, `detectBrilliant`, `computeClassifications` — 수 분류는 현재 백엔드에서 계산하므로 `computeClassifications`는 미사용.
+- **`utils/cpLoss.ts` / `analysisStats.ts`**: 수별 cp loss(±1000 제한, 수 직후 `mate 0`은 둔 쪽 승) / 백·흑 분류 개수·평균 cp loss — 백엔드 `GameAnalysisSummary`와 같은 규칙.
+- **`utils/moveSymbols.ts`**: 기보 기호(`!!` `??` `?` `?!`)·이름·색.
+- **`utils/outcome.ts`**: `getOwnerOutcome`(소유자 기준 승/패/무), `getResultLabel`, `getPlayerBadge`(대국자 바 결과 배지).
+- 기타: `arrows.ts`(화살표 색·최선수 화살표·중복 제거), `moveHints.ts`(둘 수 있는 칸), `moveNumber.ts`(`2...Bc5`), `gameFilters.ts`(필터 값·LNB 선택), `timeCategory.ts`(시간 분류 한글 이름).
 
 ---
 

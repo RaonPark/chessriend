@@ -120,17 +120,20 @@ curl -N "http://localhost:8081/api/games/import?source=LICHESS&username=magnus&m
 
 ```
 frontend/src/
+├── app/                # 앱 셸 (providers, router, Layout)
 ├── features/           # 기능 단위 폴더
-│   ├── game/           # 게임 목록, 가져오기
-│   ├── analysis/       # 엔진 분석 결과 표시
-│   ├── review/         # 리뷰 보드, 메모 작성
-│   └── settings/       # 브라우저별 사용자 설정 (localStorage, 예: 엔진 최선수 화살표)
-├── shared/             # 공유 컴포넌트, 훅, 유틸
-│   ├── components/     # Button, Modal 등 공통 UI
-│   ├── hooks/          # useApi, useChess 등 공통 훅
-│   └── lib/            # API 클라이언트, 타입 정의
+│   ├── game/           # 게임 목록·가져오기·복기(보드·기보·분석·메모)·폴더
+│   └── settings/       # 브라우저별 사용자 설정 (헤더 다이얼로그, localStorage — 테마·엔진 최선수 화살표)
+├── shared/             # 공유 코드
+│   ├── api/            # API 클라이언트 (apiFetch, ApiError)
+│   ├── components/     # Dropdown, ConfirmDialog, ContextMenu 등 공통 UI
+│   ├── hooks/          # useConfirm
+│   └── types/          # PagedResponse 등 공용 타입
+├── test/               # vitest setup, MSW 핸들러
 ├── App.tsx
 └── main.tsx
+
+> 처음 계획했던 `analysis/`, `review/` feature는 따로 두지 않고 `game/` 안에 합쳤다(분석·복기 모두 게임 상세 화면의 일부). 자세한 구조는 [`frontend/README.md`](../frontend/README.md).
 ```
 
 ### 핵심 라이브러리
