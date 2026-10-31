@@ -179,4 +179,52 @@ describe('GameListItem', () => {
       expect(screen.getByTitle('퀸 희생으로 메이트')).toHaveTextContent('메모')
     })
   })
+
+  describe('우클릭 → 게임 이름 변경', () => {
+    function setup(game = createGameResponse({ id: 'g1', nickname: '에버그린', memo: '기존 메모' })) {
+      const bodies: unknown[] = []
+      server.use(
+        http.get('/api/folders', () => HttpResponse.json([])),
+        http.put('/api/games/g1/note', async ({ request }) => {
+          const body = await request.json()
+          bodies.push(body)
+          return HttpResponse.json(body)
+        }),
+      )
+      renderWithProviders(<GameListItem game={game} />)
+      return bodies
+    }
+
+    it('기존 이름이 채워진 창에서 바꿔 저장한다 (메모는 기존 값 유지)', async () => {
+      const bodies = setup()
+      fireEvent.contextMenu(screen.getByRole('link'))
+      await userEvent.click(await screen.findByRole('menuitem', { name: '게임 이름 변경' }))
+
+      const input = screen.getByLabelText('게임 이름')
+      expect(input).toHaveValue('에버그린')
+      await userEvent.clear(input)
+      await userEvent.type(input, '에버그린 게임')
+      await userEvent.click(screen.getByRole('button', { name: '저장' }))
+
+      await waitFor(() => expect(bodies).toEqual([{ nickname: '에버그린 게임', memo: '기존 메모' }]))
+    })
+
+    it('이름을 비우고 저장하면 이름을 지운다', async () => {
+      const bodies = setup()
+      fireEvent.contextMenu(screen.getByRole('link'))
+      await userEvent.click(await screen.findByRole('menuitem', { name: '게임 이름 변경' }))
+      await userEvent.clear(screen.getByLabelText('게임 이름'))
+      await userEvent.click(screen.getByRole('button', { name: '저장' }))
+
+      await waitFor(() => expect(bodies).toEqual([{ nickname: '', memo: '기존 메모' }]))
+    })
+
+    it('메뉴에서 이름 변경 아래에 "폴더에 추가" 구역이 이어진다', async () => {
+      setup()
+      fireEvent.contextMenu(screen.getByRole('link'))
+      await screen.findByRole('menuitem', { name: '게임 이름 변경' })
+      expect(screen.getByRole('separator')).toBeInTheDocument()
+      expect(screen.getByText('폴더에 추가')).toBeInTheDocument()
+    })
+  })
 })

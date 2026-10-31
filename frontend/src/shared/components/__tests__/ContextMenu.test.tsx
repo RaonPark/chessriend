@@ -47,4 +47,25 @@ describe('ContextMenu', () => {
     await userEvent.click(screen.getByText('바깥'))
     expect(onClose).toHaveBeenCalledTimes(2)
   })
+
+  it('구분선과 구역 제목 항목을 표시하고, 방향키 이동에서 건너뛴다', async () => {
+    render(
+      <ContextMenu
+        position={{ x: 0, y: 0 }}
+        onClose={() => {}}
+        items={[
+          { label: '이름 변경', onSelect: () => {} },
+          { type: 'separator' },
+          { type: 'heading', label: '폴더에 추가' },
+          { label: '시실리안', checked: false, onSelect: () => {} },
+        ]}
+      />,
+    )
+    expect(screen.getByRole('separator')).toBeInTheDocument()
+    expect(screen.getByText('폴더에 추가')).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: '이름 변경' })).toHaveFocus()
+
+    await userEvent.keyboard('{ArrowDown}')
+    expect(screen.getByRole('menuitemcheckbox', { name: '시실리안' })).toHaveFocus()
+  })
 })

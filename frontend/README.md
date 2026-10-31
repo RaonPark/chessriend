@@ -126,10 +126,10 @@ src/
 | `GameListPage` | LNB + 필터 + 목록·페이지네이션·선택 삭제·"폴더에 추가" |
 | `GameLnb` | 모든 게임 / 내 폴더(생성·이름 변경·삭제) / 오프닝별 |
 | `GameFilters` | 플랫폼·시간·결과·상대 레이팅 필터 + 필터 초기화 |
-| `GameListItem` | 목록 카드 — 애칭·메모 표시, 분석 요약, 폴더 태그, 우클릭 폴더 메뉴 |
-| `FolderNameDialog` | 새 폴더 / 이름 변경 (중복 409 안내) |
+| `GameListItem` | 목록 카드 — 애칭·메모 표시, 분석 요약·폴더 태그(항상 별도 줄), 우클릭 메뉴(게임 이름 변경 / 폴더에 추가) |
+| `NameDialog` | 이름 입력 창 — 새 폴더 · 폴더 이름 변경(중복 409 안내) · 게임 이름 변경(비우면 삭제) 공용 |
 | `ImportPage` / `PgnImportForm` | 온라인 가져오기 + PGN 붙여넣기 폼 |
-| `GameDetailPage` | 애칭(`GameNicknameHeader`) + `GameViewer` 마운트 (수 없는 게임은 대국자 바 + 경기 정보만) |
+| `GameDetailPage` | 게임 이름 표시(`GameNicknameHeader`, 표시 전용) + `GameViewer` 마운트 (수 없는 게임은 대국자 바 + 경기 정보만) |
 | `GameViewer` | **핵심 컨테이너** — 대국자 바·보드·탭(기보·메모 / 경기 정보) 조립, 분석 SSE 트리거, 엔진 최선수 |
 | `PlayerBar` | 보드 위·아래 대국자 바 — 결과 배지, `!! ?? ? ?!` 개수, 평균 cp loss |
 | `GameBoard` | react-chessboard 래퍼 — 둘 수 있는 칸 표시, 클릭/드래그로 두기, 우클릭 드래그 화살표, 엔진 최선수 화살표 |
@@ -138,7 +138,7 @@ src/
 | `AnalysisProgress` / `AnalysisSummary` | 분석 진행률 / 진영별 분류·평균 cp loss 표(설명 툴팁) |
 | `CommentPanel` | 수별 메모 편집(분석 후 활성, 저장 전 변형선은 메모 저장 시 변형선도 저장) |
 | `GameInfoPanel` | "경기 정보" 탭 — 게임 메모(`GameMemoSection`)·메타·분석 표·게임 삭제 |
-| `GameNote` | `GameNicknameHeader`(애칭) / `GameMemoSection`(게임 메모) |
+| `GameNote` | `GameNicknameHeader`(게임 이름 표시 — 변경은 목록 우클릭) / `GameMemoSection`(게임 메모 편집) |
 | `BoardControls` | 처음/이전/다음/끝 + 키보드 단축키(다이얼로그·메뉴 안 입력은 무시) |
 
 ---

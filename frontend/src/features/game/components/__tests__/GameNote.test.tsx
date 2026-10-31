@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { renderWithProviders } from '@/test/test-utils'
@@ -19,37 +19,15 @@ function recordNotePut() {
 }
 
 describe('GameNicknameHeader', () => {
-  it('애칭이 없으면 "게임 이름 붙이기" → 입력 후 Enter로 저장 (메모는 기존 값 유지)', async () => {
-    const bodies = recordNotePut()
-    renderWithProviders(<GameNicknameHeader gameId="g1" nickname={null} memo="기존 메모" />)
-
-    await userEvent.click(screen.getByRole('button', { name: '+ 게임 이름 붙이기' }))
-    await userEvent.type(screen.getByRole('textbox', { name: '게임 애칭' }), '에버그린{Enter}')
-
-    await waitFor(() => expect(bodies).toEqual([{ nickname: '에버그린', memo: '기존 메모' }]))
-  })
-
-  it('애칭이 있으면 크게 보여주고, Esc로 수정을 취소한다', async () => {
-    const bodies = recordNotePut()
-    renderWithProviders(<GameNicknameHeader gameId="g1" nickname="에버그린" memo={null} />)
-
+  it('이름이 있으면 제목으로 보여주기만 한다 (수정은 목록에서 우클릭)', () => {
+    renderWithProviders(<GameNicknameHeader nickname="에버그린" />)
     expect(screen.getByRole('heading', { name: '에버그린' })).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: '애칭 수정' }))
-    await userEvent.type(screen.getByRole('textbox', { name: '게임 애칭' }), '!!{Escape}')
-
-    expect(screen.queryByRole('textbox', { name: '게임 애칭' })).not.toBeInTheDocument()
-    expect(bodies).toEqual([])
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 
-  it('한글 조합 중 Enter는 저장하지 않는다', async () => {
-    const bodies = recordNotePut()
-    renderWithProviders(<GameNicknameHeader gameId="g1" nickname={null} memo={null} />)
-    await userEvent.click(screen.getByRole('button', { name: '+ 게임 이름 붙이기' }))
-
-    fireEvent.keyDown(screen.getByRole('textbox', { name: '게임 애칭' }), { key: 'Enter', isComposing: true })
-
-    expect(screen.getByRole('textbox', { name: '게임 애칭' })).toBeInTheDocument()
-    expect(bodies).toEqual([])
+  it('이름이 없으면 아무것도 표시하지 않는다', () => {
+    const { container } = renderWithProviders(<GameNicknameHeader nickname={null} />)
+    expect(container).toBeEmptyDOMElement()
   })
 })
 

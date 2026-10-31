@@ -1,13 +1,21 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { ApiError } from '@/shared/api/apiClient'
 
-const MAX_LENGTH = 30
-
-interface FolderNameDialogProps {
+interface NameDialogProps {
   open: boolean
   title: string
   confirmLabel: string
   initialName?: string
+  /** 입력칸 이름 (기본: 폴더 이름) */
+  fieldLabel?: string
+  maxLength?: number
+  /** 입력칸 아래 안내 문구 */
+  hint?: string
+  placeholder?: string
+  /** 빈 값 저장 허용 (예: 게임 이름 지우기) */
+  allowEmpty?: boolean
+  /** 409 응답일 때 안내 */
+  conflictMessage?: string
   /** 선택한 게임 수. 1 이상이면 "선택한 게임 N개를 이 폴더에 넣기" 체크 표시 */
   selectedGameCount?: number
   isPending?: boolean
@@ -16,21 +24,27 @@ interface FolderNameDialogProps {
   onClose: () => void
 }
 
-/** 새 폴더 / 이름 변경 공용 다이얼로그 */
-export function FolderNameDialog({ open, ...rest }: FolderNameDialogProps) {
+/** 이름 입력 다이얼로그 (새 폴더 / 폴더 이름 변경 / 게임 이름 변경 공용) */
+export function NameDialog({ open, ...rest }: NameDialogProps) {
   // 열 때마다 입력값을 초기화하도록 내용 부분을 새로 마운트
-  return open ? <FolderNameDialogContent {...rest} /> : null
+  return open ? <NameDialogContent {...rest} /> : null
 }
 
-function FolderNameDialogContent({
+function NameDialogContent({
   title,
   confirmLabel,
   initialName = '',
+  fieldLabel = '폴더 이름',
+  maxLength = 30,
+  hint = `최대 ${maxLength}자 · 같은 이름의 폴더는 만들 수 없어요`,
+  placeholder,
+  allowEmpty = false,
+  conflictMessage = '같은 이름의 폴더가 이미 있어요.',
   selectedGameCount = 0,
   isPending,
   onSubmit,
   onClose,
-}: Omit<FolderNameDialogProps, 'open'>) {
+}: Omit<NameDialogProps, 'open'>) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const titleId = useId()
   const inputId = useId()
@@ -46,12 +60,12 @@ function FolderNameDialogContent({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!trimmed) return
+    if (!trimmed && !allowEmpty) return
     try {
       await onSubmit(trimmed, includeSelected)
       onClose()
     } catch (err) {
-      setError(err instanceof ApiError && err.status === 409 ? '같은 이름의 폴더가 이미 있어요.' : '저장하지 못했어요. 잠시 후 다시 시도해 주세요.')
+      setError(err instanceof ApiError && err.status === 409 ? conflictMessage : '저장하지 못했어요. 잠시 후 다시 시도해 주세요.')
     }
   }
 
@@ -70,13 +84,14 @@ function FolderNameDialogContent({
 
         <div className="space-y-1.5">
           <label htmlFor={inputId} className="block text-xs font-medium text-amber-700 dark:text-amber-400">
-            폴더 이름
+            {fieldLabel}
           </label>
           <input
             id={inputId}
             autoFocus
             value={name}
-            maxLength={MAX_LENGTH}
+            maxLength={maxLength}
+            placeholder={placeholder}
             onChange={(e) => {
               setName(e.target.value)
               setError(null)
@@ -86,7 +101,7 @@ function FolderNameDialogContent({
           {error ? (
             <p role="alert" className="text-xs text-red-600 dark:text-red-400">{error}</p>
           ) : (
-            <p className="text-[11px] text-gray-400 dark:text-gray-500">최대 {MAX_LENGTH}자 · 같은 이름의 폴더는 만들 수 없어요</p>
+            <p className="text-[11px] text-gray-400 dark:text-gray-500">{hint}</p>
           )}
         </div>
 
@@ -112,7 +127,7 @@ function FolderNameDialogContent({
           </button>
           <button
             type="submit"
-            disabled={!trimmed || isPending}
+            disabled={(!trimmed && !allowEmpty) || isPending}
             className="rounded-lg bg-amber-700 px-4 py-2 text-sm font-medium text-white hover:bg-amber-800 disabled:opacity-40"
           >
             {isPending ? '저장 중...' : confirmLabel}
