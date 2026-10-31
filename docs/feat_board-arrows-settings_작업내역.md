@@ -200,3 +200,14 @@
 - `app/Layout.tsx`, `app/router.tsx`
 - `features/game/components/BoardControls.tsx`
 - 테스트: `settings/components/__tests__/SettingsDialog.test.tsx`(3개), `game/components/__tests__/BoardControls.test.tsx`(3개)
+
+## 12. fix: 상태 줄 버튼 글자가 2줄로 깨지던 문제
+
+### What
+- 오른쪽 열 상태 줄(Stockfish · depth / 게임 분석 / 화살표 지우기 / 분석 모드 / 저장)에 버튼이 여러 개 뜨면 글자가 2줄로 접히던 문제 수정
+  - 각 항목에 `whitespace-nowrap`
+  - 줄 전체는 `flex-wrap` → 공간이 모자라면 글자를 접지 않고 버튼 묶음이 다음 줄로 넘어감
+- 확인: 1280px에서는 버튼 묶음이 다음 줄로 정렬되고, 1024px에서는 한 줄로 들어감 ("화살표 지우기" 높이 42px → 26px)
+
+### Key files
+- `features/game/components/GameViewer.tsx`

@@ -188,15 +188,16 @@ export function GameViewer({ game, onSaveAnnotations, isSaving, onDelete, isDele
           ))}
         </div>
 
-        <div className="mb-2 flex items-center justify-between">
-          <span className="text-xs text-amber-600 dark:text-amber-400">
+        {/* 상태 줄: 공간이 모자라면 글자를 접지 않고 버튼들이 다음 줄로 넘어감 */}
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
+          <span className="whitespace-nowrap text-xs text-amber-600 dark:text-amber-400">
             {isReady ? (displayIsEvaluating ? '분석 중...' : `Stockfish · depth ${displayEvaluation?.depth ?? '-'}`) : 'Stockfish 로딩 중...'}
           </span>
-          <div className="flex items-center gap-2">
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
             {!batch.isAnalyzing && !analysis && isReady && (
               <button
                 onClick={handleStartAnalysis}
-                className="rounded-lg border border-amber-300 px-3 py-1 text-xs font-medium text-amber-700 transition hover:bg-amber-50 dark:border-gray-600 dark:text-amber-400 dark:hover:bg-gray-700"
+                className="whitespace-nowrap rounded-lg border border-amber-300 px-3 py-1 text-xs font-medium text-amber-700 transition hover:bg-amber-50 dark:border-gray-600 dark:text-amber-400 dark:hover:bg-gray-700"
               >
                 게임 분석
               </button>
@@ -204,13 +205,13 @@ export function GameViewer({ game, onSaveAnnotations, isSaving, onDelete, isDele
             {hasArrows && (
               <button
                 onClick={clearCurrentArrows}
-                className="rounded-lg border border-amber-300 px-3 py-1 text-xs font-medium text-amber-700 transition hover:bg-amber-50 dark:border-gray-600 dark:text-amber-400 dark:hover:bg-gray-700"
+                className="whitespace-nowrap rounded-lg border border-amber-300 px-3 py-1 text-xs font-medium text-amber-700 transition hover:bg-amber-50 dark:border-gray-600 dark:text-amber-400 dark:hover:bg-gray-700"
               >
                 화살표 지우기
               </button>
             )}
             {isInVariation && (
-              <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+              <span className="whitespace-nowrap rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
                 분석 모드
               </span>
             )}
@@ -218,7 +219,7 @@ export function GameViewer({ game, onSaveAnnotations, isSaving, onDelete, isDele
               <button
                 onClick={onSaveAnnotations}
                 disabled={isSaving}
-                className="rounded-lg bg-amber-600 px-3 py-1 text-xs font-medium text-white transition hover:bg-amber-700 disabled:opacity-50 dark:bg-amber-700 dark:hover:bg-amber-600"
+                className="whitespace-nowrap rounded-lg bg-amber-600 px-3 py-1 text-xs font-medium text-white transition hover:bg-amber-700 disabled:opacity-50 dark:bg-amber-700 dark:hover:bg-amber-600"
               >
                 {isSaving ? '저장 중...' : '저장 (Ctrl+S)'}
               </button>
