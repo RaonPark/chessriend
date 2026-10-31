@@ -92,13 +92,46 @@ describe('CommentPanel', () => {
     expect(screen.getByText('메모 있음')).toBeInTheDocument()
   })
 
-  it('변형선 모드에서는 렌더링하지 않는다', () => {
-    useBoardStore.getState().goToMove(0)
-    useBoardStore.getState().makeMove('d7', 'd5', undefined) // variation 시작
-    expect(useBoardStore.getState().isInVariation).toBe(true)
+  describe('저장 전 변형선', () => {
+    beforeEach(() => {
+      useBoardStore.getState().goToMove(0)
+      useBoardStore.getState().makeMove('d7', 'd5', undefined) // variation 시작
+    })
 
-    const { container } = renderPanel()
-    expect(container.innerHTML).toBe('')
+    it('메모 입력을 표시하고, 저장하면 변형선도 함께 저장된다는 안내를 보여준다', () => {
+      renderPanel()
+
+      expect(screen.getByText('새 변형선 · d5')).toBeInTheDocument()
+      expect(screen.getByText('메모를 저장하면 변형선도 함께 저장됩니다')).toBeInTheDocument()
+    })
+
+    it('메모를 저장하면 변형선이 저장되고 그 변형선의 메모로 들어간다', async () => {
+      const onPersist = vi.fn()
+      renderPanel({ onPersist })
+
+      await userEvent.click(screen.getByText('메모 추가...'))
+      await userEvent.type(screen.getByRole('textbox'), '스칸디나비안')
+      await userEvent.click(screen.getByText('저장'))
+
+      const state = useBoardStore.getState()
+      expect(state.savedVariations).toHaveLength(1)
+      expect(state.savedVariations[0].moves).toEqual(['d5'])
+      expect(state.savedVariations[0].moveComments).toEqual({ '0': '스칸디나비안' })
+      expect(state.activeVariationIndex).toBe(0)
+      expect(onPersist).toHaveBeenCalledTimes(1)
+      expect(screen.getByText('스칸디나비안')).toBeInTheDocument()
+    })
+
+    it('빈 메모를 저장하면 변형선을 저장하지 않는다', async () => {
+      const onPersist = vi.fn()
+      renderPanel({ onPersist })
+
+      await userEvent.click(screen.getByText('메모 추가...'))
+      await userEvent.click(screen.getByText('저장'))
+
+      expect(useBoardStore.getState().savedVariations).toHaveLength(0)
+      expect(onPersist).not.toHaveBeenCalled()
+    })
   })
 
   it('저장 클릭 시 onPersist 콜백을 호출한다', async () => {

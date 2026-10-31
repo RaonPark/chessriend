@@ -17,6 +17,7 @@ export function CommentPanel({ onPersist, isPersisting }: CommentPanelProps = {}
   const savedVariations = useBoardStore((s) => s.savedVariations)
   const setMoveComment = useBoardStore((s) => s.setMoveComment)
   const setVariationMoveComment = useBoardStore((s) => s.setVariationMoveComment)
+  const saveCurrentVariation = useBoardStore((s) => s.saveCurrentVariation)
   const analysis = useBoardStore((s) => s.analysis)
 
   // 편집 상태는 편집을 시작한 포지션 키와 묶어서 보관 → 수가 바뀌면 자동으로 편집 종료
@@ -24,6 +25,8 @@ export function CommentPanel({ onPersist, isPersisting }: CommentPanelProps = {}
 
   // 현재 수의 메모와 라벨 결정
   const isInSavedVariation = isInVariation && activeVariationIndex >= 0
+  // 아직 저장 안 한 변형선: 메모를 저장하면 변형선도 함께 저장한다
+  const isInDraftVariation = isInVariation && activeVariationIndex < 0
   let savedComment = ''
   let moveLabel = ''
   let canComment = false
@@ -33,6 +36,9 @@ export function CommentPanel({ onPersist, isPersisting }: CommentPanelProps = {}
     const variation = savedVariations[activeVariationIndex]
     savedComment = variation?.moveComments?.[String(variationIndex)] ?? ''
     moveLabel = `변형선 · ${variationMoves[variationIndex]}`
+    canComment = true
+  } else if (isInDraftVariation && variationIndex >= 0) {
+    moveLabel = `새 변형선 · ${variationMoves[variationIndex]}`
     canComment = true
   } else if (!isInVariation && currentIndex >= 0) {
     // 메인라인 수의 메모
@@ -58,7 +64,15 @@ export function CommentPanel({ onPersist, isPersisting }: CommentPanelProps = {}
   if (!canComment) return null
 
   function handleSave() {
-    if (isInSavedVariation) {
+    if (isInDraftVariation) {
+      // 빈 메모로 변형선만 저장되는 일이 없도록
+      if (!draft.trim()) {
+        setEditing(null)
+        return
+      }
+      saveCurrentVariation()
+      setVariationMoveComment(variationIndex, draft)
+    } else if (isInSavedVariation) {
       setVariationMoveComment(variationIndex, draft)
     } else {
       setMoveComment(currentIndex, draft)
@@ -83,27 +97,39 @@ export function CommentPanel({ onPersist, isPersisting }: CommentPanelProps = {}
     e.stopPropagation()
   }
 
-  const borderColor = isInSavedVariation
-    ? 'border-emerald-200 dark:border-emerald-900'
-    : 'border-amber-200 dark:border-gray-700'
-  const bgColor = isInSavedVariation
-    ? 'bg-emerald-50/50 dark:bg-emerald-950/20'
-    : 'bg-amber-50/50 dark:bg-gray-800/50'
-  const labelColor = isInSavedVariation
-    ? 'text-emerald-700 dark:text-emerald-400'
-    : 'text-amber-700 dark:text-amber-400'
-  const accentColor = isInSavedVariation
-    ? 'text-emerald-500 dark:text-gray-500'
-    : 'text-amber-500 dark:text-gray-500'
+  // 저장된 변형선 = emerald, 저장 전 변형선 = indigo, 메인라인 = amber (ui.md 시맨틱 색)
+  const theme = isInSavedVariation
+    ? {
+        border: 'border-emerald-200 dark:border-emerald-900',
+        bg: 'bg-emerald-50/50 dark:bg-emerald-950/20',
+        label: 'text-emerald-700 dark:text-emerald-400',
+        accent: 'text-emerald-500 dark:text-gray-500',
+      }
+    : isInDraftVariation
+      ? {
+          border: 'border-indigo-200 dark:border-indigo-800',
+          bg: 'bg-indigo-50/50 dark:bg-indigo-950/20',
+          label: 'text-indigo-700 dark:text-indigo-300',
+          accent: 'text-indigo-500 dark:text-indigo-400',
+        }
+      : {
+          border: 'border-amber-200 dark:border-gray-700',
+          bg: 'bg-amber-50/50 dark:bg-gray-800/50',
+          label: 'text-amber-700 dark:text-amber-400',
+          accent: 'text-amber-500 dark:text-gray-500',
+        }
 
   return (
-    <div className={`rounded-xl border ${borderColor} ${bgColor} p-3`}>
+    <div className={`rounded-xl border ${theme.border} ${theme.bg} p-3`}>
       <div className="mb-1.5 flex items-center gap-2">
-        <span className={`text-xs font-medium ${labelColor}`}>
+        <span className={`text-xs font-medium ${theme.label}`}>
           {moveLabel}
         </span>
         {savedComment && !isEditing && (
-          <span className={`text-[10px] ${accentColor}`}>메모 있음</span>
+          <span className={`text-[10px] ${theme.accent}`}>메모 있음</span>
+        )}
+        {isInDraftVariation && (
+          <span className={`text-[10px] ${theme.accent}`}>메모를 저장하면 변형선도 함께 저장됩니다</span>
         )}
       </div>
 

@@ -103,6 +103,18 @@ describe('boardStore — Annotation', () => {
       expect(getState().savedVariations[0].moveComments).toEqual({})
       expect(getState().annotationsDirty).toBe(true)
     })
+
+    it('저장 후에는 방금 저장한 변형선 안에 있게 된다 (중복 저장 방지)', () => {
+      getState().goToMove(0)
+      getState().makeMove('d7', 'd6', undefined)
+
+      getState().saveCurrentVariation()
+      expect(getState().activeVariationIndex).toBe(0)
+
+      // 이미 저장된 변형선이므로 다시 저장해도 늘어나지 않음
+      getState().saveCurrentVariation()
+      expect(getState().savedVariations).toHaveLength(1)
+    })
   })
 
   describe('deleteSavedVariation', () => {

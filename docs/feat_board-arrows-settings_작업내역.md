@@ -66,3 +66,23 @@
 - `features/settings/` — `settingsStore.ts`, `SettingsPage.tsx`
 - `app/router.tsx`, `app/Layout.tsx` — `/settings` 라우트, 메뉴
 - 테스트: `boardStore.test.ts`(화살표 9개 추가), `arrows.test.ts`, `SettingsPage.test.tsx`
+
+## 5. 저장 전 변형선에서도 메모 작성
+
+### What
+- 보드에서 수를 둬서 새로 만든(아직 저장 안 한) 변형선에서도 메모 패널이 표시됨
+  - 라벨: `새 변형선 · {수}`. indigo 색이고, "메모를 저장하면 변형선도 함께 저장됩니다" 안내 표시
+  - 메모를 저장하면 **변형선을 먼저 저장한 뒤 메모를 기록**하고 서버에 저장(onPersist)
+  - 빈 메모로 저장하면 변형선을 저장하지 않음
+- `saveCurrentVariation` 동작 변경: 저장 후 방금 저장한 변형선 안에 머무름(`activeVariationIndex` = 새 인덱스)
+  - 이후 메모·화살표는 이 저장된 변형선에 기록됨
+  - 기존 버그 수정: 저장 후에도 `activeVariationIndex`가 -1로 남아 "저장" 버튼이 계속 보이고, 같은 변형선이 중복 저장될 수 있었음
+
+### Why
+- 메모를 남긴다는 건 그 변형선을 남기고 싶다는 뜻 → 저장 단계를 하나로 합침 (사용자 선택)
+- 저장 전 메모를 임시로 들고 있는 방식은 변형선을 나가면 메모가 날아가서 채택하지 않음
+
+### Key files
+- `features/game/stores/boardStore.ts` — `saveCurrentVariation`
+- `features/game/components/CommentPanel.tsx` — 저장 전 변형선 분기, 색 테마
+- 테스트: `CommentPanel.test.tsx` (저장 전 변형선 3개, 기존 "변형선 모드 미표시" 테스트 대체), `boardStore.test.ts` (중복 저장 방지)

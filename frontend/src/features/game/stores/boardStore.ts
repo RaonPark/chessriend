@@ -332,8 +332,9 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   },
 
   saveCurrentVariation: (comment = '') => {
-    const { isInVariation, variationStartIndex, variationMoves, savedVariations, draftVariationArrows } = get()
-    if (!isInVariation || variationMoves.length === 0) return
+    const { isInVariation, variationStartIndex, variationMoves, savedVariations, draftVariationArrows, activeVariationIndex } = get()
+    // 이미 저장된 변형선 안이면 중복 저장하지 않음
+    if (!isInVariation || variationMoves.length === 0 || activeVariationIndex >= 0) return
     const newVariation: VariationResponse = {
       startMoveIndex: variationStartIndex,
       moves: [...variationMoves],
@@ -343,6 +344,9 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     }
     set({
       savedVariations: [...savedVariations, newVariation],
+      // 저장한 변형선 안에 머무름 → 이후 메모·화살표는 이 변형선에 기록
+      activeVariationIndex: savedVariations.length,
+      draftVariationArrows: {},
       annotationsDirty: true,
     })
   },
