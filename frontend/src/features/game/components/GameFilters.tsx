@@ -12,7 +12,8 @@ const TIME_CATEGORIES: { value: TimeCategory; label: string }[] = [
   { value: 'BLITZ', label: '블리츠' },
   { value: 'RAPID', label: '래피드' },
   { value: 'CLASSICAL', label: '클래시컬' },
-  { value: 'CORRESPONDENCE', label: '통신' },
+  // 통신 체스(lichess Correspondence / chess.com Daily) + 시간 정보가 없거나 해석 못 한 PGN 게임
+  { value: 'CORRESPONDENCE', label: '기타' },
 ]
 
 const OUTCOMES: { value: GameOutcomeFilter; label: string }[] = [
@@ -33,14 +34,28 @@ const RATING_BANDS: { value: RatingBand; label: string }[] = [
 interface GameFiltersProps {
   value: GameFilterValue
   onChange: (next: GameFilterValue) => void
+  /** 지정하면 카드 오른쪽 위에 "필터 초기화" 버튼 표시 (필터가 걸려 있을 때만 넘김) */
+  onReset?: () => void
 }
 
 /** 게임 목록 필터 (시안 A: 모든 조건을 버튼 줄로 펼침) */
-export function GameFilters({ value, onChange }: GameFiltersProps) {
+export function GameFilters({ value, onChange, onReset }: GameFiltersProps) {
   const set = (patch: Partial<GameFilterValue>) => onChange({ ...value, ...patch })
 
   return (
-    <div className="space-y-2.5 rounded-xl border border-amber-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+    <div className="relative space-y-2.5 rounded-xl border border-amber-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+      {onReset && (
+        // 좁은 화면에서는 첫 줄 버튼과 겹치므로 별도 줄로, sm 이상에서만 카드 오른쪽 위에 겹쳐 둠
+        <div className="flex justify-end sm:absolute sm:right-3 sm:top-3">
+          <button
+            type="button"
+            onClick={onReset}
+            className="rounded-md px-2 py-1 text-xs font-medium text-amber-700 transition hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-gray-700"
+          >
+            필터 초기화
+          </button>
+        </div>
+      )}
       <FilterRow label="플랫폼" options={SOURCES} selected={value.source} onSelect={(source) => set({ source })} />
       <FilterRow label="시간" options={TIME_CATEGORIES} selected={value.timeCategory} onSelect={(timeCategory) => set({ timeCategory })} />
       <FilterRow label="결과" options={OUTCOMES} selected={value.outcome} onSelect={(outcome) => set({ outcome })} />

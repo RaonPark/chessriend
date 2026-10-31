@@ -130,22 +130,18 @@ export function GameListPage() {
               setPage(0)
               setSelectedIds(new Set())
             }}
+            onReset={
+              filtered
+                ? () => {
+                    setFilters(EMPTY_FILTERS)
+                    setPage(0)
+                  }
+                : undefined
+            }
           />
 
           {filtered && data && (
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-500 dark:text-gray-400">조건에 맞는 게임 {data.totalElements}개</span>
-              <button
-                type="button"
-                onClick={() => {
-                  setFilters(EMPTY_FILTERS)
-                  setPage(0)
-                }}
-                className="font-medium text-amber-700 hover:underline dark:text-amber-400"
-              >
-                필터 초기화
-              </button>
-            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">조건에 맞는 게임 {data.totalElements}개</p>
           )}
 
           {/* 게임 목록 */}

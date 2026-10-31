@@ -171,3 +171,16 @@
 - `shared/components/ContextMenu.tsx`, `app/Layout.tsx`
 - `test/mocks/handlers.ts`
 - 테스트: `GameLnb.test.tsx`(7), `GameListItem.test.tsx`(+3), `GameListPage.test.tsx`(+3)
+
+## 7. 필터 초기화 버튼 위치 · "통신" → "기타"
+
+### What
+- "필터 초기화"를 필터 카드 **오른쪽 위**로 이동 (필터가 걸려 있을 때만 표시)
+  - 640px 미만에서는 첫 줄(플랫폼) 버튼과 겹쳐서, 카드 맨 위 별도 줄로 배치
+  - 아래의 "조건에 맞는 게임 N개" 안내는 유지
+- 시간 필터의 "통신" 라벨을 **"기타"**로 변경 (분류 기준 `CORRESPONDENCE`는 그대로)
+
+### Why
+- `CORRESPONDENCE`에는 실제 통신 체스 외에 다른 게임도 섞여 있어 "기타"가 더 정확함
+  - 실제 통신 체스: 한 수에 하루~며칠, lichess Correspondence / chess.com Daily
+  - 시간 정보가 없거나 해석하지 못한 PGN 게임 (`CreateGameFromPgnService.parseTimeControl`)
