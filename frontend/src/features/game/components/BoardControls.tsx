@@ -21,6 +21,9 @@ export function BoardControls() {
   // 키보드 네비게이션
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
+      // 다이얼로그(설정·확인 창) 안에서 누른 키는 보드 단축키로 쓰지 않음
+      // — Esc가 다이얼로그 대신 변형선을 닫거나, 방향키가 뒤의 수를 넘기는 문제 방지
+      if (e.target instanceof Element && e.target.closest('dialog')) return
       if (e.key === 'ArrowLeft') { e.preventDefault(); goPrev() }
       if (e.key === 'ArrowRight') { e.preventDefault(); goNext() }
       if (e.key === 'ArrowUp') { e.preventDefault(); goToStart() }

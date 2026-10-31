@@ -182,3 +182,21 @@
 - `features/game/components/AnalysisSummary.tsx` — `summarizeAnalysis` 사용, `CpLossHelp` export
 - `features/game/utils/analysisStats.ts`, `outcome.ts`(`getPlayerBadge`), `arrows.ts`(`dedupeArrows`)
 - 테스트: `PlayerBar.test.tsx`, `analysisStats.test.ts`, `outcome.test.ts`(+4), `arrows.test.ts`(+2)
+
+## 11. 설정을 다이얼로그로 변경 (복기 중에도 사용)
+
+### What
+- 헤더의 "설정"이 `/settings` 페이지 링크에서 **다이얼로그를 여는 버튼**으로 바뀜 (`SettingsDialog`)
+  - 페이지 이동이 없어서 복기 중인 수·변형선·보드 상태가 그대로 유지됨
+  - 토글은 즉시 적용·저장 (localStorage). ✕ / Esc / 바깥 클릭으로 닫힘
+  - `/settings` 라우트와 `SettingsPage` 제거
+- fix: `BoardControls`의 전역 키보드 단축키가 다이얼로그 안에서 누른 키까지 처리하던 문제
+  - 변형선 안에서 다이얼로그(설정·삭제 확인)를 열고 Esc를 누르면, 다이얼로그는 안 닫히고 **변형선이 닫혔음**
+  - 방향키를 누르면 다이얼로그 뒤에서 수가 넘어갔음
+  - → 이벤트가 `<dialog>` 안에서 왔으면 보드 단축키를 무시
+
+### Key files
+- `features/settings/components/SettingsDialog.tsx` (SettingsPage에서 전환)
+- `app/Layout.tsx`, `app/router.tsx`
+- `features/game/components/BoardControls.tsx`
+- 테스트: `settings/components/__tests__/SettingsDialog.test.tsx`(3개), `game/components/__tests__/BoardControls.test.tsx`(3개)
