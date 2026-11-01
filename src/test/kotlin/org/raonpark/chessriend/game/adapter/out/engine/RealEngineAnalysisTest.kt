@@ -54,15 +54,23 @@ class RealEngineAnalysisTest : DescribeSpec({
                     val fens = rules.reconstructFens(sans)
                     fens.size shouldBe sans.size + 1
 
-                    val evals = coroutineScope {
+                    val lines = coroutineScope {
                         fens.map { fen -> async { engine.evaluate(fen, props.depth) } }.awaitAll()
                     }
+                    val evals = lines.map { it.best }
                     val contexts = sans.indices.map { i -> rules.analyzeMove(fens[i], sans[i]) }
-                    val result = GameAnalyzer.computeClassifications(evals, moves, contexts)
+                    val result = GameAnalyzer.computeClassifications(evals, moves, contexts, lines)
 
                     result[20].classification shouldBe "brilliant"
                     // 오탐 점검: brilliant 는 1개여야
                     result.count { it.classification == "brilliant" } shouldBe 1
+
+                    // MultiPV: 합법수가 2개 이상인 포지션은 2순위가 있어야 하고, 최선수(UCI)가 채워져야 한다
+                    lines.dropLast(1).all { it.bestMove != null } shouldBe true
+                    lines.count { it.secondBest != null } shouldBe lines.size - lines.count { it.secondBest == null }
+                    println("ONLY-MOVES: " + result.filter { it.classification == "only" }
+                        .joinToString { "${it.moveIndex}:${sans[it.moveIndex]}" })
+                    println("DISTRIBUTION: " + result.groupingBy { it.classification }.eachCount())
                 }
             } finally {
                 pool.destroy()

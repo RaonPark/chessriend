@@ -31,7 +31,7 @@ export interface MoveResponse {
 }
 
 // Analysis / Classification types
-export type MoveClassification = 'brilliant' | 'blunder' | 'mistake' | 'inaccuracy'
+export type MoveClassification = 'brilliant' | 'only' | 'blunder' | 'mistake' | 'inaccuracy'
 
 export interface EvalScore {
   cp: number | null

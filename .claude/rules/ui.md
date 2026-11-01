@@ -39,6 +39,7 @@ See `frontend/DESIGN_SYSTEM.md` for full specification:
 | Saved (saved variations) | emerald |
 | Error / Danger | red |
 | Classification: Brilliant | cyan |
+| Classification: Only move (!) | sky |
 | Classification: Blunder | red |
 | Classification: Mistake | orange |
 | Classification: Inaccuracy | yellow |

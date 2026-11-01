@@ -16,11 +16,13 @@ object GameAnalyzer {
      * @param positionEvals 각 포지션 평가(백 관점). length = moves.size + 1.
      * @param moves 메인라인 수 목록.
      * @param contexts 각 수의 희생 컨텍스트(없으면 null). length = moves.size.
+     * @param engineLines 각 포지션의 MultiPV 결과(1·2순위, 최선수). 비우면 유일수는 판정하지 않는다.
      */
     fun computeClassifications(
         positionEvals: List<EvalScore>,
         moves: List<Move>,
         contexts: List<MoveContext?>,
+        engineLines: List<PositionEval> = emptyList(),
     ): List<MoveEvaluationData> {
         val evaluations = ArrayList<MoveEvaluationData>(moves.size)
 
@@ -47,6 +49,23 @@ object GameAnalyzer {
                     MoveClassifier.detectBrilliant(winLoss, ctx.piece, ctx.captured, ctx.isAtRisk)
                 ) {
                     classification = "brilliant"
+                }
+            }
+            // 유일수는 실수 계열도, brilliant 도 아닐 때만
+            if (classification == null) {
+                val line = engineLines.getOrNull(i)
+                val playedUci = contexts.getOrNull(i)?.uci
+                if (line != null) {
+                    val playedIsBest = playedUci != null && playedUci == line.bestMove
+                    // 승률은 둔 쪽 관점으로
+                    fun moverWin(score: EvalScore): Double {
+                        val white = MoveClassifier.winPercent(MoveClassifier.evalToCp(score))
+                        return if (isWhite) white else 100.0 - white
+                    }
+                    val secondWin = line.secondBest?.let { moverWin(it) }
+                    if (MoveClassifier.detectOnlyMove(playedIsBest, moverWin(evalBefore), secondWin)) {
+                        classification = "only"
+                    }
                 }
             }
 

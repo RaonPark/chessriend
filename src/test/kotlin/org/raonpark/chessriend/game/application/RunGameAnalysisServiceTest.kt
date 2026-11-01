@@ -13,6 +13,7 @@ import kotlinx.coroutines.test.runTest
 import org.raonpark.chessriend.game.adapter.out.engine.ChessEngineProperties
 import org.raonpark.chessriend.game.domain.*
 import org.raonpark.chessriend.game.domain.analysis.AnalysisProgress
+import org.raonpark.chessriend.game.domain.analysis.PositionEval
 import org.raonpark.chessriend.game.port.out.ChessEngine
 import org.raonpark.chessriend.game.port.out.ChessRules
 import org.raonpark.chessriend.game.port.out.GameAnalysisRepository
@@ -63,9 +64,9 @@ class RunGameAnalysisServiceTest : DescribeSpec({
             val fens = listOf("fen0", "fen1", "fen2")
             coEvery { gameRepository.findById(1L) } returns game(1L)
             every { chessRules.reconstructFens(listOf("e4", "e5")) } returns fens
-            coEvery { chessEngine.evaluate("fen0", 18) } returns EvalScore(20, null)
-            coEvery { chessEngine.evaluate("fen1", 18) } returns EvalScore(15, null)
-            coEvery { chessEngine.evaluate("fen2", 18) } returns EvalScore(25, null)
+            coEvery { chessEngine.evaluate("fen0", 18) } returns PositionEval(EvalScore(20, null))
+            coEvery { chessEngine.evaluate("fen1", 18) } returns PositionEval(EvalScore(15, null))
+            coEvery { chessEngine.evaluate("fen2", 18) } returns PositionEval(EvalScore(25, null))
             every { chessRules.analyzeMove(any(), any()) } returns null
             coEvery { analysisRepository.save(eq(1L), any()) } answers { secondArg() }
 

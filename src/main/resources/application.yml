@@ -33,6 +33,7 @@ chess:
     threads: ${CHESS_ENGINE_THREADS:1}
     hash-mb: ${CHESS_ENGINE_HASH_MB:128}
     pool-size: ${CHESS_ENGINE_POOL_SIZE:2}
+    multi-pv: ${CHESS_ENGINE_MULTI_PV:2}
     per-position-timeout-ms: ${CHESS_ENGINE_TIMEOUT_MS:15000}
 
 server:

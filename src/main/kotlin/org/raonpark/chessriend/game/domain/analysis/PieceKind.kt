@@ -18,4 +18,6 @@ data class MoveContext(
     val piece: PieceKind,
     val captured: PieceKind?,
     val isAtRisk: Boolean,
+    /** 둔 수의 UCI 표기 (엔진 1순위 수와 비교용). 알 수 없으면 null */
+    val uci: String? = null,
 )

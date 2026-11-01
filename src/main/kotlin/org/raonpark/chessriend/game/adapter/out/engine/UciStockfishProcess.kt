@@ -8,7 +8,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.raonpark.chessriend.game.domain.EvalScore
+import org.raonpark.chessriend.game.domain.analysis.PositionEval
 import org.raonpark.chessriend.shared.exception.EngineTimeoutException
 import org.raonpark.chessriend.shared.exception.EngineUnavailableException
 import java.io.BufferedReader
@@ -33,7 +33,7 @@ class UciStockfishProcess private constructor(
      * 점수 라인을 한 번도 못 받으면 [EngineTimeoutException].
      * 프로세스가 죽으면 [EngineUnavailableException].
      */
-    suspend fun evaluate(fen: String, depth: Int, timeoutMs: Long): EvalScore =
+    suspend fun evaluate(fen: String, depth: Int, timeoutMs: Long): PositionEval =
         withContext(Dispatchers.IO) {
             send("position fen $fen")
             send("go depth $depth")
@@ -58,17 +58,18 @@ class UciStockfishProcess private constructor(
             }
         }
 
-    private fun readEval(fen: String): EvalScore {
-        val flip = UciParser.flipFor(fen)
-        var last: EvalScore? = null
+    private fun readEval(fen: String): PositionEval {
+        // bestmove 가 올 때까지 모든 라인을 모은 뒤 MultiPV 1·2순위를 한 번에 추출한다.
+        val lines = ArrayList<String>()
         while (true) {
             val line = reader.readLine() ?: run {
                 throw EngineUnavailableException("Stockfish process terminated unexpectedly")
             }
-            UciParser.parseScore(line, flip)?.let { last = it }
+            lines += line
             if (line.startsWith("bestmove")) break
         }
-        return last ?: throw EngineTimeoutException("No evaluation produced for position")
+        return UciParser.extractPositionEval(lines, fen)
+            ?: throw EngineTimeoutException("No evaluation produced for position")
     }
 
     private fun send(command: String) {
@@ -108,9 +109,13 @@ class UciStockfishProcess private constructor(
             instance.readUntil("uciok")
             instance.send("setoption name Threads value ${props.threads}")
             instance.send("setoption name Hash value ${props.hashMb}")
+            instance.send("setoption name MultiPV value ${props.multiPv}")
             instance.send("isready")
             instance.readUntil("readyok")
-            log.info { "Stockfish process started: ${props.path} (threads=${props.threads}, hash=${props.hashMb}MB)" }
+            log.info {
+                "Stockfish process started: ${props.path} " +
+                    "(threads=${props.threads}, hash=${props.hashMb}MB, multiPv=${props.multiPv})"
+            }
             return instance
         }
     }
