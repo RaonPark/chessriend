@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import { PlayerBar } from '../PlayerBar'
 
-const STATS = { counts: { brilliant: 0, blunder: 2, mistake: 1, inaccuracy: 3 }, acpl: 42 }
+const STATS = { counts: { brilliant: 0, only: 0, blunder: 2, mistake: 1, inaccuracy: 3 }, acpl: 42 }
 
 describe('PlayerBar', () => {
   it('이름·레이팅·결과 배지를 표시한다', () => {

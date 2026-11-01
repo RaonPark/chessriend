@@ -23,8 +23,14 @@ const analysis = (evaluations: GameAnalysis['evaluations']): GameAnalysis => ({ 
 describe('summarizeAnalysis', () => {
   it('색별로 분류 개수를 센다', () => {
     const s = summarizeAnalysis(analysis([ev(0, 10, 'mistake'), ev(1, 0), ev(2, 300, 'blunder'), ev(3, 120, 'mistake')]), MOVES)
-    expect(s.white.counts).toEqual({ brilliant: 0, blunder: 1, mistake: 1, inaccuracy: 0 })
-    expect(s.black.counts).toEqual({ brilliant: 0, blunder: 0, mistake: 1, inaccuracy: 0 })
+    expect(s.white.counts).toEqual({ brilliant: 0, only: 0, blunder: 1, mistake: 1, inaccuracy: 0 })
+    expect(s.black.counts).toEqual({ brilliant: 0, only: 0, blunder: 0, mistake: 1, inaccuracy: 0 })
+  })
+
+  it('유일수(only)도 색별로 센다', () => {
+    const s = summarizeAnalysis(analysis([ev(0, 0, 'only'), ev(1, 0, 'only'), ev(2, 0, 'only')]), MOVES)
+    expect(s.white.counts.only).toBe(2)
+    expect(s.black.counts.only).toBe(1)
   })
 
   it('색별 평균 cp loss(반올림)를 계산한다', () => {

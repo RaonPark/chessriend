@@ -7,7 +7,7 @@ export interface SideStats {
   acpl: number | null
 }
 
-const emptyCounts = (): Record<MoveClassification, number> => ({ brilliant: 0, blunder: 0, mistake: 0, inaccuracy: 0 })
+const emptyCounts = (): Record<MoveClassification, number> => ({ brilliant: 0, only: 0, blunder: 0, mistake: 0, inaccuracy: 0 })
 
 /** 분석 결과를 백/흑별 분류 개수 + 평균 cp loss로 요약 */
 export function summarizeAnalysis(analysis: GameAnalysis, moves: MoveResponse[]): { white: SideStats; black: SideStats } {

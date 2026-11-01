@@ -18,5 +18,7 @@ data class ChessEngineProperties(
     val threads: Int = 1,
     val hashMb: Int = 128,
     val poolSize: Int = 2,
+    /** MultiPV 라인 수. 유일수 판정에 2순위가 필요해 2 (1이면 유일수는 판정되지 않음). */
+    val multiPv: Int = 2,
     val perPositionTimeoutMs: Long = 15_000,
 )

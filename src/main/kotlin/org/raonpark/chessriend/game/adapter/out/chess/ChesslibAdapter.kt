@@ -188,6 +188,7 @@ class ChesslibAdapter : ChessRules {
                 piece = movedKind,
                 captured = if (capturedPiece == Piece.NONE) null else capturedPiece.pieceType.toKind(),
                 isAtRisk = isAtRisk,
+                uci = move.toString().lowercase(),
             )
         } catch (e: Exception) {
             if (e is CancellationException) throw e

@@ -200,15 +200,9 @@ export function MoveList() {
   )
 }
 
-const CLASSIFICATION_BORDER: Record<MoveClassification, string> = {
-  brilliant: 'border-l-2 border-l-cyan-500',
-  blunder: 'border-l-2 border-l-red-500',
-  mistake: 'border-l-2 border-l-orange-500',
-  inaccuracy: 'border-l-2 border-l-yellow-500',
-}
-
 const CLASSIFICATION_BG: Record<MoveClassification, string> = {
   brilliant: 'bg-cyan-100 dark:bg-cyan-900/30',
+  only: 'bg-sky-100 dark:bg-sky-900/30',
   blunder: 'bg-red-100 dark:bg-red-900/30',
   mistake: 'bg-orange-100 dark:bg-orange-900/30',
   inaccuracy: 'bg-yellow-100 dark:bg-yellow-900/30',
@@ -225,14 +219,13 @@ function MoveCell({ move, isActive, isBranchPoint, hasComment, classification, g
 }) {
   if (!move) return <div />
 
-  const classificationBorder = isActive && classification ? CLASSIFICATION_BORDER[classification] : ''
   const classificationBg = !isActive && !isBranchPoint && classification ? CLASSIFICATION_BG[classification] : ''
 
   return (
     <button
       ref={isActive ? activeRef : undefined}
       onClick={() => goToMove(move.index)}
-      className={`flex items-center gap-1 px-2 py-1 text-left text-sm transition ${classificationBorder} ${classificationBg} ${
+      className={`flex items-center gap-1 px-2 py-1 text-left text-sm transition ${classificationBg} ${
         isActive
           ? 'bg-amber-200 font-semibold text-amber-900 dark:bg-amber-800 dark:text-amber-100'
           : isBranchPoint

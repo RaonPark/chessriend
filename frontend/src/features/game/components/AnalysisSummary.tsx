@@ -9,10 +9,11 @@ interface AnalysisSummaryProps {
   blackName: string
 }
 
-const CLASSIFICATIONS: readonly MoveClassification[] = ['brilliant', 'blunder', 'mistake', 'inaccuracy']
+const CLASSIFICATIONS: readonly MoveClassification[] = ['brilliant', 'only', 'blunder', 'mistake', 'inaccuracy']
 
 const BADGE_CONFIG = {
   brilliant: { label: 'Brilliant', dotClass: 'bg-cyan-500', textClass: 'text-cyan-700 dark:text-cyan-400' },
+  only: { label: 'Only move', dotClass: 'bg-sky-500', textClass: 'text-sky-700 dark:text-sky-400' },
   blunder: { label: 'Blunder', dotClass: 'bg-red-500', textClass: 'text-red-700 dark:text-red-400' },
   mistake: { label: 'Mistake', dotClass: 'bg-orange-500', textClass: 'text-orange-700 dark:text-orange-400' },
   inaccuracy: { label: 'Inaccuracy', dotClass: 'bg-yellow-500', textClass: 'text-yellow-700 dark:text-yellow-400' },

@@ -10,6 +10,7 @@ import org.raonpark.chessriend.game.domain.EvalScore
 import org.raonpark.chessriend.game.domain.GameAnalysisData
 import org.raonpark.chessriend.game.domain.analysis.AnalysisProgress
 import org.raonpark.chessriend.game.domain.analysis.GameAnalyzer
+import org.raonpark.chessriend.game.domain.analysis.PositionEval
 import org.raonpark.chessriend.game.port.`in`.RunGameAnalysisUseCase
 import org.raonpark.chessriend.game.port.out.ChessEngine
 import org.raonpark.chessriend.game.port.out.ChessRules
@@ -46,18 +47,20 @@ class RunGameAnalysisService(
             log.warn { "SAN replay was partial: gameId=$gameId fens=${fens.size} moves=${sans.size}" }
         }
 
-        val positionEvals = ArrayList<EvalScore>(total)
+        // 포지션별 MultiPV 결과(1·2순위 + 최선수). 1순위 점수는 기존 분류에, 2순위는 유일수 판정에 쓴다.
+        val engineLines = ArrayList<PositionEval>(total)
         for ((i, fen) in fens.withIndex()) {
             currentCoroutineContext().ensureActive()
-            positionEvals += chessEngine.evaluate(fen, depth)
+            engineLines += chessEngine.evaluate(fen, depth)
             emit(AnalysisProgress.Progress(current = i + 1, total = total))
         }
+        val positionEvals: List<EvalScore> = engineLines.map { it.best }
 
         // 희생 컨텍스트는 각 수의 직전 포지션(fens[i])에서 재판정 (프론트 extractMoveContext 와 동일)
         val contexts = game.moves.indices.map { i ->
             fens.getOrNull(i)?.let { fen -> chessRules.analyzeMove(fen, sans[i]) }
         }
-        val evaluations = GameAnalyzer.computeClassifications(positionEvals, game.moves, contexts)
+        val evaluations = GameAnalyzer.computeClassifications(positionEvals, game.moves, contexts, engineLines)
 
         val analysis = GameAnalysisData(
             evaluations = evaluations,

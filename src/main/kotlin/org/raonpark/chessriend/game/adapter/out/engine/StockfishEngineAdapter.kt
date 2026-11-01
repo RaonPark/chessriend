@@ -1,6 +1,6 @@
 package org.raonpark.chessriend.game.adapter.out.engine
 
-import org.raonpark.chessriend.game.domain.EvalScore
+import org.raonpark.chessriend.game.domain.analysis.PositionEval
 import org.raonpark.chessriend.game.port.out.ChessEngine
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.stereotype.Component
@@ -15,6 +15,6 @@ class StockfishEngineAdapter(
     private val props: ChessEngineProperties,
 ) : ChessEngine {
 
-    override suspend fun evaluate(fen: String, depth: Int): EvalScore =
+    override suspend fun evaluate(fen: String, depth: Int): PositionEval =
         pool.borrow { proc -> proc.evaluate(fen, depth, props.perPositionTimeoutMs) }
 }

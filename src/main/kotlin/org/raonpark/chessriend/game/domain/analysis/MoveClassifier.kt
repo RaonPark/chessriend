@@ -16,6 +16,15 @@ object MoveClassifier {
     /** "거의 최선수" 기준 — Win% 손실이 이 값(%p) 미만이면 희생이 유효하다고 본다. */
     const val BRILLIANT_WIN_TOLERANCE = 2.0
 
+    /** 유일수: 1순위 수의 승률(둔 쪽 관점)이 이 값(%) 이상이어야 "유리/동등 유지". */
+    const val ONLY_MIN_BEST_WIN = 45.0
+
+    /** 유일수: 2순위 수의 승률(둔 쪽 관점)이 이 값(%) 미만이어야 "상대가 유리해짐". */
+    const val ONLY_MAX_SECOND_WIN = 50.0
+
+    /** 유일수: 1·2순위 승률 차이가 이 값(%p) 이상이어야 한다 (기존 Mistake 기준과 동일). */
+    const val ONLY_MIN_WIN_GAP = 20.0
+
     /** 기물 가치(체스 통념). 킹은 잡힐 수 없으므로 공격자 가치/이동 기물 가치 모두 0으로 둔다. */
     private val VALUES: Map<PieceKind, Int> = mapOf(
         PieceKind.PAWN to 1,
@@ -57,6 +66,19 @@ object MoveClassifier {
         winLoss >= 20 -> "mistake"
         winLoss >= 10 -> "inaccuracy"
         else -> null
+    }
+
+    /**
+     * 유일수(!): 내가 둔 수가 엔진 1순위이고, 2순위부터는 상대가 유리해지는 경우.
+     * 승률은 모두 **둔 쪽 관점**(0..100).
+     * - [playedIsBest]: 둔 수 == 1순위 수
+     * - [secondWin]: 2순위 수의 승률. 합법수가 하나뿐이면 null → 강제 수이므로 유일수로 치지 않는다.
+     */
+    fun detectOnlyMove(playedIsBest: Boolean, bestWin: Double, secondWin: Double?): Boolean {
+        if (!playedIsBest || secondWin == null) return false
+        if (bestWin < ONLY_MIN_BEST_WIN) return false
+        if (secondWin >= ONLY_MAX_SECOND_WIN) return false
+        return bestWin - secondWin >= ONLY_MIN_WIN_GAP
     }
 
     /**
