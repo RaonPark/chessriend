@@ -17,7 +17,7 @@
 | `TimeControl.kt` | `TimeControl`(초기시간·증분·카테고리, `fromString()`, PGN 태그 해석 `fromPgnTag(raw, event)`) + enum `TimeCategory`(ULTRABULLET…CORRESPONDENCE(일일 체스), OTHER(기타)) + `TimeCategory.infer`(기본+40×증분으로 분류) |
 | `Opening.kt` | ECO 코드 + 이름 |
 | `GameSource.kt` | enum `LICHESS`/`CHESS_COM`/`PGN` |
-| `Annotation.kt` | `GameAnnotation`(수 코멘트 맵 + 변형선 + 포지션별 화살표 `moveArrows`), `Variation`, `BoardArrow`(칸·hex 색 검증), 분석 값객체(`GameAnalysisData`, `MoveEvaluationData`, `EvalScore`) |
+| `Annotation.kt` | `GameAnnotation`(수 코멘트 맵 + 변형선 + 포지션별 화살표 `moveArrows` + 사용자 `!?` 표시 `interestingMoves`), `Variation`(변형선별 `interestingMoves`, 수 범위 검증), `BoardArrow`(칸·hex 색 검증), 분석 값객체(`GameAnalysisData`, `MoveEvaluationData`, `EvalScore`) |
 | `GameNote.kt` | 게임 애칭(≤50자)·메모(≤2000자). `of()`로 trim·빈 값 → null |
 | `Folder.kt` | 사용자 폴더(이름 trim, 1~30자, `named()`) + `FolderSummary`(폴더 + 게임 수) |
 | `GameSearchCriteria.kt` | 게임 목록 검색 조건(플랫폼·시간·결과 `OwnerOutcome`·상대 레이팅 `RatingBand`·오프닝·폴더) + `OpeningCount` |

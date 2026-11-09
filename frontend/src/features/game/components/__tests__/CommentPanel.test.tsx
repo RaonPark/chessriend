@@ -241,3 +241,31 @@ describe('CommentPanel', () => {
     })
   })
 })
+
+describe('CommentPanel — 흥미로운 수(!?) 토글', () => {
+  beforeEach(() => {
+    useBoardStore.getState().loadMoves(SAMPLE_MOVES)
+    useBoardStore.getState().setAnalysis(DUMMY_ANALYSIS)
+  })
+
+  it('누르면 현재 수를 !?로 표시하고 바로 저장을 요청한다', async () => {
+    const onPersist = vi.fn()
+    useBoardStore.getState().goToMove(1)
+    renderPanel({ onPersist })
+
+    const toggle = screen.getByRole('button', { name: /흥미로운 수/ })
+    expect(toggle).toHaveAttribute('aria-pressed', 'false')
+
+    await userEvent.click(toggle)
+
+    expect(useBoardStore.getState().interestingMoves).toEqual([1])
+    expect(toggle).toHaveAttribute('aria-pressed', 'true')
+    expect(onPersist).toHaveBeenCalledTimes(1)
+  })
+
+  it('저장 중에는 누를 수 없다', () => {
+    useBoardStore.getState().goToMove(0)
+    renderPanel({ isPersisting: true })
+    expect(screen.getByRole('button', { name: /흥미로운 수/ })).toBeDisabled()
+  })
+})

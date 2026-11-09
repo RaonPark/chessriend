@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
-import { useBoardStore, selectHasUnsavedVariationMoves } from '../stores/boardStore'
+import { useBoardStore, selectHasUnsavedVariationMoves, selectCanMarkInteresting, selectIsCurrentInteresting } from '../stores/boardStore'
 import { formatNumberedMove, variationMovePly } from '../utils/moveNumber'
+import { INTERESTING_MARK } from '../utils/moveSymbols'
 
 interface CommentPanelProps {
   onPersist?: () => void
@@ -23,6 +24,9 @@ export function CommentPanel({ onPersist, isPersisting }: CommentPanelProps = {}
   // 새 변형선이거나 저장된 변형선을 이어 둔 경우: 메모를 저장하면 변형선도 함께 저장
   const hasUnsavedVariationMoves = useBoardStore(selectHasUnsavedVariationMoves)
   const analysis = useBoardStore((s) => s.analysis)
+  const canMarkInteresting = useBoardStore(selectCanMarkInteresting)
+  const isInteresting = useBoardStore(selectIsCurrentInteresting)
+  const toggleInterestingMove = useBoardStore((s) => s.toggleInterestingMove)
 
   // 편집 상태는 편집을 시작한 포지션 키와 묶어서 보관 → 수가 바뀌면 자동으로 편집 종료
   const [editingKey, setEditingKey] = useState<string | null>(null)
@@ -89,6 +93,12 @@ export function CommentPanel({ onPersist, isPersisting }: CommentPanelProps = {}
     onPersist?.()
   }
 
+  // 메모 저장과 같은 규칙: 저장 전 변형선이면 변형선도 함께 저장되고, 바로 서버에 반영
+  function handleToggleInteresting() {
+    toggleInterestingMove()
+    onPersist?.()
+  }
+
   function handleCancel() {
     setEditingKey(null)
   }
@@ -141,6 +151,23 @@ export function CommentPanel({ onPersist, isPersisting }: CommentPanelProps = {}
         )}
         {hasUnsavedVariationMoves && (
           <span className={`text-[10px] ${theme.accent}`}>메모를 저장하면 변형선도 함께 저장됩니다</span>
+        )}
+        {canMarkInteresting && (
+          <button
+            type="button"
+            onClick={handleToggleInteresting}
+            disabled={isPersisting}
+            aria-pressed={isInteresting}
+            title={isInteresting ? `${INTERESTING_MARK.label} 표시 해제` : `${INTERESTING_MARK.label}(!?)로 표시`}
+            className={`ml-auto inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition disabled:opacity-50 ${
+              isInteresting
+                ? 'border-fuchsia-600 bg-fuchsia-600 text-white hover:bg-fuchsia-700 dark:border-fuchsia-500 dark:bg-fuchsia-600 dark:hover:bg-fuchsia-500'
+                : 'border-dashed border-fuchsia-300 text-fuchsia-600 hover:bg-fuchsia-50 dark:border-fuchsia-800 dark:text-fuchsia-400 dark:hover:bg-fuchsia-950/40'
+            }`}
+          >
+            <b className="font-bold">{INTERESTING_MARK.symbol}</b>
+            {INTERESTING_MARK.label}
+          </button>
         )}
       </div>
 

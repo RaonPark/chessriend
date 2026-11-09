@@ -1,10 +1,12 @@
 package org.raonpark.chessriend.game.adapter.`in`.web
 
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.maps.shouldBeEmpty
 import io.kotest.matchers.shouldBe
 import org.raonpark.chessriend.game.domain.BoardArrow
 import org.raonpark.chessriend.game.domain.GameAnnotation
+import org.raonpark.chessriend.game.domain.Variation
 import tools.jackson.databind.ObjectMapper
 import tools.jackson.module.kotlin.jacksonObjectMapper
 
@@ -35,8 +37,54 @@ class AnnotationDtoTest : DescribeSpec({
         }
     }
 
+    describe("흥미로운 수(!?) 매핑") {
+        it("요청의 흥미로운 수가 도메인을 거쳐 응답까지 유지") {
+            val request = AnnotationRequest(interestingMoves = listOf(4, 10))
+            AnnotationResponse.from(request.toDomain()).interestingMoves shouldBe listOf(4, 10)
+        }
+
+        it("중복은 제거하고 수 순서대로 정렬") {
+            val request = AnnotationRequest(interestingMoves = listOf(10, 4, 10))
+            request.toDomain().interestingMoves shouldBe listOf(4, 10)
+        }
+
+        it("음수 인덱스는 거부") {
+            shouldThrow<IllegalArgumentException> {
+                AnnotationRequest(interestingMoves = listOf(-1)).toDomain()
+            }
+        }
+
+        it("변형선의 흥미로운 수도 정렬·중복 제거 후 응답까지 유지") {
+            val request = AnnotationRequest(
+                variations = listOf(
+                    VariationRequest(startMoveIndex = 3, moves = listOf("Nf3", "Nc6", "Bb5"), interestingMoves = listOf(2, 0, 2)),
+                ),
+            )
+            AnnotationResponse.from(request.toDomain()).variations[0].interestingMoves shouldBe listOf(0, 2)
+        }
+
+        it("변형선 수 개수를 벗어난 인덱스는 거부") {
+            shouldThrow<IllegalArgumentException> {
+                VariationRequest(startMoveIndex = 0, moves = listOf("e5"), interestingMoves = listOf(1)).toDomain()
+            }
+        }
+    }
+
     describe("기존 저장 데이터 호환") {
         val mapper: ObjectMapper = jacksonObjectMapper()
+
+        it("interestingMoves 필드가 없는 JSON도 읽힘") {
+            val legacy = """{"moveComments":{},"variations":[]}"""
+            mapper.readValue(legacy, GameAnnotation::class.java).interestingMoves shouldBe emptyList()
+        }
+
+        it("흥미로운 수가 JSON 왕복 후에도 유지") {
+            val original = GameAnnotation(
+                interestingMoves = listOf(2, 7),
+                variations = listOf(Variation(startMoveIndex = 1, moves = listOf("d4", "d5"), interestingMoves = listOf(1))),
+            )
+            mapper.readValue(mapper.writeValueAsString(original), GameAnnotation::class.java) shouldBe original
+        }
 
         it("moveArrows 필드가 없는 JSON도 읽힘") {
             val legacy = """{"moveComments":{"0":"hi"},"variations":[{"startMoveIndex":0,"moves":["e5"],"comment":""}]}"""

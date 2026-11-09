@@ -58,6 +58,8 @@ export interface VariationResponse {
   comment: string
   moveComments: Record<string, string>
   moveArrows?: MoveArrows
+  /** 사용자가 !?(흥미로운 수)로 표시한 변형선 내 수 인덱스 */
+  interestingMoves?: number[]
 }
 
 /** 보드 위 화살표 (react-chessboard Arrow와 같은 모양) */
@@ -75,12 +77,15 @@ export interface AnnotationResponse {
   variations: VariationResponse[]
   analysis?: GameAnalysis
   moveArrows?: MoveArrows
+  /** 사용자가 !?(흥미로운 수)로 표시한 메인라인 수 인덱스 */
+  interestingMoves?: number[]
 }
 
 export interface AnnotationRequest {
   moveComments: Record<string, string>
   variations: VariationResponse[]
   moveArrows: MoveArrows
+  interestingMoves: number[]
 }
 
 export interface GameDetailResponse {

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { useBoardStore, selectCurrentArrows, selectHasUnsavedVariationMoves } from '../boardStore'
+import { useBoardStore, selectCurrentArrows, selectHasUnsavedVariationMoves, selectIsCurrentInteresting, selectCanMarkInteresting } from '../boardStore'
 import type { AnnotationResponse, GameAnalysis, MoveResponse, VariationResponse } from '../../types/game'
 
 const SAMPLE_MOVES: MoveResponse[] = [
@@ -631,5 +631,81 @@ describe('boardStore — 둘 수 없는 수', () => {
     expect(getState().makeMove(from, to)).toBe(false)
     expect(getState().currentFen).toBe(before)
     expect(getState().isInVariation).toBe(false)
+  })
+})
+
+describe('boardStore — 흥미로운 수(!?)', () => {
+  beforeEach(() => {
+    getState().loadMoves(SAMPLE_MOVES)
+    getState().loadAnnotations(SAMPLE_ANNOTATIONS) // analysis를 응답 값(없음)으로 덮으므로 setAnalysis보다 먼저
+    getState().setAnalysis(DUMMY_ANALYSIS)
+  })
+
+  it('메인라인 현재 수를 표시했다가 다시 누르면 해제한다', () => {
+    getState().goToMove(2)
+    getState().toggleInterestingMove()
+    expect(getState().interestingMoves).toEqual([2])
+    expect(selectIsCurrentInteresting(getState())).toBe(true)
+    expect(getState().annotationsDirty).toBe(true)
+
+    getState().toggleInterestingMove()
+    expect(getState().interestingMoves).toEqual([])
+    expect(selectIsCurrentInteresting(getState())).toBe(false)
+  })
+
+  it('시작 포지션(-1)이나 분석 전에는 표시할 수 없다', () => {
+    getState().goToStart()
+    expect(selectCanMarkInteresting(getState())).toBe(false)
+    getState().toggleInterestingMove()
+    expect(getState().interestingMoves).toEqual([])
+
+    getState().goToMove(0)
+    getState().clearAnalysis()
+    expect(selectCanMarkInteresting(getState())).toBe(false)
+    getState().toggleInterestingMove()
+    expect(getState().interestingMoves).toEqual([])
+  })
+
+  it('저장된 변형선의 수에 표시하면 그 변형선에 기록된다 (메인라인과 분리)', () => {
+    const variation = getState().savedVariations[0]
+    getState().enterSavedVariation(variation, 0, 1)
+    getState().toggleInterestingMove()
+
+    expect(getState().savedVariations[0].interestingMoves).toEqual([1])
+    expect(getState().interestingMoves).toEqual([])
+    expect(selectIsCurrentInteresting(getState())).toBe(true)
+  })
+
+  it('저장 전 변형선에 표시하면 변형선을 먼저 저장하고 기록한다', () => {
+    getState().goToMove(1) // 1...e5 이후
+    getState().makeMove('f1', 'c4') // 2.Bc4
+    getState().makeMove('g8', 'f6') // 2...Nf6
+    getState().toggleInterestingMove()
+
+    const saved = getState().savedVariations
+    expect(saved).toHaveLength(2)
+    expect(saved[1].moves).toEqual(['Bc4', 'Nf6'])
+    expect(saved[1].interestingMoves).toEqual([1])
+    expect(selectHasUnsavedVariationMoves(getState())).toBe(false)
+  })
+
+  it('불러오기와 스냅샷에 포함되고, 저장 안 된 변형선 수의 표시는 보내지 않는다', () => {
+    getState().loadAnnotations({
+      ...SAMPLE_ANNOTATIONS,
+      interestingMoves: [4],
+      variations: [{ ...SAMPLE_ANNOTATIONS.variations[0], interestingMoves: [0, 5] }],
+    })
+    expect(getState().interestingMoves).toEqual([4])
+
+    const snapshot = getState().getAnnotationsSnapshot()
+    expect(snapshot.interestingMoves).toEqual([4])
+    expect(snapshot.variations[0].interestingMoves).toEqual([0]) // 5는 변형선 길이(2) 밖
+  })
+
+  it('새 기보를 불러오면 초기화된다', () => {
+    getState().goToMove(0)
+    getState().toggleInterestingMove()
+    getState().loadMoves(SAMPLE_MOVES)
+    expect(getState().interestingMoves).toEqual([])
   })
 })

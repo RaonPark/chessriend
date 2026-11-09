@@ -4,7 +4,12 @@ data class GameAnnotation(
     val moveComments: Map<String, String> = emptyMap(),  // key: "{moveIndex}" (예: "5"), value: 메모
     val variations: List<Variation> = emptyList(),
     val moveArrows: Map<String, List<BoardArrow>> = emptyMap(),  // key: "{moveIndex}" (-1 = 시작 포지션), 해당 수 이후 포지션의 화살표
+    val interestingMoves: List<Int> = emptyList(),  // 사용자가 직접 !?(흥미로운 수)로 표시한 메인라인 수 인덱스
 ) {
+    init {
+        require(interestingMoves.all { it >= 0 }) { "Invalid interesting move index: $interestingMoves" }
+    }
+
     companion object {
         fun empty() = GameAnnotation()
     }
@@ -16,7 +21,12 @@ data class Variation(
     val comment: String = "",   // 변형선 전체에 대한 메모
     val moveComments: Map<String, String> = emptyMap(),  // key: 변형선 내 수 인덱스, value: 메모
     val moveArrows: Map<String, List<BoardArrow>> = emptyMap(),  // key: 변형선 내 수 인덱스 (-1 = 분기 포지션)
-)
+    val interestingMoves: List<Int> = emptyList(),  // 사용자가 !?로 표시한 변형선 내 수 인덱스
+) {
+    init {
+        require(interestingMoves.all { it in moves.indices }) { "Invalid variation interesting move index: $interestingMoves" }
+    }
+}
 
 /** 보드 위에 사용자가 그린 화살표. 색은 프론트가 그대로 CSS로 쓰므로 hex만 허용한다. */
 data class BoardArrow(
