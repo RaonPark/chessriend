@@ -3,6 +3,10 @@ interface ChessKingProps {
   size?: number
 }
 
+/**
+ * 왕 아이콘. path는 Cburnett 기물(© 2006 Colin M.L. Burnett)에서 가져왔고 BSD-3-Clause로 사용한다.
+ * 고지 전문: frontend/public/THIRD_PARTY_NOTICES.txt
+ */
 export function ChessKing({ color, size = 24 }: ChessKingProps) {
   const fill = color === 'white' ? '#fff' : '#1a1a1a'
   const stroke = color === 'white' ? '#333' : '#555'
