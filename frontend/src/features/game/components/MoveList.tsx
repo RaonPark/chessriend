@@ -3,7 +3,7 @@ import { ContextMenu, type ContextMenuItem } from '@/shared/components/ContextMe
 import { useBoardStore, selectHasUnsavedVariationMoves } from '../stores/boardStore'
 import type { MoveClassification, VariationResponse } from '../types/game'
 import { formatNumberedMove, variationMovePly } from '../utils/moveNumber'
-import { MOVE_SYMBOLS } from '../utils/moveSymbols'
+import { INTERESTING_MARK, MOVE_SYMBOLS } from '../utils/moveSymbols'
 
 export function MoveList() {
   const moves = useBoardStore((s) => s.mainlineMoves)
@@ -25,6 +25,7 @@ export function MoveList() {
   const hasUnsavedVariationMoves = useBoardStore(selectHasUnsavedVariationMoves)
   const classificationByMove = useBoardStore((s) => s.classificationByMove)
   const analysis = useBoardStore((s) => s.analysis)
+  const interestingMoves = useBoardStore((s) => s.interestingMoves)
   const activeRef = useRef<HTMLButtonElement>(null)
 
   // 변형선 우클릭 메뉴
@@ -101,6 +102,7 @@ export function MoveList() {
                     isBranchPoint={isInVariation && pair.white?.index === variationStartIndex}
                     hasComment={pair.white != null && String(pair.white.index) in moveComments}
                     classification={pair.white ? classificationByMove[pair.white.index] : undefined}
+                    isInteresting={pair.white != null && interestingMoves.includes(pair.white.index)}
                     goToMove={goToMove}
                     activeRef={activeRef}
                   />
@@ -110,6 +112,7 @@ export function MoveList() {
                     isBranchPoint={isInVariation && pair.black?.index === variationStartIndex}
                     hasComment={pair.black != null && String(pair.black.index) in moveComments}
                     classification={pair.black ? classificationByMove[pair.black.index] : undefined}
+                    isInteresting={pair.black != null && interestingMoves.includes(pair.black.index)}
                     goToMove={goToMove}
                     activeRef={activeRef}
                   />
@@ -166,8 +169,9 @@ export function MoveList() {
                     </div>
                     <div className="flex flex-wrap gap-0.5">
                       {variationMoves.map((san, i) => {
-                        const hasVarComment = activeVariationIndex >= 0
-                          && savedVariations[activeVariationIndex]?.moveComments?.[String(i)]
+                        const activeSaved = activeVariationIndex >= 0 ? savedVariations[activeVariationIndex] : undefined
+                        const hasVarComment = Boolean(activeSaved?.moveComments?.[String(i)])
+                        const isVarInteresting = activeSaved?.interestingMoves?.includes(i) ?? false
                         return (
                           <button
                             key={i}
@@ -180,6 +184,7 @@ export function MoveList() {
                             }`}
                           >
                             <span>{formatNumberedMove(variationMovePly(variationStartIndex, i), san)}</span>
+                            {isVarInteresting && <InterestingSymbol />}
                             {hasVarComment && (
                               <span className="text-[10px] text-indigo-400 dark:text-indigo-500" title="메모 있음">&#9998;</span>
                             )}
@@ -208,18 +213,30 @@ const CLASSIFICATION_BG: Record<MoveClassification, string> = {
   inaccuracy: 'bg-yellow-100 dark:bg-yellow-900/30',
 }
 
-function MoveCell({ move, isActive, isBranchPoint, hasComment, classification, goToMove, activeRef }: {
+/** 흥미로운 수(!?) 기호 — 엔진 분류 기호 뒤에 붙는다 */
+function InterestingSymbol() {
+  return (
+    <span className={`text-[11px] font-bold ${INTERESTING_MARK.className}`} title={INTERESTING_MARK.label}>
+      {INTERESTING_MARK.symbol}
+    </span>
+  )
+}
+
+function MoveCell({ move, isActive, isBranchPoint, hasComment, classification, isInteresting, goToMove, activeRef }: {
   move?: { san: string; index: number }
   isActive: boolean
   isBranchPoint: boolean
   hasComment: boolean
   classification?: MoveClassification
+  isInteresting: boolean
   goToMove: (index: number) => void
   activeRef: React.RefObject<HTMLButtonElement | null>
 }) {
   if (!move) return <div />
 
-  const classificationBg = !isActive && !isBranchPoint && classification ? CLASSIFICATION_BG[classification] : ''
+  // 배경은 엔진 분류가 우선 (실수 표시가 가려지지 않게), 분류가 없을 때만 !? 색
+  const markBg = classification ? CLASSIFICATION_BG[classification] : isInteresting ? INTERESTING_MARK.bgClassName : ''
+  const classificationBg = !isActive && !isBranchPoint ? markBg : ''
 
   return (
     <button
@@ -230,7 +247,7 @@ function MoveCell({ move, isActive, isBranchPoint, hasComment, classification, g
           ? 'bg-amber-200 font-semibold text-amber-900 dark:bg-amber-800 dark:text-amber-100'
           : isBranchPoint
             ? 'bg-indigo-100 font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
-            : classification
+            : markBg
               ? 'text-gray-700 dark:text-gray-300'
               : 'text-gray-700 hover:bg-amber-50 dark:text-gray-300 dark:hover:bg-gray-700'
       }`}
@@ -244,6 +261,7 @@ function MoveCell({ move, isActive, isBranchPoint, hasComment, classification, g
           {MOVE_SYMBOLS[classification].symbol}
         </span>
       )}
+      {isInteresting && <InterestingSymbol />}
       {hasComment && (
         <span className="text-[10px] text-amber-500 dark:text-amber-600" title="메모 있음">&#9998;</span>
       )}
@@ -264,15 +282,18 @@ function SavedVariationLine({ variation, onEnter, onDelete, onContextMenu }: {
         {variation.moves.map((san, i) => {
           const label = formatNumberedMove(variationMovePly(variation.startMoveIndex, i), san)
           const hasMemo = Boolean(variation.moveComments?.[String(i)])
+          const isInteresting = variation.interestingMoves?.includes(i) ?? false
+          const extras = [isInteresting && INTERESTING_MARK.label, hasMemo && '메모 있음'].filter(Boolean).join(', ')
           return (
             <button
               key={i}
               type="button"
               onClick={() => onEnter(i)}
-              aria-label={hasMemo ? `${label} (메모 있음)` : label}
+              aria-label={extras ? `${label} (${extras})` : label}
               className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 hover:bg-emerald-100 hover:text-emerald-900 dark:hover:bg-emerald-900/30 dark:hover:text-emerald-300"
             >
               {label}
+              {isInteresting && <InterestingSymbol />}
               {hasMemo && <span className="text-[10px] text-emerald-500">&#9998;</span>}
             </button>
           )

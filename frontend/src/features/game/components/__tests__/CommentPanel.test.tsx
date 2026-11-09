@@ -241,3 +241,85 @@ describe('CommentPanel', () => {
     })
   })
 })
+
+describe('CommentPanel — 흥미로운 수(!?) 토글', () => {
+  beforeEach(() => {
+    useBoardStore.getState().loadMoves(SAMPLE_MOVES)
+    useBoardStore.getState().setAnalysis(DUMMY_ANALYSIS)
+  })
+
+  it('누르면 현재 수를 !?로 표시하고 바로 저장을 요청한다', async () => {
+    const onPersist = vi.fn()
+    useBoardStore.getState().goToMove(1)
+    renderPanel({ onPersist })
+
+    const toggle = screen.getByRole('button', { name: /흥미로운 수/ })
+    expect(toggle).toHaveAttribute('aria-pressed', 'false')
+
+    await userEvent.click(toggle)
+
+    expect(useBoardStore.getState().interestingMoves).toEqual([1])
+    expect(toggle).toHaveAttribute('aria-pressed', 'true')
+    expect(onPersist).toHaveBeenCalledTimes(1)
+  })
+
+  it('저장 중에는 누를 수 없다', () => {
+    useBoardStore.getState().goToMove(0)
+    renderPanel({ isPersisting: true })
+    expect(screen.getByRole('button', { name: /흥미로운 수/ })).toBeDisabled()
+  })
+})
+
+describe('CommentPanel — 수 메모 삭제', () => {
+  beforeEach(() => {
+    useBoardStore.getState().loadMoves(SAMPLE_MOVES)
+    useBoardStore.getState().loadAnnotations({
+      moveComments: { '1': '대칭 응수' },
+      variations: [{ startMoveIndex: 0, moves: ['c5', 'Nf3'], comment: '', moveComments: { '1': '시실리안' } }],
+    })
+    useBoardStore.getState().setAnalysis(DUMMY_ANALYSIS)
+  })
+
+  it('메인라인 메모: 확인 후 삭제하고 바로 저장을 요청한다', async () => {
+    const onPersist = vi.fn()
+    useBoardStore.getState().goToMove(1)
+    renderPanel({ onPersist })
+
+    await userEvent.click(screen.getByRole('button', { name: '메모 삭제' }))
+    expect(screen.getByText('이 수의 메모를 삭제할까요?')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: '삭제' }))
+
+    expect(useBoardStore.getState().moveComments).toEqual({})
+    expect(onPersist).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('button', { name: '메모 추가...' })).toBeInTheDocument()
+  })
+
+  it('취소하면 메모가 그대로 남는다', async () => {
+    const onPersist = vi.fn()
+    useBoardStore.getState().goToMove(1)
+    renderPanel({ onPersist })
+
+    await userEvent.click(screen.getByRole('button', { name: '메모 삭제' }))
+    await userEvent.click(screen.getByRole('button', { name: '취소' }))
+
+    expect(useBoardStore.getState().moveComments).toEqual({ '1': '대칭 응수' })
+    expect(onPersist).not.toHaveBeenCalled()
+  })
+
+  it('저장된 변형선의 수 메모도 삭제한다', async () => {
+    const variation = useBoardStore.getState().savedVariations[0]
+    useBoardStore.getState().enterSavedVariation(variation, 0, 1)
+    renderPanel()
+
+    await userEvent.click(screen.getByRole('button', { name: '메모 삭제' }))
+    await userEvent.click(screen.getByRole('button', { name: '삭제' }))
+
+    expect(useBoardStore.getState().savedVariations[0].moveComments).toEqual({})
+  })
+
+  it('메모가 없는 수에는 삭제 버튼이 없다', () => {
+    useBoardStore.getState().goToMove(0)
+    renderPanel()
+    expect(screen.queryByRole('button', { name: '메모 삭제' })).not.toBeInTheDocument()
+  })
+})

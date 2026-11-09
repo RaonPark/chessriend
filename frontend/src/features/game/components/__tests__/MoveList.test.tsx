@@ -87,3 +87,20 @@ describe('MoveList — 기보 기호', () => {
     expect(screen.getByRole('button', { name: /^g5/ })).toHaveTextContent('g5??')
   })
 })
+
+describe('MoveList — 흥미로운 수(!?) 표시', () => {
+  it('메인라인 수와 저장된 변형선 수에 !?를 붙인다', () => {
+    useBoardStore.getState().loadMoves(MOVES)
+    useBoardStore.getState().loadAnnotations({
+      moveComments: {},
+      variations: [{ ...VARIATION, interestingMoves: [1] }],
+      analysis: ANALYSIS,
+      interestingMoves: [2],
+    })
+    render(<MoveList />)
+
+    expect(screen.getByRole('button', { name: /^Nf3/ })).toHaveTextContent('Nf3!?')
+    expect(screen.getByRole('button', { name: /^e5/ })).not.toHaveTextContent('!?')
+    expect(screen.getByRole('button', { name: /exd5 \(흥미로운 수\)/ })).toHaveTextContent('!?')
+  })
+})

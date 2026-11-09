@@ -31,7 +31,7 @@ data class GameResponse(
             analysisSummary: GameAnalysisSummary? = null,
             folders: List<Folder> = emptyList(),
         ): GameResponse = GameResponse(
-            id = game.id!!.toString(),
+            id = requireNotNull(game.id) { "Game id required" }.toString(),
             source = game.source.name,
             sourceGameId = game.sourceGameId,
             ownerUsername = game.ownerUsername,
@@ -46,7 +46,7 @@ data class GameResponse(
             totalMoves = game.totalMoves,
             playedAt = game.playedAt,
             analysisSummary = analysisSummary?.let { AnalysisSummaryResponse.from(it) },
-            folders = folders.map { FolderTagResponse(it.id!!.toString(), it.name) },
+            folders = folders.map { FolderTagResponse(requireNotNull(it.id) { "Folder id required" }.toString(), it.name) },
             nickname = game.note.nickname,
             memo = game.note.memo,
         )
@@ -145,7 +145,7 @@ data class GameDetailResponse(
 ) {
     companion object {
         fun from(game: Game, analysis: GameAnalysisData? = null): GameDetailResponse = GameDetailResponse(
-            id = game.id!!.toString(),
+            id = requireNotNull(game.id) { "Game id required" }.toString(),
             source = game.source.name,
             sourceGameId = game.sourceGameId,
             ownerUsername = game.ownerUsername,
@@ -184,11 +184,13 @@ data class AnnotationRequest(
     // 한 릴리즈 동안 프론트가 보내던 페이로드 호환을 위해 필드는 유지하되 silently drop
     val analysis: GameAnalysisRequest? = null,
     val moveArrows: Map<String, List<BoardArrowDto>> = emptyMap(),
+    val interestingMoves: List<Int> = emptyList(),
 ) {
     fun toDomain(): GameAnnotation = GameAnnotation(
         moveComments = moveComments,
         variations = variations.map { it.toDomain() },
         moveArrows = moveArrows.toDomainArrows(),
+        interestingMoves = interestingMoves.distinct().sorted(),
     )
 }
 
@@ -257,6 +259,7 @@ data class VariationRequest(
     val comment: String = "",
     val moveComments: Map<String, String> = emptyMap(),
     val moveArrows: Map<String, List<BoardArrowDto>> = emptyMap(),
+    val interestingMoves: List<Int> = emptyList(),
 ) {
     fun toDomain(): org.raonpark.chessriend.game.domain.Variation =
         org.raonpark.chessriend.game.domain.Variation(
@@ -265,6 +268,7 @@ data class VariationRequest(
             comment = comment,
             moveComments = moveComments,
             moveArrows = moveArrows.toDomainArrows(),
+            interestingMoves = interestingMoves.distinct().sorted(),
         )
 }
 
@@ -273,6 +277,7 @@ data class AnnotationResponse(
     val variations: List<VariationResponse>,
     val analysis: GameAnalysisResponse? = null,
     val moveArrows: Map<String, List<BoardArrowDto>> = emptyMap(),
+    val interestingMoves: List<Int> = emptyList(),
 ) {
     companion object {
         fun from(annotation: GameAnnotation, analysis: GameAnalysisData? = null): AnnotationResponse =
@@ -281,6 +286,7 @@ data class AnnotationResponse(
                 variations = annotation.variations.map { VariationResponse.from(it) },
                 analysis = analysis?.let { GameAnalysisResponse.from(it) },
                 moveArrows = annotation.moveArrows.toArrowDtos(),
+                interestingMoves = annotation.interestingMoves,
             )
     }
 }
@@ -323,6 +329,7 @@ data class VariationResponse(
     val comment: String,
     val moveComments: Map<String, String> = emptyMap(),
     val moveArrows: Map<String, List<BoardArrowDto>> = emptyMap(),
+    val interestingMoves: List<Int> = emptyList(),
 ) {
     companion object {
         fun from(v: org.raonpark.chessriend.game.domain.Variation): VariationResponse =
@@ -332,6 +339,7 @@ data class VariationResponse(
                 comment = v.comment,
                 moveComments = v.moveComments,
                 moveArrows = v.moveArrows.toArrowDtos(),
+                interestingMoves = v.interestingMoves,
             )
     }
 }

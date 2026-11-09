@@ -43,6 +43,7 @@ See `frontend/DESIGN_SYSTEM.md` for full specification:
 | Classification: Blunder | red |
 | Classification: Mistake | orange |
 | Classification: Inaccuracy | yellow |
+| Interesting (!?) — 사용자 수동 표시 | fuchsia |
 
 ## Class Order
 

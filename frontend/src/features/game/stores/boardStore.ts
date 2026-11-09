@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { Chess } from 'chess.js'
-import type { AnnotationResponse, BoardArrow, GameAnalysis, MoveArrows, MoveClassification, MoveResponse, VariationResponse } from '../types/game'
+import type { AnnotationRequest, AnnotationResponse, BoardArrow, GameAnalysis, MoveArrows, MoveClassification, MoveResponse, VariationResponse } from '../types/game'
 
 interface BoardState {
   // 원래 기보 (mainline)
@@ -28,6 +28,9 @@ interface BoardState {
   moveArrows: MoveArrows           // 메인라인: key = currentIndex
   draftVariationArrows: MoveArrows // 아직 저장 안 된 변형선: key = variationIndex (변형선 저장 시 함께 저장)
 
+  // 흥미로운 수(!?) — 사용자가 직접 붙이는 표시. 변형선 표시는 각 VariationResponse.interestingMoves에 있음
+  interestingMoves: number[]       // 메인라인 수 인덱스
+
   // Game analysis (Blunder/Mistake/Inaccuracy 분류)
   analysis: GameAnalysis | null
   classificationByMove: Record<number, MoveClassification>
@@ -54,7 +57,9 @@ interface BoardState {
   clearAnalysis: () => void
   toggleArrow: (arrow: BoardArrow) => void
   clearCurrentArrows: () => void
-  getAnnotationsSnapshot: () => { moveComments: Record<string, string>; variations: VariationResponse[]; moveArrows: MoveArrows }
+  /** 현재 수의 !? 표시를 켜고 끈다. 저장 안 된 변형선이면 변형선을 먼저 저장한다 (메모와 같은 규칙) */
+  toggleInterestingMove: () => void
+  getAnnotationsSnapshot: () => AnnotationRequest
   markAnnotationsClean: () => void
 }
 
@@ -97,6 +102,25 @@ export function selectCurrentArrows(s: BoardState): BoardArrow[] {
 }
 
 const EMPTY_ARROWS: BoardArrow[] = []
+
+/** 현재 포지션이 !?를 붙일 수 있는 "수"인지 (시작·분기 포지션 제외, 분석 완료 후) */
+export function selectCanMarkInteresting(s: BoardState): boolean {
+  if (!s.analysis) return false
+  return s.isInVariation ? s.variationIndex >= 0 : s.currentIndex >= 0
+}
+
+/** 현재 수가 !?로 표시되어 있는지 */
+export function selectIsCurrentInteresting(s: BoardState): boolean {
+  if (!s.isInVariation) return s.interestingMoves.includes(s.currentIndex)
+  if (s.activeVariationIndex < 0) return false // 저장 전 변형선에는 표시가 없다
+  return s.savedVariations[s.activeVariationIndex]?.interestingMoves?.includes(s.variationIndex) ?? false
+}
+
+/** 목록에 index가 있으면 빼고, 없으면 넣어 정렬 */
+function toggleIndex(list: number[] | undefined, index: number): number[] {
+  const current = list ?? []
+  return current.includes(index) ? current.filter((i) => i !== index) : [...current, index].sort((a, b) => a - b)
+}
 
 /** 현재 포지션 화살표를 갱신한 state patch (빈 목록이면 키 삭제) */
 function withCurrentArrows(s: BoardState, arrows: BoardArrow[]): Partial<BoardState> {
@@ -143,6 +167,8 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   moveArrows: {},
   draftVariationArrows: {},
 
+  interestingMoves: [],
+
   analysis: null,
   classificationByMove: {},
 
@@ -164,6 +190,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       activeVariationIndex: -1,
       moveArrows: {},
       draftVariationArrows: {},
+      interestingMoves: [],
       analysis: null,
       classificationByMove: {},
     })
@@ -182,6 +209,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       moveComments: { ...annotations.moveComments },
       savedVariations: [...annotations.variations],
       moveArrows: { ...(annotations.moveArrows ?? {}) },
+      interestingMoves: [...(annotations.interestingMoves ?? [])],
       analysis: annotations.analysis ?? null,
       classificationByMove,
       annotationsDirty: false,
@@ -261,8 +289,13 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     const { currentFen, isInVariation, variationFens, variationMoves, variationIndex, currentIndex, activeVariationIndex, savedVariations } = get()
 
     const chess = new Chess(currentFen)
-    const result = chess.move({ from, to, promotion: promotion ?? 'q' })
-    if (!result) return false
+    // chess.js는 불법 수(제자리 드롭 포함)에 예외를 던진다 → 드롭 처리 중 예외가 나면 보드 드래그 상태가 안 풀려 기물이 반투명으로 남음
+    let result
+    try {
+      result = chess.move({ from, to, promotion: promotion ?? 'q' })
+    } catch {
+      return false
+    }
 
     const newFen = chess.fen()
 
@@ -485,8 +518,25 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     set(withCurrentArrows(state, []))
   },
 
+  toggleInterestingMove: () => {
+    if (!selectCanMarkInteresting(get())) return
+    // 저장 전 변형선(또는 끝에서 이어 둔 수)이면 변형선부터 저장 → 이후 activeVariationIndex가 가리키는 변형선에 기록
+    if (selectHasUnsavedVariationMoves(get())) get().saveCurrentVariation()
+
+    const s = get()
+    if (!s.isInVariation) {
+      set({ interestingMoves: toggleIndex(s.interestingMoves, s.currentIndex), annotationsDirty: true })
+      return
+    }
+    if (s.activeVariationIndex < 0) return
+    const variations = [...s.savedVariations]
+    const target = variations[s.activeVariationIndex]
+    variations[s.activeVariationIndex] = { ...target, interestingMoves: toggleIndex(target.interestingMoves, s.variationIndex) }
+    set({ savedVariations: variations, annotationsDirty: true })
+  },
+
   getAnnotationsSnapshot: () => {
-    const { moveComments, savedVariations, moveArrows } = get()
+    const { moveComments, savedVariations, moveArrows, interestingMoves } = get()
     return {
       moveComments: { ...moveComments },
       // 저장 안 한(이어 둔) 수에 달린 메모·화살표는 서버로 보내지 않음
@@ -494,8 +544,10 @@ export const useBoardStore = create<BoardState>((set, get) => ({
         ...v,
         moveComments: keepIndicesBelow(v.moveComments, v.moves.length),
         moveArrows: keepIndicesBelow(v.moveArrows, v.moves.length),
+        interestingMoves: (v.interestingMoves ?? []).filter((i) => i < v.moves.length),
       })),
       moveArrows: { ...moveArrows },
+      interestingMoves: [...interestingMoves],
     }
   },
 

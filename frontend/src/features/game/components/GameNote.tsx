@@ -1,4 +1,7 @@
 import { useRef, useState } from 'react'
+import { ConfirmDialog } from '@/shared/components/ConfirmDialog'
+import { TrashIcon } from '@/shared/components/TrashIcon'
+import { useConfirm } from '@/shared/hooks/useConfirm'
 import { useUpdateGameNote } from '../api/mutations'
 
 const MAX_MEMO = 2000
@@ -20,10 +23,23 @@ export function GameMemoSection({ gameId, nickname, memo }: GameNoteProps) {
   const [editing, setEditing] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const update = useUpdateGameNote(gameId)
+  const { confirm, dialogProps } = useConfirm()
 
   async function save() {
     await update.mutateAsync({ nickname: nickname ?? null, memo: textareaRef.current?.value ?? '' })
     setEditing(false)
+  }
+
+  // 메모만 지우고 애칭은 기존 값 유지 (백엔드는 null = 메모 없음)
+  async function remove() {
+    const ok = await confirm({
+      title: '메모 삭제',
+      message: '게임 메모를 삭제할까요?',
+      confirmLabel: '삭제',
+      variant: 'danger',
+    })
+    if (!ok) return
+    await update.mutateAsync({ nickname: nickname ?? null, memo: null })
   }
 
   return (
@@ -31,14 +47,26 @@ export function GameMemoSection({ gameId, nickname, memo }: GameNoteProps) {
       <div className="mb-2 flex items-center justify-between">
         <h3 className="text-xs font-semibold text-amber-700 dark:text-amber-400">게임 메모</h3>
         {memo && !editing && (
-          <button
-            type="button"
-            aria-label="메모 수정"
-            onClick={() => setEditing(true)}
-            className="rounded-md px-1.5 text-sm text-amber-600 hover:bg-amber-100 dark:text-amber-400 dark:hover:bg-gray-700"
-          >
-            ✎
-          </button>
+          <div className="flex items-center gap-0.5">
+            <button
+              type="button"
+              aria-label="메모 수정"
+              onClick={() => setEditing(true)}
+              className="rounded-md px-1.5 text-sm text-amber-600 hover:bg-amber-100 dark:text-amber-400 dark:hover:bg-gray-700"
+            >
+              ✎
+            </button>
+            <button
+              type="button"
+              aria-label="메모 삭제"
+              title="메모 삭제"
+              onClick={() => void remove()}
+              disabled={update.isPending}
+              className="rounded-md p-1 text-gray-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:text-gray-500 dark:hover:bg-red-950/30 dark:hover:text-red-400"
+            >
+              <TrashIcon />
+            </button>
+          </div>
         )}
       </div>
 
@@ -91,6 +119,7 @@ export function GameMemoSection({ gameId, nickname, memo }: GameNoteProps) {
           게임 메모 추가
         </button>
       )}
+      <ConfirmDialog {...dialogProps} />
     </section>
   )
 }
