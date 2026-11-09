@@ -1,0 +1,13 @@
+Chessriend
+==========
+
+This repository and the distributed application include third-party
+material. The full notices and license texts are in:
+
+    frontend/public/THIRD_PARTY_NOTICES.txt
+    (served by the app at /THIRD_PARTY_NOTICES.txt)
+
+Summary:
+
+- Chess piece graphics (Cburnett set): Copyright (c) 2006,
+  Colin M.L. Burnett (Cburnett). Used under the BSD 3-Clause License.
