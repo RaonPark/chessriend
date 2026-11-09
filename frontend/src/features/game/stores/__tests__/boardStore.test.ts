@@ -613,3 +613,23 @@ describe('boardStore — 기보와 같은 수', () => {
     expect(getState().isInVariation).toBe(true)
   })
 })
+
+describe('boardStore — 둘 수 없는 수', () => {
+  beforeEach(() => {
+    getState().loadMoves(SAMPLE_MOVES)
+  })
+
+  // chess.js는 불법 수에 예외를 던진다. 예외가 보드 드롭 처리까지 올라가면 드래그 상태가 안 풀려 기물이 반투명으로 남는다
+  it.each([
+    ['제자리에 내려놓기', 'e2', 'e2'],
+    ['갈 수 없는 칸', 'e2', 'e5'],
+    ['빈 칸에서 시작', 'e4', 'e5'],
+  ])('%s → 예외 없이 false, 포지션 그대로', (_, from, to) => {
+    const before = getState().currentFen
+
+    expect(() => getState().makeMove(from, to)).not.toThrow()
+    expect(getState().makeMove(from, to)).toBe(false)
+    expect(getState().currentFen).toBe(before)
+    expect(getState().isInVariation).toBe(false)
+  })
+})

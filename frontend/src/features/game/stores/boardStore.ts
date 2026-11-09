@@ -261,8 +261,13 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     const { currentFen, isInVariation, variationFens, variationMoves, variationIndex, currentIndex, activeVariationIndex, savedVariations } = get()
 
     const chess = new Chess(currentFen)
-    const result = chess.move({ from, to, promotion: promotion ?? 'q' })
-    if (!result) return false
+    // chess.js는 불법 수(제자리 드롭 포함)에 예외를 던진다 → 드롭 처리 중 예외가 나면 보드 드래그 상태가 안 풀려 기물이 반투명으로 남음
+    let result
+    try {
+      result = chess.move({ from, to, promotion: promotion ?? 'q' })
+    } catch {
+      return false
+    }
 
     const newFen = chess.fen()
 
