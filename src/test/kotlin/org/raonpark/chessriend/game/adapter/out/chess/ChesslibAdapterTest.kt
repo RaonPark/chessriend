@@ -41,13 +41,13 @@ class ChesslibAdapterTest : DescribeSpec({
             ctx.isAtRisk shouldBe true
         }
 
-        it("Nxe5 : 동가치 나이트에게만 공격받음(3<3 거짓) → isAtRisk=false") {
+        it("Nxe5 : 나이트를 주고 폰 하나(순손실 2) → isAtRisk") {
             val fens = adapter.reconstructFens(listOf("e4", "e5", "Nf3", "Nc6"))
             val ctx = adapter.analyzeMove(fens.last(), "Nxe5")!!
 
             ctx.piece shouldBe PieceKind.KNIGHT
             ctx.captured shouldBe PieceKind.PAWN
-            ctx.isAtRisk shouldBe false
+            ctx.isAtRisk shouldBe true
         }
 
         it("exd5 : 동가치 폰 포획 + 비위험 → isAtRisk=false") {
@@ -55,6 +55,41 @@ class ChesslibAdapterTest : DescribeSpec({
             val ctx = adapter.analyzeMove(fens.last(), "exd5")!!
 
             ctx.captured shouldBe PieceKind.PAWN
+            ctx.isAtRisk shouldBe false
+        }
+
+        // 실제 경기 342145170189320192의 29.Qxh5: g6 폰이 Rg2-g6-Kg7로 킹에 핀 → 퀸을 잡을 수 없다
+        it("Qxh5 : 노리는 폰이 킹에 핀되어 합법적으로 잡을 수 없음 → isAtRisk=false") {
+            val ctx = adapter.analyzeMove("r3r3/p4pkp/4p1p1/1p4Qn/2pq4/5P2/PPP1B1R1/1K4R1 w - - 0 29", "Qxh5")!!
+
+            ctx.piece shouldBe PieceKind.QUEEN
+            ctx.captured shouldBe PieceKind.KNIGHT
+            ctx.isAtRisk shouldBe false
+        }
+
+        it("Qxh5 : 같은 포지션에서 핀이 없으면(룩 제거) 폰이 퀸을 잡음 → isAtRisk") {
+            val ctx = adapter.analyzeMove("r3r3/p4pkp/4p1p1/1p4Qn/2pq4/5P2/PPP1B3/1K6 w - - 0 29", "Qxh5")!!
+            ctx.isAtRisk shouldBe true
+        }
+
+        it("Nd5 : 폰이 지켜도 더 싼 폰에게 잡혀 순손실 2(3-1) → isAtRisk (방어돼도 교환에서 손해)") {
+            val ctx = adapter.analyzeMove("6k1/8/2p5/8/4PN2/8/8/6K1 w - - 0 1", "Nd5")!!
+            ctx.isAtRisk shouldBe true
+        }
+
+        it("Nd5 : 같은 가치(나이트)에게만 노출되고 폰이 지킴 → 교환하면 본전 → isAtRisk=false") {
+            val ctx = adapter.analyzeMove("6k1/8/1n6/8/4PN2/8/8/6K1 w - - 0 1", "Nd5")!!
+            ctx.isAtRisk shouldBe false
+        }
+
+        it("f4 : 폰 희생(순손실 1)은 희생으로 보지 않음 (갬빗이 브릴리언트로 쏟아지지 않게)") {
+            val fens = adapter.reconstructFens(listOf("e4", "e5"))
+            adapter.analyzeMove(fens.last(), "f4")!!.isAtRisk shouldBe false
+        }
+
+        it("킹은 지켜지는 기물을 잡을 수 없음 → 킹만 노리고 방어된 비숍은 희생 아님") {
+            // 백 비숍 f7(폰 g6이 지킴)을 흑 킹 g8만 노림
+            val ctx = adapter.analyzeMove("6k1/8/6P1/8/2B5/8/8/6K1 w - - 0 1", "Bf7+")!!
             ctx.isAtRisk shouldBe false
         }
 

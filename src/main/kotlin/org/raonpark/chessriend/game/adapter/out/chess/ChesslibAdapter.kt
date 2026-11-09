@@ -1,9 +1,9 @@
 package org.raonpark.chessriend.game.adapter.out.chess
 
-import com.github.bhlangonijr.chesslib.Bitboard
 import com.github.bhlangonijr.chesslib.Board
 import com.github.bhlangonijr.chesslib.Piece
 import com.github.bhlangonijr.chesslib.PieceType
+import com.github.bhlangonijr.chesslib.Square
 import com.github.bhlangonijr.chesslib.game.GameResult as ChesslibGameResult
 import com.github.bhlangonijr.chesslib.move.MoveList
 import com.github.bhlangonijr.chesslib.pgn.GameLoader
@@ -24,9 +24,12 @@ private val log = KotlinLogging.logger {}
 /**
  * chesslib 기반 [ChessRules] 구현. 체스 라이브러리 의존을 이 어댑터에 가둔다.
  *
- * 희생 판정은 프론트 `extractMoveContext`(chess.js `attackers`) 와 동등하게:
- * - 이동 후 목적지를 공격하는 적 기물 중 최저 가치(킹=0)가 이동 기물보다 싸고
- * - 아군 방어자가 없으면 isAtRisk.
+ * 희생(isAtRisk) 판정 — 정적 교환 평가(SEE), **합법 수만** 사용:
+ * - 수를 둔 뒤 상대가 목적지에서 교환을 시작해 양쪽이 최선으로 잡고 되잡을 때 상대가 얻는 가치를 구한다.
+ * - 그 값에서 내가 이 수로 잡은 기물 가치를 뺀 순손실이 [MoveClassifier.SACRIFICE_MIN_LOSS] 이상이면 희생.
+ * - 합법 수만 쓰므로 킹에 핀된 기물이나, 지켜지는 칸으로 가는 킹은 공격자로 치지 않는다.
+ * - 방어자가 있어도 더 싼 기물에게 잡혀 손해면 희생, 같은 가치끼리 교환해 본전이면 희생이 아니다.
+ * - 그 칸 밖의 전술(포크·스큐어로 되찾기)은 보지 않는다. 그런 수의 좋고 나쁨은 엔진 평가(Win% 손실)가 거른다.
  */
 @Component
 class ChesslibAdapter : ChessRules {
@@ -170,19 +173,11 @@ class ChesslibAdapter : ChessRules {
             val capturedPiece = board.getPiece(move.to)
             board.doMove(move)
 
-            val moverSide = movedPiece.pieceSide
-            val opponentSide = moverSide.flip()
-            val toSq = move.to
-
-            val enemyAttackers = Bitboard.bbToSquareList(board.squareAttackedBy(toSq, opponentSide))
-            val isDefended = board.squareAttackedBy(toSq, moverSide) != 0L
-
-            val cheapestAttacker = enemyAttackers
-                .minOfOrNull { sq -> MoveClassifier.pieceValue(board.getPiece(sq).pieceType.toKind()) }
-                ?: Int.MAX_VALUE
-
             val movedKind = movedPiece.pieceType.toKind()
-            val isAtRisk = !isDefended && cheapestAttacker < MoveClassifier.pieceValue(movedKind)
+            val capturedValue = if (capturedPiece == Piece.NONE) 0 else MoveClassifier.pieceValue(capturedPiece.pieceType.toKind())
+            // 상대 차례에서 목적지 교환으로 상대가 얻는 가치 − 내가 이 수로 얻은 가치
+            val netLoss = exchangeGain(board, move.to) - capturedValue
+            val isAtRisk = netLoss >= MoveClassifier.SACRIFICE_MIN_LOSS
 
             MoveContext(
                 piece = movedKind,
@@ -196,6 +191,28 @@ class ChesslibAdapter : ChessRules {
             null
         }
     }
+
+    /**
+     * 정적 교환 평가: 차례인 쪽이 [square]의 기물을 합법 수로 잡기 시작해, 양쪽이 가장 싼 기물로 잡고 되잡을 때
+     * 차례인 쪽이 얻는 가치 (중간에 멈출 수 있으므로 0 이상). [board]는 수를 두고 되돌려 원상태로 남긴다.
+     */
+    private fun exchangeGain(board: Board, square: Square): Int {
+        val target = board.getPiece(square).takeIf { it != Piece.NONE } ?: return 0
+        val capture = board.legalMoves()
+            .filter { it.to == square && (it.promotion == Piece.NONE || it.promotion.pieceType == PieceType.QUEEN) }
+            .minByOrNull { attackerOrder(board.getPiece(it.from)) }
+            ?: return 0
+        val promotionBonus = if (capture.promotion == Piece.NONE) 0 else MoveClassifier.pieceValue(PieceKind.QUEEN) - MoveClassifier.pieceValue(PieceKind.PAWN)
+        val gain = MoveClassifier.pieceValue(target.pieceType.toKind()) + promotionBonus
+        board.doMove(capture)
+        val recapture = exchangeGain(board, square)
+        board.undoMove()
+        return maxOf(0, gain - recapture)
+    }
+
+    /** 가장 싼 기물로 먼저 잡는다. 킹은 마지막 (지켜지지 않는 칸만 잡을 수 있으므로 교환의 끝) */
+    private fun attackerOrder(piece: Piece): Int =
+        if (piece.pieceType == PieceType.KING) Int.MAX_VALUE else MoveClassifier.pieceValue(piece.pieceType.toKind())
 
     private fun PieceType.toKind(): PieceKind = when (this) {
         PieceType.PAWN -> PieceKind.PAWN

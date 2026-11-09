@@ -77,7 +77,7 @@ StockfishEngineAdapter → StockfishEnginePool → UciStockfishProcess × N → 
 
 | 파일 | 내용 |
 | --- | --- |
-| `ChesslibAdapter.kt` | `ChessRules` 구현. `parsePgn`(메인라인 + 1단계 변형선 추출), `reconstructFens`(SAN→FEN, 부분 재생 허용), `analyzeMove`(목적지가 방어 안 됨 + 더 싼 적 기물 공격 → `isAtRisk`로 희생 판정) |
+| `ChesslibAdapter.kt` | `ChessRules` 구현. `parsePgn`(메인라인 + 1단계 변형선 추출), `reconstructFens`(SAN→FEN, 부분 재생 허용), `analyzeMove`(**합법 수만으로** 목적지 정적 교환 평가(SEE) → 순손실 ≥ `SACRIFICE_MIN_LOSS`(2)면 `isAtRisk`. 킹에 핀된 기물은 공격자에서 제외) |
 
 도메인을 chesslib에서 격리하기 위한 유일한 지점 — chesslib 타입은 이 패키지 밖으로 새어나가지 않는다.
 

@@ -23,7 +23,7 @@
 | `GameSearchCriteria.kt` | 게임 목록 검색 조건(플랫폼·시간·결과 `OwnerOutcome`·상대 레이팅 `RatingBand`·오프닝·폴더) + `OpeningCount` |
 | `ParsedPgn.kt` | PGN 파싱 중간 결과(태그·Event·수·코멘트·변형선·SetUp 여부). `ChessRules.parsePgn`의 반환 타입 |
 | `analysis/GameAnalyzer.kt` | **object(순수 함수)**. 포지션 평가 배열 + 수 목록 → 수별 분류 계산. 프론트 `computeClassifications`와 1:1 |
-| `analysis/MoveClassifier.kt` | **object(순수 함수)**. 기대 승률(Win%) 손실 기반 Blunder/Mistake/Inaccuracy 분류 + Brilliant(희생) 판정. lichess 승률 계수·Brilliant 임계값(2.0%p). `evalAfterMoveToCp`: 수 직후 `mate 0`(부호 없음)은 방금 둔 쪽이 메이트시킨 것으로 해석 |
+| `analysis/MoveClassifier.kt` | **object(순수 함수)**. 기대 승률(Win%) 손실 기반 Blunder/Mistake/Inaccuracy 분류 + Brilliant(희생) 판정. lichess 승률 계수·Brilliant 임계값(승률 손실 < 2.0%p, 수 직후 둔 쪽 승률 ≥ 25%, 희생 순손실 ≥ 2). `evalAfterMoveToCp`: 수 직후 `mate 0`(부호 없음)은 방금 둔 쪽이 메이트시킨 것으로 해석 |
 | `analysis/GameAnalysisSummary.kt` | 분석 → 백·흑별 분류 개수 + 평균 cp loss(±1000cp 제한). 게임 목록의 "분석됨" 요약 |
 | `analysis/AnalysisProgress.kt` | `sealed interface`: `Progress(current, total)` / `Completed(analysis)`. SSE 스트림 이벤트 |
 | `analysis/PieceKind.kt` | enum(PAWN…KING). 분석 로직과 chesslib 결합도 분리용 |

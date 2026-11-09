@@ -50,27 +50,33 @@ class MoveClassifierTest : DescribeSpec({
 
     describe("detectBrilliant") {
         it("포획 희생: 비싼 기물로 싼 기물 잡고 위험 위치 + winLoss 작음 → true") {
-            MoveClassifier.detectBrilliant(0.0, PieceKind.BISHOP, PieceKind.PAWN, true) shouldBe true
-            MoveClassifier.detectBrilliant(1.0, PieceKind.QUEEN, PieceKind.PAWN, true) shouldBe true
-            MoveClassifier.detectBrilliant(1.0, PieceKind.ROOK, PieceKind.KNIGHT, true) shouldBe true
+            MoveClassifier.detectBrilliant(0.0, PieceKind.BISHOP, PieceKind.PAWN, true, moverWinAfter = 60.0) shouldBe true
+            MoveClassifier.detectBrilliant(1.0, PieceKind.QUEEN, PieceKind.PAWN, true, moverWinAfter = 60.0) shouldBe true
+            MoveClassifier.detectBrilliant(1.0, PieceKind.ROOK, PieceKind.KNIGHT, true, moverWinAfter = 60.0) shouldBe true
         }
         it("비-포획 공짜 희생 → true") {
-            MoveClassifier.detectBrilliant(0.0, PieceKind.QUEEN, null, true) shouldBe true
-            MoveClassifier.detectBrilliant(1.0, PieceKind.ROOK, null, true) shouldBe true
+            MoveClassifier.detectBrilliant(0.0, PieceKind.QUEEN, null, true, moverWinAfter = 60.0) shouldBe true
+            MoveClassifier.detectBrilliant(1.0, PieceKind.ROOK, null, true, moverWinAfter = 60.0) shouldBe true
         }
         it("isAtRisk=false → false") {
-            MoveClassifier.detectBrilliant(0.0, PieceKind.QUEEN, PieceKind.PAWN, false) shouldBe false
-            MoveClassifier.detectBrilliant(0.0, PieceKind.QUEEN, null, false) shouldBe false
-            MoveClassifier.detectBrilliant(1.0, PieceKind.ROOK, PieceKind.KNIGHT, false) shouldBe false
+            MoveClassifier.detectBrilliant(0.0, PieceKind.QUEEN, PieceKind.PAWN, false, moverWinAfter = 60.0) shouldBe false
+            MoveClassifier.detectBrilliant(0.0, PieceKind.QUEEN, null, false, moverWinAfter = 60.0) shouldBe false
+            MoveClassifier.detectBrilliant(1.0, PieceKind.ROOK, PieceKind.KNIGHT, false, moverWinAfter = 60.0) shouldBe false
         }
         it("같은 가치/더 싼 기물로 포획 → false") {
-            MoveClassifier.detectBrilliant(0.0, PieceKind.KNIGHT, PieceKind.BISHOP, true) shouldBe false
-            MoveClassifier.detectBrilliant(0.0, PieceKind.PAWN, PieceKind.QUEEN, true) shouldBe false
+            MoveClassifier.detectBrilliant(0.0, PieceKind.KNIGHT, PieceKind.BISHOP, true, moverWinAfter = 60.0) shouldBe false
+            MoveClassifier.detectBrilliant(0.0, PieceKind.PAWN, PieceKind.QUEEN, true, moverWinAfter = 60.0) shouldBe false
         }
         it("winLoss tolerance(2) 이상 → false") {
-            MoveClassifier.detectBrilliant(1.0, PieceKind.QUEEN, PieceKind.PAWN, true) shouldBe true
-            MoveClassifier.detectBrilliant(2.0, PieceKind.QUEEN, PieceKind.PAWN, true) shouldBe false
-            MoveClassifier.detectBrilliant(5.0, PieceKind.ROOK, null, true) shouldBe false
+            MoveClassifier.detectBrilliant(1.0, PieceKind.QUEEN, PieceKind.PAWN, true, moverWinAfter = 60.0) shouldBe true
+            MoveClassifier.detectBrilliant(2.0, PieceKind.QUEEN, PieceKind.PAWN, true, moverWinAfter = 60.0) shouldBe false
+            MoveClassifier.detectBrilliant(5.0, PieceKind.ROOK, null, true, moverWinAfter = 60.0) shouldBe false
+        }
+        it("수를 둔 뒤 이미 진 포지션(둔 쪽 승률 < 25%)이면 희생이어도 false") {
+            // 진 포지션에서는 무엇을 둬도 승률이 0% 근처라 winLoss가 작게 나와 희생이 브릴리언트로 오인된다
+            MoveClassifier.detectBrilliant(0.0, PieceKind.QUEEN, PieceKind.ROOK, true, moverWinAfter = 0.5) shouldBe false
+            MoveClassifier.detectBrilliant(0.0, PieceKind.QUEEN, PieceKind.ROOK, true, moverWinAfter = 24.9) shouldBe false
+            MoveClassifier.detectBrilliant(0.0, PieceKind.QUEEN, PieceKind.ROOK, true, moverWinAfter = 25.0) shouldBe true
         }
     }
 })

@@ -1,5 +1,7 @@
 # feature/game-analyze-stockfish-upgrade 작업 내역
 
+> **이후 변경 (fix/brilliant-legal-see)**: 아래에 적힌 희생 판정 규칙(가장 싼 공격자 < 이동 기물, 방어자 없음)은 당시 기록이다. 현재 규칙은 합법 수 기반 교환 계산(SEE, 순손실 2점 이상) + 수 직후 둔 쪽 승률 25% 이상이다 — [`fix_brilliant-legal-see_작업내역.md`](fix_brilliant-legal-see_작업내역.md) 참고.
+
 게임 분석 정확도 개선 — 분석 depth 18 상향 + Brilliant 분류 정확화(킹 희생 회귀 수정 + Win% 손실 기반 전환).
 
 발단: 경기 `284447503368060928`의 11.`Bxf7+`(chess.com Brilliant)가 우리 앱에서는 inaccuracy로 잘못 분류됨.
