@@ -11,6 +11,7 @@
 | --- | --- |
 | `Game.kt` | 핵심 애그리게이트(엔티티). `id`, 소스, 플레이어, `moves`, 결과, 시간통제, 오프닝, PGN, `annotations`, `note`(애칭·메모). `totalMoves`/`lastPosition` 계산 프로퍼티, `movesBy/moveAt` 헬퍼 |
 | `Move.kt` | 단일 수: `number`, `color`, `san`, `fen`, `timeSpent?`, `comment?` |
+| `MoveClock.kt` | `MoveClock(remaining, spent?)` + `PgnClocks.parseMainline(pgn)`: 원본 PGN의 본선 `[%clk h:mm:ss(.f)]`를 수 순서대로 읽음(변형선·NAG·결과 토큰 무시). `Game.moveClocks()`가 쓴 시간 = 직전 내 시계(첫 수는 초기 시간) − 남은 시계 + 증가 시간으로 계산, 시계 개수 ≠ 수 개수면 모두 null |
 | `Player.kt` | `Player`(이름·레이팅) + `Players`(백/흑 쌍, `byColor()`) |
 | `Color.kt` | enum `WHITE`/`BLACK` + `opposite()` |
 | `GameResult.kt` | enum `WHITE_WIN`/`BLACK_WIN`/`DRAW` + PGN 결과 문자열 변환 |
