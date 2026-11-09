@@ -51,3 +51,32 @@ describe('GameMemoSection', () => {
     expect(screen.getByRole('button', { name: '게임 메모 추가' })).toBeInTheDocument()
   })
 })
+
+describe('GameMemoSection — 메모 삭제', () => {
+  it('확인 창에서 "삭제"를 누르면 메모를 null로 저장한다 (애칭 유지)', async () => {
+    const bodies = recordNotePut()
+    renderWithProviders(<GameMemoSection gameId="g1" nickname="에버그린" memo="퀸 희생" />)
+
+    await userEvent.click(screen.getByRole('button', { name: '메모 삭제' }))
+    expect(screen.getByText('게임 메모를 삭제할까요?')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: '삭제' }))
+
+    await waitFor(() => expect(bodies).toEqual([{ nickname: '에버그린', memo: null }]))
+  })
+
+  it('확인 창에서 취소하면 저장하지 않는다', async () => {
+    const bodies = recordNotePut()
+    renderWithProviders(<GameMemoSection gameId="g1" nickname={null} memo="퀸 희생" />)
+
+    await userEvent.click(screen.getByRole('button', { name: '메모 삭제' }))
+    await userEvent.click(screen.getByRole('button', { name: '취소' }))
+
+    expect(bodies).toEqual([])
+    expect(screen.getByText('퀸 희생')).toBeInTheDocument()
+  })
+
+  it('메모가 없으면 삭제 버튼이 없다', () => {
+    renderWithProviders(<GameMemoSection gameId="g1" nickname={null} memo={null} />)
+    expect(screen.queryByRole('button', { name: '메모 삭제' })).not.toBeInTheDocument()
+  })
+})

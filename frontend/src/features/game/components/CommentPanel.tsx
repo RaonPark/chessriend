@@ -1,4 +1,7 @@
 import { useRef, useState } from 'react'
+import { ConfirmDialog } from '@/shared/components/ConfirmDialog'
+import { TrashIcon } from '@/shared/components/TrashIcon'
+import { useConfirm } from '@/shared/hooks/useConfirm'
 import { useBoardStore, selectHasUnsavedVariationMoves, selectCanMarkInteresting, selectIsCurrentInteresting } from '../stores/boardStore'
 import { formatNumberedMove, variationMovePly } from '../utils/moveNumber'
 import { INTERESTING_MARK } from '../utils/moveSymbols'
@@ -27,6 +30,7 @@ export function CommentPanel({ onPersist, isPersisting }: CommentPanelProps = {}
   const canMarkInteresting = useBoardStore(selectCanMarkInteresting)
   const isInteresting = useBoardStore(selectIsCurrentInteresting)
   const toggleInterestingMove = useBoardStore((s) => s.toggleInterestingMove)
+  const { confirm, dialogProps } = useConfirm()
 
   // 편집 상태는 편집을 시작한 포지션 키와 묶어서 보관 → 수가 바뀌면 자동으로 편집 종료
   const [editingKey, setEditingKey] = useState<string | null>(null)
@@ -96,6 +100,23 @@ export function CommentPanel({ onPersist, isPersisting }: CommentPanelProps = {}
   // 메모 저장과 같은 규칙: 저장 전 변형선이면 변형선도 함께 저장되고, 바로 서버에 반영
   function handleToggleInteresting() {
     toggleInterestingMove()
+    onPersist?.()
+  }
+
+  // 저장된 메모만 지울 수 있다 (메인라인·저장된 변형선). 확인 후 바로 서버에 반영
+  async function handleDelete() {
+    // 확인 창이 떠 있는 동안 수가 바뀌어도 누른 시점의 수를 지운다
+    const target = isInSavedVariation ? { variation: true, index: variationIndex } : { variation: false, index: currentIndex }
+    const ok = await confirm({
+      title: '메모 삭제',
+      message: '이 수의 메모를 삭제할까요?',
+      confirmLabel: '삭제',
+      variant: 'danger',
+    })
+    if (!ok) return
+    if (target.variation) setVariationMoveComment(target.index, '')
+    else setMoveComment(target.index, '')
+    setEditingKey(null)
     onPersist?.()
   }
 
@@ -205,16 +226,31 @@ export function CommentPanel({ onPersist, isPersisting }: CommentPanelProps = {}
           </div>
         </div>
       ) : (
-        <button
-          onClick={() => setEditingKey(positionKey)}
-          className={`w-full whitespace-pre-wrap rounded-lg border border-dashed border-amber-300 px-3 py-2 text-left text-sm transition hover:border-amber-400 hover:bg-white dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-900 ${
-            // 저장된 메모는 선명하게, 빈 상태 안내 문구만 흐리게
-            savedComment ? 'text-gray-900 dark:text-white' : 'text-amber-400 dark:text-gray-500'
-          }`}
-        >
-          {savedComment || '메모 추가...'}
-        </button>
+        <div className="flex items-start gap-1.5">
+          <button
+            onClick={() => setEditingKey(positionKey)}
+            className={`min-w-0 flex-1 whitespace-pre-wrap rounded-lg border border-dashed border-amber-300 px-3 py-2 text-left text-sm transition hover:border-amber-400 hover:bg-white dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-900 ${
+              // 저장된 메모는 선명하게, 빈 상태 안내 문구만 흐리게
+              savedComment ? 'text-gray-900 dark:text-white' : 'text-amber-400 dark:text-gray-500'
+            }`}
+          >
+            {savedComment || '메모 추가...'}
+          </button>
+          {savedComment && (
+            <button
+              type="button"
+              onClick={() => void handleDelete()}
+              disabled={isPersisting}
+              aria-label="메모 삭제"
+              title="메모 삭제"
+              className="shrink-0 rounded-lg p-2 text-gray-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:text-gray-500 dark:hover:bg-red-950/30 dark:hover:text-red-400"
+            >
+              <TrashIcon />
+            </button>
+          )}
+        </div>
       )}
+      <ConfirmDialog {...dialogProps} />
     </div>
   )
 }
