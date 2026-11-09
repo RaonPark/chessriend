@@ -61,6 +61,8 @@ class RealEngineAnalysisTest : DescribeSpec({
                     val contexts = sans.indices.map { i -> rules.analyzeMove(fens[i], sans[i]) }
                     val result = GameAnalyzer.computeClassifications(evals, moves, contexts, lines)
 
+                    println("BRILLIANT: " + result.filter { it.classification == "brilliant" }
+                        .joinToString { "${it.moveIndex}:${sans[it.moveIndex]} (cpLoss=${it.cpLoss}, evalAfter=${it.evalAfter})" })
                     result[20].classification shouldBe "brilliant"
                     // 오탐 점검: brilliant 는 1개여야
                     result.count { it.classification == "brilliant" } shouldBe 1

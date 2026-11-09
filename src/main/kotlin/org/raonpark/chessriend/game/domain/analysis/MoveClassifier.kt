@@ -25,6 +25,15 @@ object MoveClassifier {
     /** 유일수: 1·2순위 승률 차이가 이 값(%p) 이상이어야 한다 (기존 Mistake 기준과 동일). */
     const val ONLY_MIN_WIN_GAP = 20.0
 
+    /**
+     * 희생: 둔 기물이 그 칸에서의 교환(SEE)으로 잃는 순손실이 이 값(기물 가치 점수) 이상.
+     * 2 = 마이너 피스와 폰, 룩과 마이너(익스체인지). 폰 희생(1)은 제외한다 — 갬빗이 모두 브릴리언트가 되지 않게.
+     */
+    const val SACRIFICE_MIN_LOSS = 2
+
+    /** 브릴리언트: 수를 둔 뒤 둔 쪽 승률(%)이 이 값 이상이어야 한다. 25% ≈ 약 −3폰 (이보다 나쁘면 이미 진 포지션) */
+    const val BRILLIANT_MIN_WIN_AFTER = 25.0
+
     /** 기물 가치(체스 통념). 킹은 잡힐 수 없으므로 공격자 가치/이동 기물 가치 모두 0으로 둔다. */
     private val VALUES: Map<PieceKind, Int> = mapOf(
         PieceKind.PAWN to 1,
@@ -86,9 +95,12 @@ object MoveClassifier {
      * - winLoss < tolerance
      * - isAtRisk (방어 없이 더 싼 기물에게 노출)
      * - 포획 수라면 이동 기물이 포획 기물보다 비싸야 진짜 희생
+     * - 수를 둔 뒤 둔 쪽 승률([moverWinAfter], %)이 [BRILLIANT_MIN_WIN_AFTER] 이상 — 이미 진 포지션에서는
+     *   어떤 수든 승률이 0% 근처라 winLoss가 작게 나와 희생이 브릴리언트로 오인된다
      */
-    fun detectBrilliant(winLoss: Double, piece: PieceKind, captured: PieceKind?, isAtRisk: Boolean): Boolean {
+    fun detectBrilliant(winLoss: Double, piece: PieceKind, captured: PieceKind?, isAtRisk: Boolean, moverWinAfter: Double): Boolean {
         if (winLoss >= BRILLIANT_WIN_TOLERANCE) return false
+        if (moverWinAfter < BRILLIANT_MIN_WIN_AFTER) return false
         if (!isAtRisk) return false
         if (captured != null && pieceValue(piece) <= pieceValue(captured)) return false
         return true

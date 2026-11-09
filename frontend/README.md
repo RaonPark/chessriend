@@ -146,7 +146,7 @@ src/
 ## 타입 / 유틸
 
 - **타입**: `features/game/types/game.ts`(`GameSource`, `TimeCategory`, `MoveClassification`, `GameAnalysis`, `MoveEvaluation`, `VariationResponse` 등), 공용 `shared/types/api.ts`(`PagedResponse<T>`).
-- **`utils/classification.ts`**: `evalToCp`, `winPercent`(시그모이드), `classifyMove`, `detectBrilliant`, `computeClassifications` — 수 분류는 현재 백엔드에서 계산하므로 `computeClassifications`는 미사용.
+- **`utils/classification.ts`**: `evalToCp`, `winPercent`(시그모이드), `classifyMove`, `detectBrilliant`, `computeClassifications` — 수 분류는 현재 백엔드에서 계산하므로 `computeClassifications`는 미사용. 이 파일의 희생 판정(`extractMoveContext`: 방어 없음 + 더 싼 공격자)은 **옛 규칙**이라, 백엔드의 현재 규칙(합법 수 기반 교환 계산 + 진 포지션 제외, `ChesslibAdapter`/`MoveClassifier`)과 다르다. 프론트 판정을 다시 쓰려면 백엔드 규칙에 맞춰야 한다.
 - **`utils/cpLoss.ts` / `analysisStats.ts`**: 수별 cp loss(±1000 제한, 수 직후 `mate 0`은 둔 쪽 승) / 백·흑 분류 개수·평균 cp loss — 백엔드 `GameAnalysisSummary`와 같은 규칙.
 - **`utils/moveSymbols.ts`**: 기보 기호(`!!` `??` `?` `?!`)·이름·색.
 - **`utils/outcome.ts`**: `getOwnerOutcome`(소유자 기준 승/패/무), `getResultLabel`, `getPlayerBadge`(대국자 바 결과 배지).
@@ -159,7 +159,7 @@ src/
 - **Tailwind CSS v4** — `@tailwindcss/vite` 플러그인, `index.css`의 `@import "tailwindcss";`. 별도 config 파일 없이 동작.
 - **UI 라이브러리 금지**(MUI/shadcn 등) — 네이티브 HTML + Tailwind 커스텀 컴포넌트만.
 - **네이티브 브라우저 UI 금지** — `<select>`·`confirm()`·`alert()` 대신 `shared/components`의 `Dropdown`·`ConfirmDialog` 사용.
-- amber 브랜드 + 다크모드(`dark:`) 필수. 분류 색: Brilliant=cyan, Blunder=red, Mistake=orange, Inaccuracy=yellow.
+- amber 브랜드 + 다크모드(`dark:`) 필수. 분류 색: Brilliant=cyan, Only move(`!`)=sky, Blunder=red, Mistake=orange, Inaccuracy=yellow, 흥미로운 수(`!?`, 사용자 표시)=fuchsia.
 - 토큰·패턴 전체는 [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md).
 
 ---

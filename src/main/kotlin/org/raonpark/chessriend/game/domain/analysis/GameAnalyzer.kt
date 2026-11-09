@@ -46,7 +46,13 @@ object GameAnalyzer {
             if (base == null) {
                 val ctx = contexts.getOrNull(i)
                 if (ctx != null &&
-                    MoveClassifier.detectBrilliant(winLoss, ctx.piece, ctx.captured, ctx.isAtRisk)
+                    MoveClassifier.detectBrilliant(
+                        winLoss = winLoss,
+                        piece = ctx.piece,
+                        captured = ctx.captured,
+                        isAtRisk = ctx.isAtRisk,
+                        moverWinAfter = if (isWhite) winAfter else 100.0 - winAfter,
+                    )
                 ) {
                     classification = "brilliant"
                 }

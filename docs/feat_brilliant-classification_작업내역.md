@@ -1,5 +1,7 @@
 # feat/brilliant-classification 작업 내역
 
+> **이후 변경 (fix/brilliant-legal-see)**: 아래에 적힌 희생 판정 규칙(가장 싼 공격자 < 이동 기물, 방어자 없음)은 당시 기록이다. 현재 규칙은 합법 수 기반 교환 계산(SEE, 순손실 2점 이상) + 수 직후 둔 쪽 승률 25% 이상이다 — [`fix_brilliant-legal-see_작업내역.md`](fix_brilliant-legal-see_작업내역.md) 참고.
+
 ## 2026-04-22: Brilliant(!!) 수 분류 추가
 
 ### 무엇을
