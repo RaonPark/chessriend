@@ -3,6 +3,7 @@ import type { PlayerBadge } from '../utils/outcome'
 import type { SideStats } from '../utils/analysisStats'
 import { CpLossHelp } from './AnalysisSummary'
 import { MOVE_SYMBOLS, MOVE_SYMBOL_ORDER } from '../utils/moveSymbols'
+import { formatClock } from '../utils/clock'
 
 interface PlayerBarProps {
   color: 'white' | 'black'
@@ -11,6 +12,10 @@ interface PlayerBarProps {
   badge: PlayerBadge | null
   /** 분석 완료 후 이 플레이어의 요약 (없으면 표시 안 함) */
   stats: SideStats | null
+  /** 현재 포지션에서 이 플레이어의 남은 시계 (ms). 시계 정보가 없으면 null/생략 */
+  clockMs?: number | null
+  /** 이 플레이어가 둘 차례인지 (시계 강조) */
+  isToMove?: boolean
 }
 
 const BADGE_TONE: Record<PlayerBadge['tone'], string> = {
@@ -20,7 +25,7 @@ const BADGE_TONE: Record<PlayerBadge['tone'], string> = {
 }
 
 /** 보드 위/아래에 붙는 대국자 바 (lichess / chess.com 스타일) */
-export function PlayerBar({ color, name, rating, badge, stats }: PlayerBarProps) {
+export function PlayerBar({ color, name, rating, badge, stats, clockMs = null, isToMove = false }: PlayerBarProps) {
   return (
     <div
       data-testid={`player-bar-${color}`}
@@ -37,28 +42,43 @@ export function PlayerBar({ color, name, rating, badge, stats }: PlayerBarProps)
         )}
       </div>
 
-      {stats && (
-        <div className="flex items-center gap-3 text-[11px] text-gray-600 dark:text-gray-300">
-          {MOVE_SYMBOL_ORDER.map((kind) => (
-            <span
-              key={kind}
-              aria-label={`${MOVE_SYMBOLS[kind].label} ${stats.counts[kind]}`}
-              title={MOVE_SYMBOLS[kind].label}
-              className="inline-flex items-baseline gap-0.5"
-            >
-              <b className={`font-bold ${MOVE_SYMBOLS[kind].className}`}>{MOVE_SYMBOLS[kind].symbol}</b>
-              <span className="font-semibold tabular-nums text-gray-900 dark:text-gray-100">{stats.counts[kind]}</span>
+      <div className="ml-auto flex items-center gap-3">
+        {stats && (
+          <div className="flex items-center gap-3 text-[11px] text-gray-600 dark:text-gray-300">
+            {MOVE_SYMBOL_ORDER.map((kind) => (
+              <span
+                key={kind}
+                aria-label={`${MOVE_SYMBOLS[kind].label} ${stats.counts[kind]}`}
+                title={MOVE_SYMBOLS[kind].label}
+                className="inline-flex items-baseline gap-0.5"
+              >
+                <b className={`font-bold ${MOVE_SYMBOLS[kind].className}`}>{MOVE_SYMBOLS[kind].symbol}</b>
+                <span className="font-semibold tabular-nums text-gray-900 dark:text-gray-100">{stats.counts[kind]}</span>
+              </span>
+            ))}
+            <span className="inline-flex items-center gap-1">
+              cp loss
+              <span data-testid={`player-acpl-${color}`} className="font-semibold tabular-nums text-gray-900 dark:text-gray-100">
+                {stats.acpl ?? '-'}
+              </span>
+              <CpLossHelp />
             </span>
-          ))}
-          <span className="inline-flex items-center gap-1">
-            cp loss
-            <span data-testid={`player-acpl-${color}`} className="font-semibold tabular-nums text-gray-900 dark:text-gray-100">
-              {stats.acpl ?? '-'}
-            </span>
-            <CpLossHelp />
+          </div>
+        )}
+        {clockMs != null && (
+          <span
+            data-testid={`player-clock-${color}`}
+            aria-label={`남은 시간 ${formatClock(clockMs)}${isToMove ? ' (둘 차례)' : ''}`}
+            className={`rounded-md px-2 py-0.5 font-mono text-sm font-semibold tabular-nums ${
+              isToMove
+                ? 'bg-amber-600 text-white dark:bg-amber-600'
+                : 'bg-amber-50 text-gray-700 dark:bg-gray-700 dark:text-gray-200'
+            }`}
+          >
+            {formatClock(clockMs)}
           </span>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }

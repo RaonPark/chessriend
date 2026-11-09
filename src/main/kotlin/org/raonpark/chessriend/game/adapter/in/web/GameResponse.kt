@@ -116,12 +116,18 @@ data class MoveResponse(
     val number: Int,
     val color: String,
     val san: String,
+    /** 이 수 직후 남은 시계 (ms). PGN에 %clk가 없으면 null */
+    val clockMs: Long? = null,
+    /** 이 수에 쓴 시간 (ms) */
+    val timeSpentMs: Long? = null,
 ) {
     companion object {
-        fun from(move: Move): MoveResponse = MoveResponse(
+        fun from(move: Move, clock: MoveClock? = null): MoveResponse = MoveResponse(
             number = move.number,
             color = move.color.name,
             san = move.san,
+            clockMs = clock?.remaining?.inWholeMilliseconds,
+            timeSpentMs = clock?.spent?.inWholeMilliseconds,
         )
     }
 }
@@ -142,9 +148,14 @@ data class GameDetailResponse(
     val playedAt: Instant,
     val nickname: String? = null,
     val memo: String? = null,
+    /** 대국 시작 시계 (ms). 수별 시계가 있는 게임만 값이 있음 — 아직 수를 두지 않은 쪽의 시계 표시용 */
+    val initialClockMs: Long? = null,
 ) {
     companion object {
-        fun from(game: Game, analysis: GameAnalysisData? = null): GameDetailResponse = GameDetailResponse(
+        fun from(game: Game, analysis: GameAnalysisData? = null): GameDetailResponse {
+            val clocks = game.moveClocks()
+            val hasClocks = clocks.any { it != null }
+            return GameDetailResponse(
             id = requireNotNull(game.id) { "Game id required" }.toString(),
             source = game.source.name,
             sourceGameId = game.sourceGameId,
@@ -157,13 +168,15 @@ data class GameDetailResponse(
                 category = game.timeControl.category.name,
             ),
             opening = game.opening?.let { OpeningResponse(it.eco, it.name) },
-            moves = game.moves.map { MoveResponse.from(it) },
+            moves = game.moves.mapIndexed { i, move -> MoveResponse.from(move, clocks[i]) },
             annotations = AnnotationResponse.from(game.annotations, analysis),
             totalMoves = game.totalMoves,
             playedAt = game.playedAt,
             nickname = game.note.nickname,
             memo = game.note.memo,
-        )
+            initialClockMs = game.timeControl.initialTime.inWholeMilliseconds.takeIf { hasClocks && it > 0 },
+            )
+        }
     }
 }
 

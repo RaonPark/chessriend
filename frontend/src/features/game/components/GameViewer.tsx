@@ -15,6 +15,7 @@ import { PlayerBar } from './PlayerBar'
 import { GameInfoPanel } from './GameInfoPanel'
 import { summarizeAnalysis } from '../utils/analysisStats'
 import { getPlayerBadge } from '../utils/outcome'
+import { clockAt, sideToMove } from '../utils/clock'
 import type { GameDetailResponse } from '../types/game'
 import { ANALYSIS_DEPTH } from '../constants'
 
@@ -144,6 +145,9 @@ export function GameViewer({ game, onSaveAnnotations, isSaving, onDelete, isDele
       rating={game[color].rating}
       badge={getPlayerBadge(game, color)}
       stats={stats?.[color] ?? null}
+      // 변형선에서는 분기 지점(currentIndex)의 시계를 보여주되, 실제 대국 흐름이 아니므로 차례 강조는 끈다
+      clockMs={clockAt(moves, currentIndex, color, game.initialClockMs)}
+      isToMove={!isInVariation && sideToMove(currentIndex) === color}
     />
   )
 

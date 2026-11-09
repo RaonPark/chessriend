@@ -31,3 +31,17 @@ describe('PlayerBar', () => {
     expect(screen.queryByText(/cp loss/)).not.toBeInTheDocument()
   })
 })
+
+describe('PlayerBar — 시계', () => {
+  it('남은 시계를 표시하고, 둘 차례면 강조한다', () => {
+    render(<PlayerBar color="white" name="alice" rating={null} badge={null} stats={null} clockMs={161_000} isToMove />)
+    const clock = screen.getByTestId('player-clock-white')
+    expect(clock).toHaveTextContent('2:41')
+    expect(clock).toHaveAttribute('aria-label', '남은 시간 2:41 (둘 차례)')
+  })
+
+  it('시계 정보가 없으면 표시하지 않는다', () => {
+    render(<PlayerBar color="black" name="bob" rating={null} badge={null} stats={null} />)
+    expect(screen.queryByTestId('player-clock-black')).not.toBeInTheDocument()
+  })
+})

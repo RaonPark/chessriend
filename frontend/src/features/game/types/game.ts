@@ -28,6 +28,10 @@ export interface MoveResponse {
   number: number
   color: 'WHITE' | 'BLACK'
   san: string
+  /** 이 수 직후 남은 시계 (ms). PGN에 시계가 없으면 없음 */
+  clockMs?: number | null
+  /** 이 수에 쓴 시간 (ms) */
+  timeSpentMs?: number | null
 }
 
 // Analysis / Classification types
@@ -104,6 +108,8 @@ export interface GameDetailResponse {
   playedAt: string
   nickname?: string | null
   memo?: string | null
+  /** 대국 시작 시계 (ms). 수별 시계가 있는 게임만 */
+  initialClockMs?: number | null
 }
 
 /** 목록용 분석 요약 (백엔드 GameAnalysisSummary) */

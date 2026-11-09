@@ -140,4 +140,38 @@ class AnnotationDtoTest : DescribeSpec({
             response.black.acpl shouldBe null
         }
     }
+
+    describe("수 응답의 시계") {
+        it("PGN %clk에서 남은 시계와 쓴 시간을 ms로 내려준다") {
+            val moves = listOf(
+                org.raonpark.chessriend.game.domain.Move(1, org.raonpark.chessriend.game.domain.Color.WHITE, "e4", "", null, null),
+                org.raonpark.chessriend.game.domain.Move(1, org.raonpark.chessriend.game.domain.Color.BLACK, "e5", "", null, null),
+            )
+            val game = org.raonpark.chessriend.game.domain.Game(
+                id = 1L,
+                source = org.raonpark.chessriend.game.domain.GameSource.CHESS_COM,
+                sourceGameId = "x",
+                ownerUsername = "alice",
+                players = org.raonpark.chessriend.game.domain.Players(
+                    org.raonpark.chessriend.game.domain.Player("alice", 1500),
+                    org.raonpark.chessriend.game.domain.Player("bob", 1400),
+                ),
+                moves = moves,
+                result = org.raonpark.chessriend.game.domain.GameResult.WHITE_WIN,
+                timeControl = org.raonpark.chessriend.game.domain.TimeControl(
+                    kotlin.time.Duration.parse("5m"), kotlin.time.Duration.ZERO,
+                    org.raonpark.chessriend.game.domain.TimeCategory.BLITZ,
+                ),
+                opening = null,
+                pgn = "1. e4 {[%clk 0:04:59.9]} 1... e5 {[%clk 0:04:58.5]} 1-0",
+                playedAt = java.time.Instant.parse("2026-10-01T00:00:00Z"),
+                importedAt = java.time.Instant.parse("2026-10-01T00:00:00Z"),
+            )
+
+            val response = GameDetailResponse.from(game)
+
+            response.moves[0] shouldBe MoveResponse(number = 1, color = "WHITE", san = "e4", clockMs = 299_900, timeSpentMs = 100)
+            response.moves[1] shouldBe MoveResponse(number = 1, color = "BLACK", san = "e5", clockMs = 298_500, timeSpentMs = 1_500)
+        }
+    }
 })
