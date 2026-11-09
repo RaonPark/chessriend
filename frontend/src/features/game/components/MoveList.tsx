@@ -4,6 +4,7 @@ import { useBoardStore, selectHasUnsavedVariationMoves } from '../stores/boardSt
 import type { MoveClassification, VariationResponse } from '../types/game'
 import { formatNumberedMove, variationMovePly } from '../utils/moveNumber'
 import { INTERESTING_MARK, MOVE_SYMBOLS } from '../utils/moveSymbols'
+import { formatSpent } from '../utils/clock'
 
 export function MoveList() {
   const moves = useBoardStore((s) => s.mainlineMoves)
@@ -103,6 +104,7 @@ export function MoveList() {
                     hasComment={pair.white != null && String(pair.white.index) in moveComments}
                     classification={pair.white ? classificationByMove[pair.white.index] : undefined}
                     isInteresting={pair.white != null && interestingMoves.includes(pair.white.index)}
+                    timeSpentMs={pair.white ? moves[pair.white.index].timeSpentMs : null}
                     goToMove={goToMove}
                     activeRef={activeRef}
                   />
@@ -113,6 +115,7 @@ export function MoveList() {
                     hasComment={pair.black != null && String(pair.black.index) in moveComments}
                     classification={pair.black ? classificationByMove[pair.black.index] : undefined}
                     isInteresting={pair.black != null && interestingMoves.includes(pair.black.index)}
+                    timeSpentMs={pair.black ? moves[pair.black.index].timeSpentMs : null}
                     goToMove={goToMove}
                     activeRef={activeRef}
                   />
@@ -222,13 +225,15 @@ function InterestingSymbol() {
   )
 }
 
-function MoveCell({ move, isActive, isBranchPoint, hasComment, classification, isInteresting, goToMove, activeRef }: {
+function MoveCell({ move, isActive, isBranchPoint, hasComment, classification, isInteresting, timeSpentMs, goToMove, activeRef }: {
   move?: { san: string; index: number }
   isActive: boolean
   isBranchPoint: boolean
   hasComment: boolean
   classification?: MoveClassification
   isInteresting: boolean
+  /** 이 수에 쓴 시간 (ms). 시계 정보가 없으면 null/undefined */
+  timeSpentMs?: number | null
   goToMove: (index: number) => void
   activeRef: React.RefObject<HTMLButtonElement | null>
 }) {
@@ -264,6 +269,11 @@ function MoveCell({ move, isActive, isBranchPoint, hasComment, classification, i
       {isInteresting && <InterestingSymbol />}
       {hasComment && (
         <span className="text-[10px] text-amber-500 dark:text-amber-600" title="메모 있음">&#9998;</span>
+      )}
+      {timeSpentMs != null && (
+        <span className="ml-auto pl-1 text-[10px] font-normal tabular-nums text-gray-400 dark:text-gray-500" title="이 수에 쓴 시간">
+          {formatSpent(timeSpentMs)}
+        </span>
       )}
     </button>
   )

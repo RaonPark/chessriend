@@ -104,3 +104,18 @@ describe('MoveList — 흥미로운 수(!?) 표시', () => {
     expect(screen.getByRole('button', { name: /exd5 \(흥미로운 수\)/ })).toHaveTextContent('!?')
   })
 })
+
+describe('MoveList — 수마다 쓴 시간', () => {
+  it('시계 정보가 있는 수에 쓴 시간을 표시한다', () => {
+    useBoardStore.getState().loadMoves([
+      { number: 1, color: 'WHITE', san: 'e4', clockMs: 299_000, timeSpentMs: 1_000 },
+      { number: 1, color: 'BLACK', san: 'e5', clockMs: 288_000, timeSpentMs: 12_000 },
+      { number: 2, color: 'WHITE', san: 'Nf3' },
+    ])
+    render(<MoveList />)
+
+    expect(screen.getByRole('button', { name: /^e4/ })).toHaveTextContent('1.0s')
+    expect(screen.getByRole('button', { name: /^e5/ })).toHaveTextContent('12s')
+    expect(screen.getByRole('button', { name: /^Nf3/ })).toHaveTextContent(/^Nf3$/)
+  })
+})
